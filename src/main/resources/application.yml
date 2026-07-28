@@ -38,6 +38,7 @@ cloudflare:
     secret-key: ${R2_SECRET_KEY:r2_placeholder_secret_key}
     bucket-name: ${R2_BUCKET:eventfoto-bucket}
     endpoint: ${R2_ENDPOINT:https://<account-id>.r2.cloudflarestorage.com}
+    public-url: ${R2_PUBLIC_URL:}
 
 # Configuración de Autenticación y JWT para Admin
 security:

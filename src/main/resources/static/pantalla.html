@@ -100,7 +100,6 @@
             background: rgba(22, 18, 15, 0.95);
             border: 1px solid rgba(229, 207, 179, 0.35);
             border-top: none;
-            border-radius: 0 0 16px 16px;
             padding: 0.9rem 2rem;
             text-align: center;
             color: #e5cfb3;
@@ -108,6 +107,53 @@
             font-weight: 600;
             box-shadow: 0 8px 24px rgba(0,0,0,0.6);
             backdrop-filter: blur(10px);
+        }
+
+        .photo-comments-container {
+            width: 100%;
+            background: rgba(30, 24, 19, 0.95);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            border-top: 1px solid rgba(229, 207, 179, 0.15);
+            border-radius: 0 0 16px 16px;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 75px;
+            transition: opacity 0.4s ease;
+        }
+
+        .comments-badge {
+            font-size: 0.85rem;
+            color: #e5cfb3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+            text-align: right;
+            opacity: 0.8;
+        }
+
+        .comment-bubble {
+            background: rgba(229, 207, 179, 0.1);
+            border-left: 3px solid #d4af37;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 1.15rem;
+            text-align: left;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .comment-author-name {
+            color: #e5cfb3;
+            font-weight: 700;
+            margin-right: 0.4rem;
         }
 
         /* Banner de Mensaje Gran Formato para Salón */
@@ -217,9 +263,16 @@
             slideshowInterval = setInterval(showNextPhoto, 6500); // Transición cada 6.5 segundos
         }
 
-        // 3. Renderizar la siguiente fotografía con su badge unido inmediatamente abajo
+        let commentRotationInterval = null;
+
+        // 3. Renderizar la siguiente fotografía con su badge y comentarios rotativos
         function showNextPhoto() {
             if (photos.length === 0) return;
+
+            if (commentRotationInterval) {
+                clearInterval(commentRotationInterval);
+                commentRotationInterval = null;
+            }
 
             const stage = document.getElementById('stage');
             const photo = photos[currentIndex];
@@ -238,6 +291,8 @@
                 <div class="photo-credit-bar">📸 Subida por ${escapeHtml(uploader)}</div>
             `;
 
+            renderPhotoComments(photo, newFrame);
+
             stage.appendChild(newFrame);
 
             // Transición suave: activar la nueva y remover progresivamente las anteriores
@@ -253,6 +308,45 @@
 
             // Avanzar al siguiente índice
             currentIndex = (currentIndex + 1) % photos.length;
+        }
+
+        // Renderiza comentarios rotativos en lotes de a 2 si la foto tiene muchas dedicatorias
+        function renderPhotoComments(photo, frameElement) {
+            if (!photo.comments || photo.comments.length === 0) return;
+
+            const comments = photo.comments;
+            let commentIndex = 0;
+            const pageSize = 2;
+
+            const container = document.createElement('div');
+            container.className = 'photo-comments-container';
+            frameElement.appendChild(container);
+
+            function updateBatch() {
+                const batch = comments.slice(commentIndex, commentIndex + pageSize);
+                const total = comments.length;
+                const badge = total > pageSize 
+                    ? `<div class="comments-badge">💬 Dedicatorias (${commentIndex + 1}-${Math.min(commentIndex + batch.length, total)} de ${total})</div>`
+                    : '';
+
+                const bubblesHtml = batch.map(c => `
+                    <div class="comment-bubble">
+                        <span class="comment-author-name">💬 ${escapeHtml(c.authorName)}:</span>"${escapeHtml(c.text)}"
+                    </div>
+                `).join('');
+
+                container.innerHTML = badge + bubblesHtml;
+
+                if (total > pageSize) {
+                    commentIndex = (commentIndex + pageSize) % total;
+                }
+            }
+
+            updateBatch();
+
+            if (comments.length > pageSize) {
+                commentRotationInterval = setInterval(updateBatch, 3500);
+            }
         }
 
         // 4. Procesar eventos de SSE (Aislando la propiedad payload de forma robusta)

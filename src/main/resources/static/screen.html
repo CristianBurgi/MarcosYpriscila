@@ -104,7 +104,6 @@
             backdrop-filter: blur(10px);
         }
 
-        /* Contenedor de Comentarios en la Diapositiva */
         .photo-comments-container {
             width: 100%;
             background: rgba(30, 24, 19, 0.95);
@@ -115,8 +114,19 @@
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
-            max-height: 18vh;
-            overflow-y: auto;
+            min-height: 80px;
+            transition: opacity 0.4s ease;
+        }
+
+        .comments-badge {
+            font-size: 0.85rem;
+            color: #e5cfb3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+            text-align: right;
+            opacity: 0.8;
         }
 
         .comment-bubble {
@@ -127,7 +137,14 @@
             color: #ffffff;
             font-size: 1.15rem;
             text-align: left;
+            animation: fadeIn 0.4s ease;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .comment-author-name {
             color: #e5cfb3;
             font-weight: 700;
@@ -236,9 +253,16 @@
             slideshowInterval = setInterval(showNextPhoto, 7000);
         }
 
-        // 3. Mostrar foto con todos sus comentarios integrados en la diapositiva
+        let commentRotationInterval = null;
+
+        // 3. Mostrar foto con comentarios rotativos (máx 2 a la vez)
         function showNextPhoto() {
             if (photos.length === 0) return;
+
+            if (commentRotationInterval) {
+                clearInterval(commentRotationInterval);
+                commentRotationInterval = null;
+            }
 
             const stage = document.getElementById('stage');
             const photo = photos[currentIndex];
@@ -250,17 +274,6 @@
 
             const uploader = photo.uploaderName || 'Invitado';
 
-            let commentsMarkup = '';
-            if (photo.comments && photo.comments.length > 0) {
-                const bubbles = photo.comments.map(c => `
-                    <div class="comment-bubble">
-                        <span class="comment-author-name">💬 ${escapeHtml(c.authorName)}:</span>"${escapeHtml(c.text)}"
-                    </div>
-                `).join('');
-
-                commentsMarkup = `<div class="photo-comments-container">${bubbles}</div>`;
-            }
-
             // Capturar todas las tarjetas existentes antes de agregar la nueva
             const existingFrames = Array.from(stage.querySelectorAll('.photo-card-frame'));
 
@@ -270,8 +283,9 @@
             newFrame.innerHTML = `
                 <img class="slide-img" src="${imageUrl}" alt="Foto de la boda" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1519741497674-611481863552?w=1600&auto=format&fit=crop';">
                 <div class="photo-credit-bar">📸 Subida por ${escapeHtml(uploader)}</div>
-                ${commentsMarkup}
             `;
+
+            renderPhotoComments(photo, newFrame);
 
             stage.appendChild(newFrame);
 
@@ -287,6 +301,45 @@
             });
 
             currentIndex = (currentIndex + 1) % photos.length;
+        }
+
+        // Renderiza comentarios rotativos en lotes de a 2 si la foto tiene muchas dedicatorias
+        function renderPhotoComments(photo, frameElement) {
+            if (!photo.comments || photo.comments.length === 0) return;
+
+            const comments = photo.comments;
+            let commentIndex = 0;
+            const pageSize = 2;
+
+            const container = document.createElement('div');
+            container.className = 'photo-comments-container';
+            frameElement.appendChild(container);
+
+            function updateBatch() {
+                const batch = comments.slice(commentIndex, commentIndex + pageSize);
+                const total = comments.length;
+                const badge = total > pageSize 
+                    ? `<div class="comments-badge">💬 Dedicatorias (${commentIndex + 1}-${Math.min(commentIndex + batch.length, total)} de ${total})</div>`
+                    : '';
+
+                const bubblesHtml = batch.map(c => `
+                    <div class="comment-bubble">
+                        <span class="comment-author-name">💬 ${escapeHtml(c.authorName)}:</span>"${escapeHtml(c.text)}"
+                    </div>
+                `).join('');
+
+                container.innerHTML = badge + bubblesHtml;
+
+                if (total > pageSize) {
+                    commentIndex = (commentIndex + pageSize) % total;
+                }
+            }
+
+            updateBatch();
+
+            if (comments.length > pageSize) {
+                commentRotationInterval = setInterval(updateBatch, 3500);
+            }
         }
 
         // 4. Extraer payload SSE

@@ -42,6 +42,9 @@ public class R2StorageService implements StorageService {
     @Value("${cloudflare.r2.endpoint}")
     private String endpoint;
 
+    @Value("${cloudflare.r2.public-url:}")
+    private String publicUrlDomain;
+
     @Value("${app.storage.mode:local}")
     private String storageMode;
 
@@ -52,7 +55,7 @@ public class R2StorageService implements StorageService {
         // Si estamos en entorno de desarrollo local sin R2 configurado reales, usamos el controlador local
         if (isLocalDevMode()) {
             log.info("Modo desarrollo local activo: Generando URL de subida local para la clave '{}'", key);
-            return "http://localhost:8080/api/v1/storage/local-upload?key=" + URLEncoder.encode(key, StandardCharsets.UTF_8);
+            return "/api/v1/storage/local-upload?key=" + URLEncoder.encode(key, StandardCharsets.UTF_8);
         }
 
         try {
@@ -74,7 +77,7 @@ public class R2StorageService implements StorageService {
 
         } catch (Exception e) {
             log.error("Error al generar Presigned URL en R2. Usando fallback local para desarrollo: {}", e.getMessage());
-            return "http://localhost:8080/api/v1/storage/local-upload?key=" + URLEncoder.encode(key, StandardCharsets.UTF_8);
+            return "/api/v1/storage/local-upload?key=" + URLEncoder.encode(key, StandardCharsets.UTF_8);
         }
     }
 
@@ -86,7 +89,14 @@ public class R2StorageService implements StorageService {
 
         if (isLocalDevMode()) {
             String cleanKey = key.startsWith("/") ? key.substring(1) : key;
-            return "http://localhost:8080/uploads/" + cleanKey;
+            return "/uploads/" + cleanKey;
+        }
+
+        String cleanKey = key.startsWith("/") ? key.substring(1) : key;
+
+        if (publicUrlDomain != null && !publicUrlDomain.isBlank()) {
+            String base = publicUrlDomain.endsWith("/") ? publicUrlDomain.substring(0, publicUrlDomain.length() - 1) : publicUrlDomain;
+            return String.format("%s/%s", base, cleanKey);
         }
 
         String baseEndpoint = endpoint.endsWith("/") ? endpoint.substring(0, endpoint.length() - 1) : endpoint;
@@ -94,7 +104,6 @@ public class R2StorageService implements StorageService {
             baseEndpoint = baseEndpoint.substring(0, baseEndpoint.length() - (bucketName.length() + 1));
         }
 
-        String cleanKey = key.startsWith("/") ? key.substring(1) : key;
         return String.format("%s/%s/%s", baseEndpoint, bucketName, cleanKey);
     }
 
