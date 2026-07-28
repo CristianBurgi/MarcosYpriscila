@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boda de Marcos y Priscila | Menú Principal</title>
+    <!-- Fonts & Pico.css & Theme -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-top: 1.5rem;
+        }
+        @media (max-width: 600px) {
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .menu-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            text-decoration: none;
+            color: var(--brand-text-main);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+            border: 2px solid rgba(212, 175, 55, 0.25);
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--brand-gold-primary);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.25);
+            color: var(--brand-text-main);
+            text-decoration: none;
+        }
+        .menu-icon {
+            font-size: 3rem;
+            margin-bottom: 0.8rem;
+        }
+        .menu-title {
+            font-family: var(--font-heading);
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #1f1a17;
+            margin-bottom: 0.4rem;
+        }
+        .menu-desc {
+            font-size: 0.95rem;
+            color: var(--brand-text-muted);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <header class="container wedding-header">
+        <h1 class="wedding-title">💍 Marcos & Priscila</h1>
+        <p class="wedding-date">19 de Septiembre de 2026</p>
+        <p style="font-size: 1.05rem; color: #5a4f47;">¡Bienvenidos a nuestra fiesta! Elegí una opción para participar:</p>
+    </header>
+
+    <main class="container">
+        <div class="menu-grid">
+            <!-- 1. Subir Foto -->
+            <a href="/upload.html" class="menu-card">
+                <div class="menu-icon">📸</div>
+                <div class="menu-title">Subir Foto</div>
+                <div class="menu-desc">Sacá una foto o elegila de tu galería para compartir con todos.</div>
+            </a>
+
+            <!-- 2. Ver Álbum -->
+            <a href="/album.html" class="menu-card">
+                <div class="menu-icon">🖼️</div>
+                <div class="menu-title">Ver Álbum</div>
+                <div class="menu-desc">Explorá las fotos de los invitados y dejá tus comentarios.</div>
+            </a>
+
+            <!-- 3. Dejar Mensaje -->
+            <a href="/messages.html" class="menu-card">
+                <div class="menu-icon">✍️</div>
+                <div class="menu-title">Libro de Visitas</div>
+                <div class="menu-desc">Escribí tus felicitaciones y buenos deseos para los novios.</div>
+            </a>
+
+            <!-- 4. Pantalla del Salón -->
+            <a href="/screen.html" class="menu-card" target="_blank">
+                <div class="menu-icon">📺</div>
+                <div class="menu-title">Pantalla Salón</div>
+                <div class="menu-desc">Abrí la proyección en vivo que se transmite en las pantallas del evento.</div>
+            </a>
+        </div>
+    </main>
+
+    <footer class="container" style="text-align: center; padding: 2.5rem 0 1.5rem; color: var(--brand-text-muted);">
+        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Fotografía | Boda de Marcos y Priscila</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .preview-container {
+            width: 100%;
+            max-height: 400px;
+            margin: 1.25rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1a1715;
+            display: none;
+            text-align: center;
+        }
+        .preview-container img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background: #e0d7ce;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 1rem;
+            display: none;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--brand-gold-primary);
+            transition: width 0.3s ease;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--brand-gold-dark);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header class="container wedding-header" style="padding-bottom: 0.5rem;">
+        <a href="/menu.html" class="back-link">← Volver al Menú</a>
+        <h1 class="wedding-title">📸 Subir Fotografía</h1>
+        <p style="color: var(--brand-text-muted);">Compartí tus momentos de la boda en tiempo real</p>
+    </header>
+
+    <main class="container" style="max-width: 650px;">
+        <article class="card-custom">
+            <form id="upload-form">
+                <!-- Nombre del Invitado (OBLIGATORIO) -->
+                <label for="uploaderName">Tu Nombre <span style="color: red;">*</span>:</label>
+                <input type="text" id="uploaderName" name="uploaderName" placeholder="Ej: Sofía y Nahuel" required maxlength="150">
+
+                <!-- Dedicatoria Opcional -->
+                <label for="caption">Dedicatoria para los novios (opcional):</label>
+                <input type="text" id="caption" name="caption" placeholder="¡Momento inolvidable en la fiesta!" maxlength="500">
+
+                <!-- Input de Archivo con capture="environment" para abrir la cámara directa en móvil -->
+                <label for="photoFile">Seleccionar o Sacar Foto <span style="color: red;">*</span>:</label>
+                <input type="file" id="photoFile" name="file" accept="image/jpeg,image/png,image/webp,image/heic" capture="environment" required>
+
+                <!-- Vista previa de la foto seleccionada -->
+                <div class="preview-container" id="preview-box">
+                    <img id="image-preview" src="#" alt="Vista previa de la foto">
+                </div>
+
+                <!-- Barra de Progreso -->
+                <div class="progress-bar-container" id="progress-box">
+                    <div class="progress-bar-fill" id="progress-fill"></div>
+                </div>
+
+                <button type="submit" id="btn-submit" class="btn-gold" style="width: 100%; margin-top: 1.5rem;">
+                    Subir y Compartir Foto
+                </button>
+            </form>
+
+            <div id="status-message"></div>
+        </article>
+    </main>
+
+    <footer class="container" style="text-align: center; padding: 2rem 0; color: var(--brand-text-muted);">
+        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    </footer>
+
+    <script>
+        const SLUG = 'marcos-y-priscila';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('photoFile');
+            const previewBox = document.getElementById('preview-box');
+            const imagePreview = document.getElementById('image-preview');
+
+            // Mostrar vista previa al seleccionar una foto
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        imagePreview.src = event.target.result;
+                        previewBox.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    previewBox.style.display = 'none';
+                }
+            });
+
+            // Manejo del formulario de subida
+            document.getElementById('upload-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const statusDiv = document.getElementById('status-message');
+                const btn = document.getElementById('btn-submit');
+                const progressBox = document.getElementById('progress-box');
+                const progressFill = document.getElementById('progress-fill');
+
+                const uploaderName = document.getElementById('uploaderName').value.trim();
+                const caption = document.getElementById('caption').value.trim();
+                const file = fileInput.files[0];
+
+                if (!uploaderName) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor ingresá tu nombre. Es obligatorio.</div>';
+                    return;
+                }
+
+                if (!file) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor seleccioná o tomá una foto.</div>';
+                    return;
+                }
+
+                try {
+                    btn.disabled = true;
+                    btn.innerText = 'Iniciando subida...';
+                    progressBox.style.display = 'block';
+                    progressFill.style.width = '20%';
+
+                    // Step 1: Solicitar Presigned URL
+                    const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contentType: file.type || 'image/jpeg', filename: file.name })
+                    });
+
+                    if (!presignedRes.ok) {
+                        const errData = await presignedRes.json();
+                        throw new Error(errData.message || 'Formato de foto no soportado. Subí solo imágenes JPG, PNG o WEBP.');
+                    }
+
+                    const { uploadUrl, key } = await presignedRes.json();
+                    progressFill.style.width = '50%';
+                    btn.innerText = 'Subiendo fotografía...';
+
+                    // Step 2: Subir bytes de la foto
+                    const uploadRes = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': file.type || 'image/jpeg' },
+                        body: file
+                    });
+
+                    if (!uploadRes.ok) {
+                        throw new Error('No se pudo enviar la foto al servidor de almacenamiento. Intentalo de nuevo.');
+                    }
+
+                    progressFill.style.width = '80%';
+                    btn.innerText = 'Registrando en la boda...';
+
+                    // Step 3: Confirmar en la API
+                    const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key, uploaderName, caption })
+                    });
+
+                    if (!confirmRes.ok) {
+                        throw new Error('Error al registrar la fotografía en el evento.');
+                    }
+
+                    progressFill.style.width = '100%';
+                    statusDiv.innerHTML = '<div class="alert-box alert-success">¡Foto subida con éxito! Quedó registrada y aparecerá en el álbum una vez aprobada. 📸</div>';
+
+                    // Limpiar formulario
+                    document.getElementById('caption').value = '';
+                    fileInput.value = '';
+                    previewBox.style.display = 'none';
+
+                    // Ocultar barra de progreso y mensaje de éxito tras 5 segundos
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                        progressBox.style.display = 'none';
+                        progressFill.style.width = '0%';
+                    }, 5000);
+
+                } catch (err) {
+                    statusDiv.innerHTML = `<div class="alert-box alert-error">${escapeHtml(err.message)}</div>`;
+                    progressBox.style.display = 'none';
+                    progressFill.style.width = '0%';
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Subir y Compartir Foto';
+                }
+            });
+        });
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

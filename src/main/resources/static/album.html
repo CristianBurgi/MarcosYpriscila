@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Álbum de Fotos | Boda de Marcos y Priscila</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .gallery-card {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .gallery-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.2);
+        }
+        .gallery-card img {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            background: #1a1715;
+        }
+        .gallery-card-footer {
+            padding: 0.9rem 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+        }
+        .badge-uploader {
+            background: var(--brand-gold-light);
+            color: var(--brand-gold-dark);
+            font-weight: 600;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .comments-count {
+            color: var(--brand-text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        /* Modal Styles */
+        dialog.modal-photo {
+            max-width: 750px;
+            width: 95vw;
+            border-radius: 16px;
+            border: none;
+            padding: 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+        }
+        dialog.modal-photo::backdrop {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+        }
+        .modal-body {
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .modal-img {
+            width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            background: #120e0c;
+            border-radius: 10px;
+            display: block;
+        }
+        .comment-item {
+            background: #faf7f2;
+            padding: 0.8rem 1rem;
+            border-left: 3px solid var(--brand-gold-primary);
+            border-radius: 6px;
+            margin-bottom: 0.8rem;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--brand-gold-dark);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="container wedding-header" style="padding-bottom: 0.5rem;">
+        <a href="/menu.html" class="back-link">← Volver al Menú</a>
+        <h1 class="wedding-title">🖼️ Álbum de Fotos</h1>
+        <p style="color: var(--brand-text-muted);">Reviví las mejores fotos compartidas por los invitados</p>
+    </header>
+
+    <main class="container">
+        <div class="gallery-grid" id="gallery-container">
+            <p style="grid-column: 1 / -1; text-align: center; color: var(--brand-text-muted);">Cargando fotografías del evento...</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 2.5rem; margin-bottom: 2rem;">
+            <button id="btn-load-more" class="btn-gold" style="display: none; width: auto; padding: 0.8rem 2.5rem;">
+                Cargar más fotos
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal para ver Foto + Comentarios -->
+    <dialog id="photo-modal" class="modal-photo">
+        <article class="modal-body" style="margin: 0;">
+            <header style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.8rem; margin-bottom: 1rem; border-bottom: 1px solid #eee;">
+                <h4 style="margin: 0; font-family: var(--font-heading); color: #1f1a17;" id="modal-uploader">Foto de la boda</h4>
+                <button type="button" aria-label="Cerrar" id="btn-close-modal" style="width: auto; padding: 0.3rem 0.8rem; background: #eee; color: #333; border: none; border-radius: 50%; cursor: pointer;">✕</button>
+            </header>
+
+            <img id="modal-img" class="modal-img" src="#" alt="Fotografía ampliada">
+
+            <section style="margin-top: 1.5rem;">
+                <h5 style="font-size: 1.1rem; color: #1f1a17; margin-bottom: 1rem;">💬 Comentarios (<span id="modal-comments-count">0</span>)</h5>
+                
+                <div id="modal-comments-list">
+                    <p style="color: #888;">Cargando comentarios...</p>
+                </div>
+
+                <form id="comment-form" style="margin-top: 1.5rem;">
+                    <label for="commentAuthor">Tu Nombre <span style="color: red;">*</span>:</label>
+                    <input type="text" id="commentAuthor" name="authorName" placeholder="Ej: Primo Lucas" required maxlength="150">
+
+                    <label for="commentText">Comentario <span style="color: red;">*</span>:</label>
+                    <input type="text" id="commentText" name="text" placeholder="¡Qué buena foto!" required maxlength="500">
+
+                    <button type="submit" id="btn-comment-submit" class="btn-gold" style="width: 100%;">Enviar Comentario</button>
+                </form>
+                <div id="comment-status"></div>
+            </section>
+        </article>
+    </dialog>
+
+    <footer class="container" style="text-align: center; padding: 2rem 0; color: var(--brand-text-muted);">
+        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    </footer>
+
+    <script>
+        const SLUG = 'marcos-y-priscila';
+        let currentPage = 0;
+        let activePhotoId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGalleryPage(0);
+
+            document.getElementById('btn-load-more').addEventListener('click', () => {
+                loadGalleryPage(currentPage + 1);
+            });
+
+            document.getElementById('btn-close-modal').addEventListener('click', () => {
+                document.getElementById('photo-modal').close();
+            });
+
+            setupCommentForm();
+        });
+
+        // 1. Cargar página de la galería
+        async function loadGalleryPage(page) {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=12`);
+                const data = await res.json();
+                const container = document.getElementById('gallery-container');
+                const btnMore = document.getElementById('btn-load-more');
+
+                if (page === 0) container.innerHTML = '';
+
+                if (!data.content || data.content.length === 0) {
+                    if (page === 0) {
+                        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888;"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
+                    }
+                    btnMore.style.display = 'none';
+                    return;
+                }
+
+                data.content.forEach(photo => {
+                    let imageUrl = photo.url || photo.storageKey;
+                    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+                        imageUrl = '/' + imageUrl;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'gallery-card';
+                    card.dataset.photoId = photo.id;
+                    card.innerHTML = `
+                        <img src="${imageUrl}" alt="Foto de la boda" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop';">
+                        <div class="gallery-card-footer">
+                            <span class="badge-uploader">📸 ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
+                            <span class="comments-count" id="count-${photo.id}">💬 ${photo.commentCount || 0}</span>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => openPhotoModal(photo));
+                    container.appendChild(card);
+                });
+
+                currentPage = page;
+                if (data.last) {
+                    btnMore.style.display = 'none';
+                } else {
+                    btnMore.style.display = 'inline-block';
+                }
+
+            } catch (err) {
+                console.error('Error al cargar la galería:', err);
+            }
+        }
+
+        // 2. Abrir Modal de Foto + Comentarios
+        async function openPhotoModal(photo) {
+            activePhotoId = photo.id;
+            const modal = document.getElementById('photo-modal');
+            
+            let imageUrl = photo.url || photo.storageKey;
+            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+                imageUrl = '/' + imageUrl;
+            }
+
+            document.getElementById('modal-uploader').innerText = `📸 Subida por ${photo.uploaderName || 'Invitado'}`;
+            
+            const modalImg = document.getElementById('modal-img');
+            modalImg.onerror = function() {
+                this.onerror = null;
+                this.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop';
+            };
+            modalImg.src = imageUrl;
+
+            modal.showModal();
+            loadComments(photo.id);
+        }
+
+        // 3. Cargar comentarios de una foto
+        async function loadComments(photoId) {
+            const listDiv = document.getElementById('modal-comments-list');
+            const countSpan = document.getElementById('modal-comments-count');
+
+            try {
+                const res = await fetch(`/api/v1/photos/${photoId}/comments`);
+                const comments = await res.json();
+
+                const total = comments ? comments.length : 0;
+                countSpan.innerText = total;
+
+                const cardCountSpan = document.getElementById(`count-${photoId}`);
+                if (cardCountSpan) {
+                    cardCountSpan.innerText = `💬 ${total}`;
+                }
+
+                if (!comments || comments.length === 0) {
+                    listDiv.innerHTML = '<p style="color: #888; font-style: italic;">No hay comentarios en esta foto. ¡Sé el primero en comentar!</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = comments.map(c => `
+                    <div class="comment-item" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                        <div>
+                            <strong style="color: #2c2520;">${escapeHtml(c.authorName)}</strong>
+                            <p style="margin: 0.2rem 0 0; color: #444;">${escapeHtml(c.text)}</p>
+                        </div>
+                        <button type="button" onclick="deleteComment('${c.id}')" style="width: auto; padding: 0.2rem 0.5rem; font-size: 0.8rem; background: #fff0f0; color: #d32f2f; border: 1px solid #ffcdd2; border-radius: 6px; cursor: pointer;" title="Eliminar comentario como admin">🗑️</button>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                listDiv.innerHTML = '<p style="color: red;">Error al cargar comentarios.</p>';
+            }
+        }
+
+        // 4. Eliminar comentario como admin
+        async function deleteComment(commentId) {
+            if (!confirm('¿Seguro que querés eliminar este comentario como administrador?')) return;
+            try {
+                const res = await fetch(`/api/v1/admin/comments/${commentId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Error al eliminar el comentario.');
+                if (activePhotoId) loadComments(activePhotoId);
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // 5. Formulario para agregar comentario
+        function setupCommentForm() {
+            document.getElementById('comment-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!activePhotoId) return;
+
+                const statusDiv = document.getElementById('comment-status');
+                const btn = document.getElementById('btn-comment-submit');
+                const authorName = document.getElementById('commentAuthor').value.trim();
+                const text = document.getElementById('commentText').value.trim();
+
+                if (!authorName || !text) return;
+
+                try {
+                    btn.disabled = true;
+                    btn.innerText = 'Enviando...';
+
+                    const res = await fetch(`/api/v1/photos/${activePhotoId}/comments`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ authorName, text })
+                    });
+
+                    if (!res.ok) throw new Error('Error al enviar el comentario.');
+
+                    document.getElementById('commentText').value = '';
+                    statusDiv.innerHTML = '<div class="alert-box alert-success">¡Comentario publicado!</div>';
+                    setTimeout(() => { statusDiv.innerHTML = ''; }, 4000);
+
+                    loadComments(activePhotoId);
+                } catch (err) {
+                    statusDiv.innerHTML = `<div class="alert-box alert-error">${escapeHtml(err.message)}</div>`;
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Enviar Comentario';
+                }
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

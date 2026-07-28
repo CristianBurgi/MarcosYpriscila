@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantalla del Salón | Boda de Marcos y Priscila</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #080706;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #ffffff;
+        }
+
+        .salon-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1.5rem 3.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            background: linear-gradient(to bottom, rgba(8, 7, 6, 0.95), transparent);
+        }
+        .wedding-brand {
+            font-family: 'Cinzel', serif;
+            font-size: 2.2rem;
+            letter-spacing: 3px;
+            color: #e5cfb3;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+        }
+        .header-tag {
+            background: rgba(229, 207, 179, 0.12);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            color: #f3e5d3;
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            font-size: 1.15rem;
+            font-weight: 500;
+            backdrop-filter: blur(12px);
+        }
+
+        .slideshow-stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 5rem;
+            padding-bottom: 2rem;
+        }
+
+        .photo-card-frame {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90vw;
+            max-height: 84vh;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+            position: absolute;
+        }
+        .photo-card-frame.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .slide-img {
+            max-width: 88vw;
+            max-height: 62vh;
+            object-fit: contain;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.85);
+            background-color: #120e0c;
+        }
+
+        .photo-credit-bar {
+            width: 100%;
+            background: rgba(22, 18, 15, 0.95);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            border-top: none;
+            padding: 0.7rem 2rem;
+            text-align: center;
+            color: #e5cfb3;
+            font-size: 1.3rem;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Contenedor de Comentarios en la Diapositiva */
+        .photo-comments-container {
+            width: 100%;
+            background: rgba(30, 24, 19, 0.95);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            border-top: 1px solid rgba(229, 207, 179, 0.15);
+            border-radius: 0 0 16px 16px;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 18vh;
+            overflow-y: auto;
+        }
+
+        .comment-bubble {
+            background: rgba(229, 207, 179, 0.1);
+            border-left: 3px solid #d4af37;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 1.15rem;
+            text-align: left;
+        }
+        .comment-author-name {
+            color: #e5cfb3;
+            font-weight: 700;
+            margin-right: 0.4rem;
+        }
+
+        .message-banner-overlay {
+            position: absolute;
+            bottom: 3.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(30px);
+            width: 85%;
+            max-width: 900px;
+            background: linear-gradient(135deg, rgba(28, 22, 18, 0.96), rgba(16, 12, 10, 0.96));
+            border: 2px solid #e5cfb3;
+            border-radius: 20px;
+            padding: 1.8rem 2.8rem;
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9);
+            z-index: 30;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s ease, transform 0.6s ease, visibility 0.6s;
+            text-align: center;
+        }
+        .message-banner-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        .banner-author {
+            color: #e5cfb3;
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        .banner-text {
+            color: #ffffff;
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #b8a693;
+            font-size: 1.8rem;
+            font-family: 'Cinzel', serif;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="salon-header">
+        <div class="wedding-brand">💍 MARCOS & PRISCILA</div>
+        <div class="header-tag">📸 ¡Subí tus fotos a la boda desde tu celular!</div>
+    </header>
+
+    <div class="slideshow-stage" id="stage">
+        <div class="empty-state" id="empty-message">
+            Esperando las primeras fotos aprobadas del evento...
+        </div>
+    </div>
+
+    <div class="message-banner-overlay" id="msg-banner">
+        <div class="banner-author" id="banner-author">💬 Mensaje de Invitado</div>
+        <div class="banner-text" id="banner-text">¡Les deseamos toda la felicidad!</div>
+    </div>
+
+    <script>
+        const SLUG = 'marcos-y-priscila';
+        let photos = [];
+        let currentIndex = 0;
+        let slideshowInterval = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchApprovedPhotos();
+            setupSSE();
+        });
+
+        // 1. Cargar fotos iniciales con sus comentarios
+        async function fetchApprovedPhotos() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=0&size=100`);
+                const data = await res.json();
+                
+                if (data.content && data.content.length > 0) {
+                    photos = data.content;
+                    startSlideshow();
+                }
+            } catch (err) {
+                console.error('Error al cargar fotos para la pantalla del salón:', err);
+            }
+        }
+
+        // 2. Iniciar el carrusel
+        function startSlideshow() {
+            if (photos.length === 0) return;
+
+            const emptyMsg = document.getElementById('empty-message');
+            if (emptyMsg) emptyMsg.style.display = 'none';
+
+            showNextPhoto();
+
+            if (slideshowInterval) clearInterval(slideshowInterval);
+            slideshowInterval = setInterval(showNextPhoto, 7000);
+        }
+
+        // 3. Mostrar foto con todos sus comentarios integrados en la diapositiva
+        function showNextPhoto() {
+            if (photos.length === 0) return;
+
+            const stage = document.getElementById('stage');
+            const photo = photos[currentIndex];
+            let imageUrl = photo.url || photo.storageKey;
+
+            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+                imageUrl = '/' + imageUrl;
+            }
+
+            const uploader = photo.uploaderName || 'Invitado';
+
+            let commentsMarkup = '';
+            if (photo.comments && photo.comments.length > 0) {
+                const bubbles = photo.comments.map(c => `
+                    <div class="comment-bubble">
+                        <span class="comment-author-name">💬 ${escapeHtml(c.authorName)}:</span>"${escapeHtml(c.text)}"
+                    </div>
+                `).join('');
+
+                commentsMarkup = `<div class="photo-comments-container">${bubbles}</div>`;
+            }
+
+            // Capturar todas las tarjetas existentes antes de agregar la nueva
+            const existingFrames = Array.from(stage.querySelectorAll('.photo-card-frame'));
+
+            const newFrame = document.createElement('div');
+            newFrame.className = 'photo-card-frame';
+
+            newFrame.innerHTML = `
+                <img class="slide-img" src="${imageUrl}" alt="Foto de la boda" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1519741497674-611481863552?w=1600&auto=format&fit=crop';">
+                <div class="photo-credit-bar">📸 Subida por ${escapeHtml(uploader)}</div>
+                ${commentsMarkup}
+            `;
+
+            stage.appendChild(newFrame);
+
+            // Transición suave: activar la nueva y remover progresivamente las anteriores
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    newFrame.classList.add('active');
+                    existingFrames.forEach(f => {
+                        f.classList.remove('active');
+                        setTimeout(() => f.remove(), 1000);
+                    });
+                });
+            });
+
+            currentIndex = (currentIndex + 1) % photos.length;
+        }
+
+        // 4. Extraer payload SSE
+        function extractPayload(eventData) {
+            try {
+                const parsed = JSON.parse(eventData);
+                return parsed.payload ? parsed.payload : parsed;
+            } catch (e) {
+                return {};
+            }
+        }
+
+        // 5. Nueva foto aprobada en vivo
+        function handleNewApprovedPhoto(photoPayload) {
+            if (!photoPayload || !photoPayload.id) return;
+
+            // Evitar fotos duplicadas si la ID ya existe
+            const exists = photos.some(p => p.id === photoPayload.id);
+            if (exists) return;
+
+            photos.unshift(photoPayload);
+
+            if (photos.length === 1) {
+                startSlideshow();
+                return;
+            }
+
+            currentIndex = 0;
+            showNextPhoto();
+
+            if (slideshowInterval) clearInterval(slideshowInterval);
+            slideshowInterval = setInterval(showNextPhoto, 7000);
+        }
+
+        // 6. Nuevo mensaje en vivo
+        function handleNewMessage(msgPayload) {
+            const author = msgPayload.authorName || 'Invitado';
+            const text = msgPayload.text || '';
+
+            if (!text) return;
+
+            const banner = document.getElementById('msg-banner');
+            document.getElementById('banner-author').innerText = `💬 Mensaje de ${escapeHtml(author)}`;
+            document.getElementById('banner-text').innerText = `"${escapeHtml(text)}"`;
+
+            banner.classList.add('visible');
+
+            setTimeout(() => {
+                banner.classList.remove('visible');
+            }, 9000);
+        }
+
+        // 7. Conexión SSE con autoreconexión
+        function setupSSE() {
+            if (!!window.EventSource) {
+                const eventSource = new EventSource(`/api/v1/events/${SLUG}/stream`);
+
+                eventSource.addEventListener('PHOTO_APPROVED', (e) => {
+                    const payload = extractPayload(e.data);
+                    handleNewApprovedPhoto(payload);
+                });
+
+                eventSource.addEventListener('MESSAGE_CREATED', (e) => {
+                    const payload = extractPayload(e.data);
+                    handleNewMessage(payload);
+                });
+
+                eventSource.onerror = (err) => {
+                    console.warn('Reconectando canal SSE del salón...', err);
+                };
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

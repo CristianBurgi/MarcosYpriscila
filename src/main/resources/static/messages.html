@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Libro de Visitas | Boda de Marcos y Priscila</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .message-card {
+            background: #ffffff;
+            padding: 1.25rem 1.6rem;
+            border-left: 4px solid var(--brand-gold-primary);
+            border-radius: 10px;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+            border-top: 1px solid rgba(212, 175, 55, 0.15);
+            border-right: 1px solid rgba(212, 175, 55, 0.15);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+        }
+        .message-author {
+            font-family: var(--font-heading);
+            font-size: 1.15rem;
+            color: #1f1a17;
+            font-weight: 700;
+        }
+        .message-text {
+            color: #444;
+            font-size: 1.05rem;
+            margin-top: 0.4rem;
+            line-height: 1.45;
+        }
+        .message-time {
+            color: var(--brand-text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.6rem;
+            display: block;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--brand-gold-dark);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="container wedding-header" style="padding-bottom: 0.5rem;">
+        <a href="/menu.html" class="back-link">← Volver al Menú</a>
+        <h1 class="wedding-title">✍️ Libro de Visitas</h1>
+        <p style="color: var(--brand-text-muted);">Dejá tus buenos deseos para Marcos y Priscila</p>
+    </header>
+
+    <main class="container" style="max-width: 750px;">
+        <article class="card-custom">
+            <h3 style="font-family: var(--font-heading); color: #1f1a17; margin-bottom: 1rem;">Escribir un Mensaje</h3>
+            
+            <form id="message-form">
+                <label for="authorName">Tu Nombre <span style="color: red;">*</span>:</label>
+                <input type="text" id="authorName" name="authorName" placeholder="Ej: Padrino Juan" required maxlength="150">
+
+                <label for="messageText">Mensaje para los novios <span style="color: red;">*</span>:</label>
+                <textarea id="messageText" name="text" rows="3" placeholder="¡Les deseamos toda la felicidad y amor en esta nueva etapa juntos!" required maxlength="1000"></textarea>
+
+                <button type="submit" id="btn-submit" class="btn-gold" style="width: 100%; margin-top: 1rem;">
+                    Enviar Mensaje
+                </button>
+            </form>
+            <div id="status-message"></div>
+        </article>
+
+        <section style="margin-top: 2.5rem;">
+            <h3 style="font-family: var(--font-heading); color: #1f1a17; margin-bottom: 1.5rem;">💬 Felicitaciones de los Invitados</h3>
+            <div id="messages-list">
+                <p style="color: var(--brand-text-muted);">Cargando mensajes del libro de visitas...</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="container" style="text-align: center; padding: 2rem 0; color: var(--brand-text-muted);">
+        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    </footer>
+
+    <script>
+        const SLUG = 'marcos-y-priscila';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMessages();
+            setupForm();
+        });
+
+        // 1. Cargar mensajes
+        async function loadMessages() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/messages?page=0&size=100`);
+                const data = await res.json();
+                const container = document.getElementById('messages-list');
+
+                if (!data.content || data.content.length === 0) {
+                    container.innerHTML = '<p style="color: #888; font-style: italic;">Aún no hay mensajes. ¡Sé el primero en escribir a los novios!</p>';
+                    return;
+                }
+
+                container.innerHTML = data.content.map(msg => `
+                    <div class="message-card">
+                        <div class="message-author">${escapeHtml(msg.authorName)}</div>
+                        <div class="message-text">${escapeHtml(msg.text)}</div>
+                        <span class="message-time">${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error('Error al cargar mensajes:', err);
+            }
+        }
+
+        // 2. Enviar nuevo mensaje
+        function setupForm() {
+            document.getElementById('message-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const statusDiv = document.getElementById('status-message');
+                const btn = document.getElementById('btn-submit');
+                const authorName = document.getElementById('authorName').value.trim();
+                const text = document.getElementById('messageText').value.trim();
+
+                if (!authorName) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor ingresá tu nombre. Es obligatorio.</div>';
+                    return;
+                }
+
+                if (!text) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor escribí un mensaje.</div>';
+                    return;
+                }
+
+                try {
+                    btn.disabled = true;
+                    btn.innerText = 'Enviando...';
+
+                    const res = await fetch(`/api/v1/events/${SLUG}/messages`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ authorName, text })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        throw new Error(errData.message || 'Error al enviar el mensaje.');
+                    }
+
+                    statusDiv.innerHTML = '<div class="alert-box alert-success">¡Mensaje enviado con éxito a los novios! ❤️</div>';
+                    document.getElementById('messageText').value = '';
+
+                    setTimeout(() => { statusDiv.innerHTML = ''; }, 5000);
+
+                    loadMessages();
+
+                } catch (err) {
+                    statusDiv.innerHTML = `<div class="alert-box alert-error">${escapeHtml(err.message)}</div>`;
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Enviar Mensaje';
+                }
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

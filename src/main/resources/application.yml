@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: eventfoto
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/eventfoto_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres_local_dev_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Configuración de Cloudflare R2 (Storage compatible S3)
+app:
+  storage:
+    mode: ${STORAGE_MODE:local} # 'local' para desarrollo local en disco, 'r2' para producción en Railway
+
+cloudflare:
+  r2:
+    access-key: ${R2_ACCESS_KEY:r2_placeholder_access_key}
+    secret-key: ${R2_SECRET_KEY:r2_placeholder_secret_key}
+    bucket-name: ${R2_BUCKET:eventfoto-bucket}
+    endpoint: ${R2_ENDPOINT:https://<account-id>.r2.cloudflarestorage.com}
+
+# Configuración de Autenticación y JWT para Admin
+security:
+  admin:
+    email: ${ADMIN_EMAIL:admin@boda.com}
+    password: ${ADMIN_PASSWORD:admin123}
+  jwt:
+    secret: ${JWT_SECRET:very_secret_jwt_key_that_is_at_least_256_bits_long_for_security_reasons}
+    expiration-ms: ${JWT_EXPIRATION_MS:28800000} # 8 horas (28,800,000 ms)
+
+server:
+  port: ${PORT:8080}
