@@ -11,6 +11,9 @@ COPY mvnw .
 COPY mvnw.cmd .
 COPY src src
 
+# Asegurar permisos de ejecución en el wrapper de Maven
+RUN chmod +x mvnw
+
 # Compilar la aplicación y empaquetar el archivo JAR sin ejecutar tests
 RUN ./mvnw clean package -DskipTests
 
