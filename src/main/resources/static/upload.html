@@ -202,45 +202,65 @@
                     progressBox.style.display = 'block';
                     progressFill.style.width = '20%';
 
-                    // Step 1: Solicitar Presigned URL
-                    const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contentType: contentType, filename: selectedFile.name || 'photo.jpg' })
-                    });
+                    let isSuccess = false;
 
-                    if (!presignedRes.ok) {
-                        const errData = await presignedRes.json().catch(() => ({}));
-                        throw new Error(errData.message || 'Formato de foto no soportado. Subí solo imágenes JPG, PNG o WEBP.');
+                    // Estrategia 1: Intentar subida rápida por Presigned URL directa a Cloudflare R2
+                    try {
+                        const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contentType: contentType, filename: selectedFile.name || 'photo.jpg' })
+                        });
+
+                        if (presignedRes.ok) {
+                            const { uploadUrl, key } = await presignedRes.json();
+                            progressFill.style.width = '50%';
+                            btn.innerText = 'Subiendo fotografía...';
+
+                            const uploadRes = await fetch(uploadUrl, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': contentType },
+                                body: selectedFile
+                            });
+
+                            if (uploadRes.ok) {
+                                progressFill.style.width = '80%';
+                                btn.innerText = 'Registrando en la boda...';
+
+                                const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ key, uploaderName, caption })
+                                });
+
+                                if (confirmRes.ok) {
+                                    isSuccess = true;
+                                }
+                            }
+                        }
+                    } catch (presignedErr) {
+                        console.warn('Subida directa R2 Presigned bloqueada por el navegador o red. Ejecutando fallback garantizado vía servidor:', presignedErr);
                     }
 
-                    const { uploadUrl, key } = await presignedRes.json();
-                    progressFill.style.width = '50%';
-                    btn.innerText = 'Subiendo fotografía...';
+                    // Estrategia 2 (Fallback 100% Garantizado): Subida Multipart directamente a través de la API
+                    if (!isSuccess) {
+                        btn.innerText = 'Enviando fotografía...';
+                        progressFill.style.width = '60%';
 
-                    // Step 2: Subir bytes de la foto
-                    const uploadRes = await fetch(uploadUrl, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': contentType },
-                        body: selectedFile
-                    });
+                        const formData = new FormData();
+                        formData.append('file', selectedFile);
+                        formData.append('uploaderName', uploaderName);
+                        if (caption) formData.append('caption', caption);
 
-                    if (!uploadRes.ok) {
-                        throw new Error('No se pudo enviar la foto al servidor de almacenamiento. Intentalo de nuevo.');
-                    }
+                        const directRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, {
+                            method: 'POST',
+                            body: formData
+                        });
 
-                    progressFill.style.width = '80%';
-                    btn.innerText = 'Registrando en la boda...';
-
-                    // Step 3: Confirmar en la API
-                    const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ key, uploaderName, caption })
-                    });
-
-                    if (!confirmRes.ok) {
-                        throw new Error('Error al registrar la fotografía en el evento.');
+                        if (!directRes.ok) {
+                            const errData = await directRes.json().catch(() => ({}));
+                            throw new Error(errData.message || 'No se pudo enviar la fotografía. Intentalo de nuevo.');
+                        }
                     }
 
                     progressFill.style.width = '100%';

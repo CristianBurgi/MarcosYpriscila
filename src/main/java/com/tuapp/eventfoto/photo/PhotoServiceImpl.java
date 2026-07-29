@@ -90,6 +90,54 @@ public class PhotoServiceImpl implements PhotoService {
     }
 
     @Override
+    @Transactional
+    public PhotoResponseDTO uploadDirect(String slug, org.springframework.web.multipart.MultipartFile file, String uploaderName, String caption) {
+        if (file == null || file.isEmpty()) {
+            throw new InvalidFileFormatException("El archivo enviado está vacío.");
+        }
+
+        Event event = eventService.getEventEntityBySlug(slug);
+
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            contentType = "image/jpeg";
+        }
+        if (contentType.equalsIgnoreCase("image/jpg")) {
+            contentType = "image/jpeg";
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = ".jpg";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        }
+
+        String key = String.format("photos/%s/%s%s", slug, UUID.randomUUID(), extension);
+
+        try {
+            byte[] bytes = file.getBytes();
+            storageService.uploadBytes(key, bytes, contentType);
+
+            Photo photo = Photo.builder()
+                    .event(event)
+                    .storageKey(key)
+                    .uploaderName(uploaderName)
+                    .isApproved(false)
+                    .createdAt(Instant.now())
+                    .build();
+
+            Photo saved = photoRepository.save(photo);
+            log.info("Foto subida de forma directa y guardada en BD con ID {} para el evento '{}'", saved.getId(), slug);
+            String publicUrl = storageService.generatePublicUrl(saved.getStorageKey());
+            return PhotoResponseDTO.fromEntity(saved, publicUrl, Collections.emptyList());
+
+        } catch (IOException e) {
+            log.error("Error al procesar los bytes de la imagen subida directamente: {}", e.getMessage(), e);
+            throw new StorageException("Error al procesar la imagen en el servidor", e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Page<PhotoResponseDTO> getApprovedPhotos(String slug, Pageable pageable) {
         Event event = eventService.getEventEntityBySlug(slug);

@@ -50,6 +50,21 @@ public class PhotoController {
     }
 
     /**
+     * POST /api/v1/events/{slug}/photos/upload-direct
+     * Subida directa multipart a través del servidor para casos donde el cliente móvil no pueda hacer PUT directo a R2.
+     */
+    @PostMapping(value = "/upload-direct", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PhotoResponseDTO> uploadDirect(
+            @PathVariable String slug,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam("uploaderName") String uploaderName,
+            @RequestParam(value = "caption", required = false) String caption) {
+
+        PhotoResponseDTO response = photoService.uploadDirect(slug, file, uploaderName, caption);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
      * GET /api/v1/events/{slug}/photos?page=0&size=20
      * Devuelve las fotos aprobadas del evento para la galería pública (paginado).
      */
