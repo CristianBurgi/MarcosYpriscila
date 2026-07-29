@@ -4,105 +4,244 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boda de Marcos y Priscila | Menú Principal</title>
-    <!-- Fonts & Pico.css & Theme -->
+    <!-- Google Fonts & Pico.css & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="/css/theme.css">
     <style>
-        .menu-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.25rem;
-            margin-top: 1.5rem;
-        }
-        @media (max-width: 600px) {
-            .menu-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .menu-card {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 2rem 1.5rem;
-            text-align: center;
-            text-decoration: none;
-            color: var(--brand-text-main);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
-            border: 2px solid rgba(212, 175, 55, 0.25);
-            transition: all 0.25s ease;
+        body {
+            background: linear-gradient(to bottom, rgba(59, 10, 20, 0.78), rgba(28, 4, 9, 0.92)),
+                        url('/images/wedding_couple.png') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hero-header {
+            text-align: center;
+            padding: 3rem 1.25rem 1rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .monogram {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            letter-spacing: 4px;
+            color: var(--brand-gold-accent);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+            opacity: 0.9;
+        }
+
+        .wedding-title-main {
+            font-family: var(--font-heading);
+            font-size: 3.2rem;
+            font-weight: 700;
+            color: var(--brand-pastel-cream);
+            margin-bottom: 0.25rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            line-height: 1.1;
+        }
+
+        .wedding-date-tag {
+            font-size: 1.05rem;
+            color: var(--brand-pastel-rose);
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.05rem;
+            color: var(--brand-text-muted);
+            max-width: 480px;
+            margin: 0 auto 1.5rem;
+            line-height: 1.5;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Menú con botones compactos y estilo glassmorphic */
+        .menu-container {
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 540px) {
+            .menu-grid {
+                grid-template-columns: 1fr;
+                gap: 0.85rem;
+            }
+        }
+
+        .menu-card-compact {
+            background: rgba(59, 10, 20, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(247, 225, 228, 0.22);
+            border-radius: 18px;
+            padding: 1.25rem 1rem;
+            text-decoration: none;
+            color: var(--brand-pastel-cream);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-card-compact::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(247, 225, 228, 0.12) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .menu-card-compact:hover {
+            transform: translateY(-3px) scale(1.01);
+            border-color: var(--brand-pastel-rose);
+            box-shadow: 0 12px 32px rgba(107, 28, 45, 0.45);
+            text-decoration: none;
+            color: #ffffff;
+        }
+
+        .menu-card-compact:hover::before {
+            opacity: 1;
+        }
+
+        .menu-icon-compact {
+            font-size: 2.2rem;
+            flex-shrink: 0;
+            width: 52px;
+            height: 52px;
+            background: rgba(140, 43, 62, 0.4);
+            border: 1px solid rgba(247, 225, 228, 0.3);
+            border-radius: 14px;
+            display: flex;
             align-items: center;
             justify-content: center;
+            transition: transform 0.3s ease;
         }
-        .menu-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--brand-gold-primary);
-            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.25);
-            color: var(--brand-text-main);
-            text-decoration: none;
+
+        .menu-card-compact:hover .menu-icon-compact {
+            transform: scale(1.1) rotate(4deg);
+            background: rgba(140, 43, 62, 0.65);
         }
-        .menu-icon {
-            font-size: 3rem;
-            margin-bottom: 0.8rem;
+
+        .menu-text-content {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
         }
-        .menu-title {
+
+        .menu-title-compact {
             font-family: var(--font-heading);
             font-size: 1.35rem;
             font-weight: 700;
-            color: #1f1a17;
-            margin-bottom: 0.4rem;
+            color: var(--brand-pastel-cream);
+            line-height: 1.2;
+            margin-bottom: 0.2rem;
         }
-        .menu-desc {
-            font-size: 0.95rem;
+
+        .menu-desc-compact {
+            font-size: 0.85rem;
             color: var(--brand-text-muted);
-            line-height: 1.4;
+            line-height: 1.35;
+        }
+
+        .footer-wedding {
+            text-align: center;
+            padding: 2rem 1rem 1.5rem;
+            color: var(--brand-text-muted);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
 <body>
-    <header class="container wedding-header">
-        <h1 class="wedding-title">💍 Marcos & Priscila</h1>
-        <p class="wedding-date">19 de Septiembre de 2026</p>
-        <p style="font-size: 1.05rem; color: #5a4f47;">¡Bienvenidos a nuestra fiesta! Elegí una opción para participar:</p>
+
+    <!-- Header Elegante -->
+    <header class="hero-header">
+        <div class="monogram">M & P</div>
+        <h1 class="wedding-title-main">Marcos & Priscila</h1>
+        <div class="wedding-date-tag">19 de Septiembre de 2026</div>
+        <p class="welcome-subtitle">¡Bienvenidos a nuestra celebración! Elegí una opción para acompañarnos:</p>
     </header>
 
-    <main class="container">
+    <!-- Menú Principal con Botones Compactos -->
+    <main class="menu-container">
         <div class="menu-grid">
             <!-- 1. Subir Foto -->
-            <a href="/upload.html" class="menu-card">
-                <div class="menu-icon">📸</div>
-                <div class="menu-title">Subir Foto</div>
-                <div class="menu-desc">Sacá una foto o elegila de tu galería para compartir con todos.</div>
+            <a href="/upload.html" class="menu-card-compact">
+                <div class="menu-icon-compact">📸</div>
+                <div class="menu-text-content">
+                    <div class="menu-title-compact">Subir Foto</div>
+                    <div class="menu-desc-compact">Sacá o elegí una foto para compartir en vivo.</div>
+                </div>
             </a>
 
             <!-- 2. Ver Álbum -->
-            <a href="/album.html" class="menu-card">
-                <div class="menu-icon">🖼️</div>
-                <div class="menu-title">Ver Álbum</div>
-                <div class="menu-desc">Explorá las fotos de los invitados y dejá tus comentarios.</div>
+            <a href="/album.html" class="menu-card-compact">
+                <div class="menu-icon-compact">🖼️</div>
+                <div class="menu-text-content">
+                    <div class="menu-title-compact">Ver Álbum</div>
+                    <div class="menu-desc-compact">Descubrí las fotos de los invitados y comentá.</div>
+                </div>
             </a>
 
-            <!-- 3. Dejar Mensaje -->
-            <a href="/messages.html" class="menu-card">
-                <div class="menu-icon">✍️</div>
-                <div class="menu-title">Libro de Visitas</div>
-                <div class="menu-desc">Escribí tus felicitaciones y buenos deseos para los novios.</div>
+            <!-- 3. Libro de Visitas -->
+            <a href="/messages.html" class="menu-card-compact">
+                <div class="menu-icon-compact">✍️</div>
+                <div class="menu-text-content">
+                    <div class="menu-title-compact">Libro de Visitas</div>
+                    <div class="menu-desc-compact">Dejá tus deseos y felicitaciones a los novios.</div>
+                </div>
             </a>
 
             <!-- 4. Pantalla del Salón -->
-            <a href="/screen.html" class="menu-card" target="_blank">
-                <div class="menu-icon">📺</div>
-                <div class="menu-title">Pantalla Salón</div>
-                <div class="menu-desc">Abrí la proyección en vivo que se transmite en las pantallas del evento.</div>
+            <a href="/screen.html" class="menu-card-compact" target="_blank">
+                <div class="menu-icon-compact">📺</div>
+                <div class="menu-text-content">
+                    <div class="menu-title-compact">Pantalla Salón</div>
+                    <div class="menu-desc-compact">Proyección en vivo transmitida en el evento.</div>
+                </div>
             </a>
         </div>
     </main>
 
-    <footer class="container" style="text-align: center; padding: 2.5rem 0 1.5rem; color: var(--brand-text-muted);">
-        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    <!-- Pie de página -->
+    <footer class="footer-wedding">
+        <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
     </footer>
+
 </body>
 </html>
