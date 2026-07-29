@@ -8,10 +8,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -137,6 +142,42 @@ public class R2StorageService implements StorageService {
     @Override
     public byte[] convertHeicToJpeg(byte[] heicBytes) {
         return heicConverter.convertToJpeg(heicBytes);
+    }
+
+    @Override
+    public void deleteFile(String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+
+        if (isLocalDevMode()) {
+            try {
+                Path targetPath = Paths.get("uploads", key);
+                boolean deleted = Files.deleteIfExists(targetPath);
+                if (deleted) {
+                    log.info("Archivo local eliminado con éxito: {}", targetPath.toAbsolutePath());
+                } else {
+                    log.warn("El archivo local no existía al intentar eliminarlo: {}", targetPath.toAbsolutePath());
+                }
+            } catch (Exception e) {
+                log.error("Error al borrar el archivo del almacenamiento local para la clave '{}': {}", key, e.getMessage(), e);
+                throw new StorageException("Error al borrar el archivo en almacenamiento local", e);
+            }
+            return;
+        }
+
+        try {
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            s3Client.deleteObject(deleteObjectRequest);
+            log.info("Objeto con clave '{}' eliminado exitosamente de Cloudflare R2", key);
+        } catch (Exception e) {
+            log.error("Error al borrar el objeto en Cloudflare R2 con la clave '{}': {}", key, e.getMessage(), e);
+            throw new StorageException("Error al borrar el objeto en Cloudflare R2", e);
+        }
     }
 
     private boolean isLocalDevMode() {

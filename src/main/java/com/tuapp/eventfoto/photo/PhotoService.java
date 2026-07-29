@@ -28,6 +28,8 @@ public interface PhotoService {
 
     void rejectPhoto(UUID photoId);
 
+    void deletePhoto(UUID photoId);
+
     List<PhotoResponseDTO> approveAllPendingPhotos(String slug);
 
     long countTotalPhotos(String slug);

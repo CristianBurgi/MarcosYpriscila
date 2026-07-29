@@ -36,4 +36,11 @@ public interface StorageService {
      * @return Imagen convertida en formato JPEG
      */
     byte[] convertHeicToJpeg(byte[] heicBytes);
+
+    /**
+     * Elimina un archivo u objeto del almacenamiento (Cloudflare R2 o almacenamiento local).
+     *
+     * @param key Clave del objeto en el bucket o ruta relativa
+     */
+    void deleteFile(String key);
 }

@@ -44,12 +44,12 @@ public class AdminPhotoController {
 
     /**
      * DELETE /api/v1/admin/photos/{photoId}
-     * Rechaza y elimina una fotografía.
+     * Elimina definitivamente una fotografía del almacenamiento R2/local y de la base de datos.
      */
     @DeleteMapping("/{photoId}")
-    public ResponseEntity<Void> rejectPhoto(@PathVariable String photoId) {
+    public ResponseEntity<Void> deletePhoto(@PathVariable String photoId) {
         UUID uuid = parseUUID(photoId);
-        photoService.rejectPhoto(uuid);
+        photoService.deletePhoto(uuid);
         return ResponseEntity.noContent().build();
     }
 

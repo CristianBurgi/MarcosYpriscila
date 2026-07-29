@@ -202,12 +202,29 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     @Transactional
-    public void rejectPhoto(UUID photoId) {
+    public void deletePhoto(UUID photoId) {
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
+        String storageKey = photo.getStorageKey();
+        if (storageKey != null && !storageKey.isBlank()) {
+            try {
+                storageService.deleteFile(storageKey);
+                log.info("Archivo en almacenamiento con clave '{}' eliminado para la foto ID {}", storageKey, photoId);
+            } catch (Exception e) {
+                log.warn("Fallo al eliminar archivo en almacenamiento para clave '{}' (foto ID {}): {}. Se procederá a eliminar la foto de la BD de todas formas.",
+                        storageKey, photoId, e.getMessage());
+            }
+        }
+
         photoRepository.delete(photo);
-        log.info("Fotografía con ID {} rechazada y eliminada por administración", photoId);
+        log.info("Fotografía con ID {} eliminada exitosamente de la base de datos por administración", photoId);
+    }
+
+    @Override
+    @Transactional
+    public void rejectPhoto(UUID photoId) {
+        deletePhoto(photoId);
     }
 
     @Override

@@ -155,6 +155,16 @@ class AdminSecurityTest {
     }
 
     @Test
+    @DisplayName("Devolver 404 Not Found al intentar eliminar un photoId inexistente")
+    void shouldReturn404WhenDeletingNonExistentPhoto() throws Exception {
+        java.util.UUID randomId = java.util.UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/v1/admin/photos/" + randomId)
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("Aprobar masivamente todas las fotos pendientes del evento")
     void shouldApproveAllPendingPhotos() throws Exception {
         photoRepository.save(Photo.builder().event(event).storageKey("p1.jpg").isApproved(false).build());

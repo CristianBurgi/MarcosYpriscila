@@ -275,6 +275,91 @@
             color: var(--text-main);
             margin-bottom: 8px;
         }
+
+        /* Modal Glassmorphism de Confirmación */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-card {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            color: var(--text-main);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .modal-icon {
+            font-size: 1.8rem;
+        }
+
+        .modal-header h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .modal-body p {
+            color: #cbd5e1;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .modal-warning {
+            display: block;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            margin-bottom: 24px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-cancel {
+            background: rgba(148, 163, 184, 0.15);
+            border: 1px solid var(--glass-border);
+            color: var(--text-sub);
+        }
+
+        .btn-cancel:hover {
+            background: rgba(148, 163, 184, 0.3);
+            color: #fff;
+        }
+
+        .btn-danger-confirm {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger-confirm:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -346,10 +431,29 @@
         <p>No hay fotografías pendientes de moderación en este momento.</p>
     </div>
 
+    <!-- Modal de Confirmación de Borrado -->
+    <div id="deleteConfirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-icon">🗑️</div>
+                <h3>Eliminar Fotografía</h3>
+            </div>
+            <div class="modal-body">
+                <p>¿Seguro que querés borrar esta foto?</p>
+                <span class="modal-warning">Esta acción es irreversible y eliminará la foto de Cloudflare R2 y de la base de datos.</span>
+            </div>
+            <div class="modal-actions">
+                <button id="btnCancelDelete" class="btn btn-cancel">Cancelar</button>
+                <button id="btnConfirmDelete" class="btn btn-danger-confirm">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script th:inline="javascript">
     const slug = /*[[${slug}]]*/ 'marcos-y-priscila';
+    let targetPhotoIdToDelete = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         const btnApproveAll = document.getElementById('btnApproveAll');
@@ -367,20 +471,68 @@
             btnLogout.addEventListener('click', logout);
         }
 
+        const btnCancelDelete = document.getElementById('btnCancelDelete');
+        if (btnCancelDelete) {
+            btnCancelDelete.addEventListener('click', closeDeleteModal);
+        }
+
+        const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+        if (btnConfirmDelete) {
+            btnConfirmDelete.addEventListener('click', executeDeletePhoto);
+        }
+
         // Delegación de eventos para botones de tarjetas individuales
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('action-approve-photo')) {
                 const photoId = e.target.getAttribute('data-id');
                 if (photoId) approvePhoto(photoId);
-            } else if (e.target.classList.contains('action-reject-photo')) {
+            } else if (e.target.classList.contains('action-reject-photo') || e.target.classList.contains('action-delete-photo')) {
                 const photoId = e.target.getAttribute('data-id');
-                if (photoId) rejectPhoto(photoId);
+                if (photoId) openDeleteModal(photoId);
             }
         });
 
         // Iniciar recepción de notificaciones SSE en tiempo real
         setupSSE();
     });
+
+    function openDeleteModal(photoId) {
+        targetPhotoIdToDelete = photoId;
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        targetPhotoIdToDelete = null;
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function executeDeletePhoto() {
+        if (!targetPhotoIdToDelete) return;
+        const photoId = targetPhotoIdToDelete;
+        closeDeleteModal();
+
+        try {
+            const res = await fetch(`/api/v1/admin/photos/${photoId}`, { method: 'DELETE' });
+            if (res.ok || res.status === 204) {
+                removePhotoCard(photoId);
+            } else if (res.status === 404) {
+                alert('La fotografía ya no existe en el sistema.');
+                removePhotoCard(photoId);
+            } else {
+                const errText = await res.text().catch(() => '');
+                alert('No se pudo eliminar la fotografía (' + res.status + '): ' + errText);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error de comunicación con el servidor.');
+        }
+    }
+
+    function rejectPhoto(photoId) {
+        openDeleteModal(photoId);
+    }
 
     function setupSSE() {
         if (!slug) return;
