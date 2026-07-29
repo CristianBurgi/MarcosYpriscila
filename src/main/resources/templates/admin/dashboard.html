@@ -360,6 +360,38 @@
             background: linear-gradient(135deg, #dc2626, #b91c1c);
             transform: translateY(-1px);
         }
+
+        /* Pestañas (Tabs) */
+        .tabs-header {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 12px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #fff;
+            background: rgba(168, 85, 247, 0.25);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -394,41 +426,81 @@
         </div>
     </div>
 
-    <!-- Encabezado de Sección y Acciones Principales -->
-    <div class="section-header">
-        <h2 class="section-title">Fotografías Pendientes de Aprobación</h2>
-        <div class="actions-group">
-            <button class="btn btn-toggle-event" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar Subidas' : 'Reabrir Subidas'">
-                Cerrar Subidas
-            </button>
-            <button class="btn btn-approve-all" id="btnApproveAll">
-                ✓ Aprobar Todas
-            </button>
+    <!-- Navegación por Pestañas -->
+    <div class="tabs-header">
+        <button class="tab-btn active" id="tabBtnPending" onclick="switchTab('pending')">
+            ⏳ Fotos Pendientes (<span id="tabPendingBadge" th:text="${pendingCount}">0</span>)
+        </button>
+        <button class="tab-btn" id="tabBtnApproved" onclick="switchTab('approved')">
+            🖼️ Fotos Guardadas / Aprobadas (<span id="tabApprovedBadge" th:text="${approvedPhotos != null ? approvedPhotos.size() : 0}">0</span>)
+        </button>
+    </div>
+
+    <!-- Pestaña 1: Fotos Pendientes -->
+    <div id="tabContentPending">
+        <div class="section-header">
+            <h2 class="section-title">Fotografías Pendientes de Aprobación</h2>
+            <div class="actions-group">
+                <button class="btn btn-toggle-event" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar Subidas' : 'Reabrir Subidas'">
+                    Cerrar Subidas
+                </button>
+                <button class="btn btn-approve-all" id="btnApproveAll">
+                    ✓ Aprobar Todas
+                </button>
+            </div>
+        </div>
+
+        <div id="photosGrid" class="photos-grid" th:if="${!pendingPhotos.isEmpty()}">
+            <div class="photo-card" th:each="photo : ${pendingPhotos}" th:id="'photo-card-' + ${photo.id}">
+                <div class="photo-img-wrapper">
+                    <img th:src="${photo.url}" alt="Fotografía subida por invitado" loading="lazy">
+                </div>
+                <div class="photo-info">
+                    <div>
+                        <div class="uploader-name" th:text="${photo.uploaderName}">Invitado</div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-approve action-approve-photo" th:data-id="${photo.id}">Aprobar</button>
+                        <button class="btn-reject action-delete-photo" th:data-id="${photo.id}">Rechazar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="emptyState" class="empty-state" th:style="${pendingPhotos.isEmpty()} ? 'display:block;' : 'display:none;'">
+            <h3>¡Todo al día! 🎉</h3>
+            <p>No hay fotografías pendientes de moderación en este momento.</p>
         </div>
     </div>
 
-    <!-- Grilla de Fotos Pendientes -->
-    <div id="photosGrid" class="photos-grid" th:if="${!pendingPhotos.isEmpty()}">
-        <div class="photo-card" th:each="photo : ${pendingPhotos}" th:id="'photo-card-' + ${photo.id}">
-            <div class="photo-img-wrapper">
-                <img th:src="${photo.url}" alt="Fotografía subida por invitado" loading="lazy">
-            </div>
-            <div class="photo-info">
-                <div>
-                    <div class="uploader-name" th:text="${photo.uploaderName}">Invitado</div>
+    <!-- Pestaña 2: Fotos Aprobadas y Guardadas en la BD -->
+    <div id="tabContentApproved" style="display: none;">
+        <div class="section-header">
+            <h2 class="section-title">Fotografías Guardadas en el Álbum / Base de Datos</h2>
+        </div>
+
+        <div id="approvedPhotosGrid" class="photos-grid" th:if="${approvedPhotos != null and !approvedPhotos.isEmpty()}">
+            <div class="photo-card" th:each="photo : ${approvedPhotos}" th:id="'photo-card-' + ${photo.id}">
+                <div class="photo-img-wrapper">
+                    <img th:src="${photo.url}" alt="Fotografía guardada" loading="lazy">
                 </div>
-                <div class="card-actions">
-                    <button class="btn-approve action-approve-photo" th:data-id="${photo.id}">Aprobar</button>
-                    <button class="btn-reject action-reject-photo" th:data-id="${photo.id}">Rechazar</button>
+                <div class="photo-info">
+                    <div>
+                        <div class="uploader-name" th:text="'📸 ' + ${photo.uploaderName}">Invitado</div>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button class="btn-reject action-delete-photo" th:data-id="${photo.id}" style="width: 100%;">
+                            🗑️ Eliminar Definitivamente
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Mensaje cuando no hay fotos pendientes -->
-    <div id="emptyState" class="empty-state" th:style="${pendingPhotos.isEmpty()} ? 'display:block;' : 'display:none;'">
-        <h3>¡Todo al día! 🎉</h3>
-        <p>No hay fotografías pendientes de moderación en este momento.</p>
+        <div id="approvedEmptyState" class="empty-state" th:style="${approvedPhotos == null or approvedPhotos.isEmpty()} ? 'display:block;' : 'display:none;'">
+            <h3>No hay fotografías aprobadas</h3>
+            <p>Aún no hay fotografías aprobadas guardadas en la base de datos.</p>
+        </div>
     </div>
 
     <!-- Modal de Confirmación de Borrado -->
@@ -677,19 +749,58 @@
         }
     }
 
+    function switchTab(tabName) {
+        const pendingTab = document.getElementById('tabContentPending');
+        const approvedTab = document.getElementById('tabContentApproved');
+        const btnPending = document.getElementById('tabBtnPending');
+        const btnApproved = document.getElementById('tabBtnApproved');
+
+        if (tabName === 'approved') {
+            if (pendingTab) pendingTab.style.display = 'none';
+            if (approvedTab) approvedTab.style.display = 'block';
+            if (btnPending) btnPending.classList.remove('active');
+            if (btnApproved) btnApproved.classList.add('active');
+        } else {
+            if (pendingTab) pendingTab.style.display = 'block';
+            if (approvedTab) approvedTab.style.display = 'none';
+            if (btnPending) btnPending.classList.add('active');
+            if (btnApproved) btnApproved.classList.remove('active');
+        }
+    }
+
     function removePhotoCard(photoId) {
         const card = document.getElementById(`photo-card-${photoId}`);
         if (card) {
             card.remove();
         }
+
+        // Si la foto estaba en la grilla de pendientes, decrementamos contador pendientes
+        const photosGrid = document.getElementById('photosGrid');
+        if (photosGrid && photosGrid.children.length === 0) {
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) emptyState.style.display = 'block';
+        }
+
+        const approvedPhotosGrid = document.getElementById('approvedPhotosGrid');
+        if (approvedPhotosGrid && approvedPhotosGrid.children.length === 0) {
+            const approvedEmptyState = document.getElementById('approvedEmptyState');
+            if (approvedEmptyState) approvedEmptyState.style.display = 'block';
+        }
+
         const pendingElem = document.getElementById('metricPendingCount');
+        const pendingBadge = document.getElementById('tabPendingBadge');
         if (pendingElem) {
             let current = parseInt(pendingElem.innerText) || 0;
             let updated = Math.max(0, current - 1);
             pendingElem.innerText = updated;
-            if (updated === 0) {
-                document.getElementById('emptyState').style.display = 'block';
-            }
+            if (pendingBadge) pendingBadge.innerText = updated;
+        }
+
+        const approvedBadge = document.getElementById('tabApprovedBadge');
+        if (approvedBadge) {
+            let currentApproved = parseInt(approvedBadge.innerText) || 0;
+            let updatedApproved = Math.max(0, currentApproved - 1);
+            approvedBadge.innerText = updatedApproved;
         }
     }
 

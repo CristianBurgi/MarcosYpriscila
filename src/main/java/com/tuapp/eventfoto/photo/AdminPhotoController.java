@@ -32,6 +32,19 @@ public class AdminPhotoController {
     }
 
     /**
+     * GET /api/v1/admin/photos/approved?slug=marcos-y-priscila
+     * Devuelve la lista paginada de fotografías aprobadas y visibles en el álbum.
+     */
+    @GetMapping("/approved")
+    public ResponseEntity<Page<PhotoResponseDTO>> getApprovedPhotos(
+            @RequestParam(defaultValue = "marcos-y-priscila") String slug,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<PhotoResponseDTO> approved = photoService.getApprovedPhotos(slug, PageRequest.of(page, size));
+        return ResponseEntity.ok(approved);
+    }
+
+    /**
      * PATCH /api/v1/admin/photos/{photoId}/approve
      * Aprueba una fotografía individual para que aparezca en el álbum público y dispara el evento SSE.
      */
