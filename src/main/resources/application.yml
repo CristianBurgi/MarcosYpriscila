@@ -27,9 +27,9 @@ spring:
       max-file-size: 30MB
       max-request-size: 30MB
 
-# Configuración de Cloudflare R2 (Storage compatible S3)
 app:
-  storage:
+  base-url: ${APP_BASE_URL:https://marcosypriscila-production.up.railway.app}
+  storage:    
     mode: ${STORAGE_MODE:local} # 'local' para desarrollo local en disco, 'r2' para producción en Railway
 
 cloudflare:
