@@ -86,7 +86,9 @@ public class PhotoServiceImpl implements PhotoService {
         log.info("Foto confirmada y guardada con ID {} para el evento '{}' (pendiente de aprobación)", savedPhoto.getId(), slug);
 
         String publicUrl = storageService.generatePublicUrl(savedPhoto.getStorageKey());
-        return PhotoResponseDTO.fromEntity(savedPhoto, publicUrl);
+        PhotoResponseDTO response = PhotoResponseDTO.fromEntity(savedPhoto, publicUrl);
+        sseBroadcaster.broadcastPhotoPending(event.getId(), response);
+        return response;
     }
 
     @Override
@@ -127,9 +129,23 @@ public class PhotoServiceImpl implements PhotoService {
                     .build();
 
             Photo saved = photoRepository.save(photo);
+
+            if (caption != null && !caption.isBlank()) {
+                Comment captionComment = Comment.builder()
+                        .photo(saved)
+                        .authorName(uploaderName)
+                        .text(caption.trim())
+                        .isApproved(true)
+                        .build();
+                commentRepository.save(captionComment);
+                saved.getComments().add(captionComment);
+            }
+
             log.info("Foto subida de forma directa y guardada en BD con ID {} para el evento '{}'", saved.getId(), slug);
             String publicUrl = storageService.generatePublicUrl(saved.getStorageKey());
-            return PhotoResponseDTO.fromEntity(saved, publicUrl, Collections.emptyList());
+            PhotoResponseDTO response = PhotoResponseDTO.fromEntity(saved, publicUrl, Collections.emptyList());
+            sseBroadcaster.broadcastPhotoPending(event.getId(), response);
+            return response;
 
         } catch (IOException e) {
             log.error("Error al procesar los bytes de la imagen subida directamente: {}", e.getMessage(), e);

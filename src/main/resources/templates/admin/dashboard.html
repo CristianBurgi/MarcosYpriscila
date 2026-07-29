@@ -377,7 +377,89 @@
                 if (photoId) rejectPhoto(photoId);
             }
         });
+
+        // Iniciar recepción de notificaciones SSE en tiempo real
+        setupSSE();
     });
+
+    function setupSSE() {
+        if (!slug) return;
+        const eventSource = new EventSource(`/api/v1/events/${encodeURIComponent(slug)}/stream`);
+
+        eventSource.addEventListener('PHOTO_PENDING', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                const photo = payload.data || payload;
+                if (photo && photo.id) {
+                    addPendingPhotoCard(photo);
+                }
+            } catch (err) {
+                console.error('Error procesando foto pendiente vía SSE:', err);
+            }
+        });
+
+        eventSource.onerror = (e) => {
+            console.warn('Conexión SSE del dashboard reconectando...', e);
+        };
+    }
+
+    function addPendingPhotoCard(photo) {
+        if (document.getElementById(`photo-card-${photo.id}`)) {
+            return;
+        }
+
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) emptyState.style.display = 'none';
+
+        const pendingElem = document.getElementById('metricPendingCount');
+        if (pendingElem) {
+            let current = parseInt(pendingElem.innerText) || 0;
+            pendingElem.innerText = current + 1;
+        }
+        const totalElem = document.getElementById('metricTotalCount');
+        if (totalElem) {
+            let currentTotal = parseInt(totalElem.innerText) || 0;
+            totalElem.innerText = currentTotal + 1;
+        }
+
+        const photosGrid = document.getElementById('photosGrid');
+        if (!photosGrid) return;
+
+        const card = document.createElement('div');
+        card.className = 'photo-card';
+        card.id = `photo-card-${photo.id}`;
+        card.style.animation = 'fadeIn 0.5s ease-out';
+
+        const captionText = (photo.comments && photo.comments.length > 0 && photo.comments[0].text) 
+            ? photo.comments[0].text 
+            : '';
+        const captionHtml = captionText 
+            ? `<div style="font-size: 0.9rem; color: #cbd5e1; font-style: italic; margin-bottom: 8px;">"${escapeHtml(captionText)}"</div>` 
+            : '';
+
+        card.innerHTML = `
+            <div class="photo-img-wrapper">
+                <img src="${escapeHtml(photo.url)}" alt="Foto por ${escapeHtml(photo.uploaderName)}" onerror="this.src='https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80'">
+            </div>
+            <div class="photo-info">
+                <div>
+                    <div class="uploader-name">📸 ${escapeHtml(photo.uploaderName || 'Invitado')}</div>
+                    ${captionHtml}
+                </div>
+                <div class="card-actions">
+                    <button class="btn-approve action-approve-photo" data-id="${photo.id}">✓ Aprobar</button>
+                    <button class="btn-reject action-reject-photo" data-id="${photo.id}">✕ Rechazar</button>
+                </div>
+            </div>
+        `;
+
+        photosGrid.insertBefore(card, photosGrid.firstChild);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
 
     async function approvePhoto(photoId) {
         try {

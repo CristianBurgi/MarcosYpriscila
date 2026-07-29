@@ -70,6 +70,14 @@ public class SseBroadcaster {
     }
 
     /**
+     * Transmite la notificación de una fotografía pendiente de aprobación al panel de administración.
+     */
+    public void broadcastPhotoPending(UUID eventId, PhotoResponseDTO photo) {
+        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_PENDING", photo);
+        broadcast(eventId, "PHOTO_PENDING", notification);
+    }
+
+    /**
      * Transmite la notificación de un nuevo mensaje en el libro de visitas a todos los suscriptores del evento.
      */
     public void broadcastMessageCreated(UUID eventId, MessageResponseDTO message) {
