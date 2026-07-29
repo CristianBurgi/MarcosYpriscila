@@ -10,6 +10,32 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="/css/theme.css">
     <style>
+        .source-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 1rem 0;
+        }
+        .btn-source {
+            background: rgba(229, 207, 179, 0.15);
+            border: 2px solid var(--brand-gold-primary);
+            color: #ffffff;
+            padding: 14px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 1.05rem;
+        }
+        .btn-source:hover, .btn-source.selected {
+            background: var(--brand-gold-primary);
+            color: #120e0c;
+        }
         .preview-container {
             width: 100%;
             max-height: 400px;
@@ -70,9 +96,20 @@
                 <label for="caption">Dedicatoria para los novios (opcional):</label>
                 <input type="text" id="caption" name="caption" placeholder="¡Momento inolvidable en la fiesta!" maxlength="500">
 
-                <!-- Input de Archivo (permite tanto cámara nativa como elegir de la galería del celular) -->
-                <label for="photoFile">Seleccionar o Sacar Foto <span style="color: red;">*</span>:</label>
-                <input type="file" id="photoFile" name="file" accept="image/jpeg,image/png,image/webp,image/heic,image/*" required>
+                <!-- Opciones de Selección de Foto (Cámara o Galería) -->
+                <label>Elegir Imagen <span style="color: red;">*</span>:</label>
+                <div class="source-buttons">
+                    <button type="button" class="btn-source" id="btn-camera">
+                        📷 Tomar Foto
+                    </button>
+                    <button type="button" class="btn-source" id="btn-gallery">
+                        🖼️ Abrir Galería
+                    </button>
+                </div>
+
+                <!-- Inputs Ocultos de Archivos -->
+                <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;">
+                <input type="file" id="galleryFile" accept="image/*" style="display: none;">
 
                 <!-- Vista previa de la foto seleccionada -->
                 <div class="preview-container" id="preview-box">
@@ -99,26 +136,37 @@
 
     <script>
         const SLUG = 'marcos-y-priscila';
+        let selectedFile = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const fileInput = document.getElementById('photoFile');
+            const btnCamera = document.getElementById('btn-camera');
+            const btnGallery = document.getElementById('btn-gallery');
+            const cameraFile = document.getElementById('cameraFile');
+            const galleryFile = document.getElementById('galleryFile');
             const previewBox = document.getElementById('preview-box');
             const imagePreview = document.getElementById('image-preview');
 
-            // Mostrar vista previa al seleccionar una foto
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        imagePreview.src = event.target.result;
-                        previewBox.style.display = 'block';
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    previewBox.style.display = 'none';
-                }
-            });
+            btnCamera.addEventListener('click', () => cameraFile.click());
+            btnGallery.addEventListener('click', () => galleryFile.click());
+
+            const handleFileSelected = (file, sourceBtn) => {
+                if (!file) return;
+                selectedFile = file;
+
+                btnCamera.classList.remove('selected');
+                btnGallery.classList.remove('selected');
+                if (sourceBtn) sourceBtn.classList.add('selected');
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imagePreview.src = event.target.result;
+                    previewBox.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            };
+
+            cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0], btnCamera));
+            galleryFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0], btnGallery));
 
             // Manejo del formulario de subida
             document.getElementById('upload-form').addEventListener('submit', async (e) => {
@@ -131,16 +179,21 @@
 
                 const uploaderName = document.getElementById('uploaderName').value.trim();
                 const caption = document.getElementById('caption').value.trim();
-                const file = fileInput.files[0];
 
                 if (!uploaderName) {
                     statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor ingresá tu nombre. Es obligatorio.</div>';
                     return;
                 }
 
-                if (!file) {
-                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor seleccioná o tomá una foto.</div>';
+                if (!selectedFile) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor seleccioná o tomá una foto usando los botones superiores.</div>';
                     return;
+                }
+
+                // Normalización de tipo MIME de imagen
+                let contentType = selectedFile.type || 'image/jpeg';
+                if (contentType.toLowerCase() === 'image/jpg') {
+                    contentType = 'image/jpeg';
                 }
 
                 try {
@@ -153,11 +206,11 @@
                     const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contentType: file.type || 'image/jpeg', filename: file.name })
+                        body: JSON.stringify({ contentType: contentType, filename: selectedFile.name || 'photo.jpg' })
                     });
 
                     if (!presignedRes.ok) {
-                        const errData = await presignedRes.json();
+                        const errData = await presignedRes.json().catch(() => ({}));
                         throw new Error(errData.message || 'Formato de foto no soportado. Subí solo imágenes JPG, PNG o WEBP.');
                     }
 
@@ -168,8 +221,8 @@
                     // Step 2: Subir bytes de la foto
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'PUT',
-                        headers: { 'Content-Type': file.type || 'image/jpeg' },
-                        body: file
+                        headers: { 'Content-Type': contentType },
+                        body: selectedFile
                     });
 
                     if (!uploadRes.ok) {
@@ -195,10 +248,14 @@
 
                     // Limpiar formulario
                     document.getElementById('caption').value = '';
-                    fileInput.value = '';
+                    selectedFile = null;
+                    cameraFile.value = '';
+                    galleryFile.value = '';
+                    btnCamera.classList.remove('selected');
+                    btnGallery.classList.remove('selected');
                     previewBox.style.display = 'none';
 
-                    // Ocultar barra de progreso y mensaje de éxito tras 5 segundos
+                    // Ocultar barra de progreso y mensaje tras 5 segundos
                     setTimeout(() => {
                         statusDiv.innerHTML = '';
                         progressBox.style.display = 'none';
@@ -206,6 +263,7 @@
                     }, 5000);
 
                 } catch (err) {
+                    console.error(err);
                     statusDiv.innerHTML = `<div class="alert-box alert-error">${escapeHtml(err.message)}</div>`;
                     progressBox.style.display = 'none';
                     progressFill.style.width = '0%';

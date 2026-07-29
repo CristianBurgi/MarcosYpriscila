@@ -25,9 +25,11 @@ public class R2StorageService implements StorageService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/jpeg",
+            "image/jpg",
             "image/png",
             "image/webp",
-            "image/heic"
+            "image/heic",
+            "image/heif"
     );
 
     private static final Duration PRESIGNED_URL_DURATION = Duration.ofMinutes(10);
