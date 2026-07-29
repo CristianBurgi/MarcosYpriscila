@@ -4,108 +4,195 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subir Fotografía | Boda de Marcos y Priscila</title>
+    <!-- Google Fonts & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="/css/theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/theme.css?v=3">
     <style>
+        html, body {
+            background: linear-gradient(to bottom, rgba(52, 9, 18, 0.82), rgba(20, 3, 7, 0.94)),
+                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: #fdf6f7 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+        }
+
+        .header-section {
+            text-align: center;
+            padding: 2.5rem 1.25rem 1rem;
+        }
+
+        .wedding-title-main {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #fdf6f7;
+            margin-bottom: 0.25rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .welcome-subtitle {
+            font-size: 1.05rem;
+            color: #e2c2c6;
+            margin: 0.4rem auto 1.5rem;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #e6c594;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.8rem;
+            padding: 6px 14px;
+            background: rgba(59, 10, 20, 0.6);
+            border: 1px solid rgba(247, 225, 228, 0.2);
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: #ffffff;
+            background: rgba(140, 43, 62, 0.6);
+            text-decoration: none;
+        }
+
+        .card-glass {
+            background: rgba(59, 10, 20, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 18px;
+            padding: 1.6rem;
+            border: 1px solid rgba(247, 225, 228, 0.22);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            margin-bottom: 2rem;
+        }
+
         .source-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin: 1rem 0;
         }
+
         .btn-source {
-            background: linear-gradient(135deg, #1e1b18 0%, #2a241f 100%);
-            border: 2px solid var(--brand-gold-primary, #d4af37);
-            color: #ffffff;
-            padding: 16px 12px;
+            background: rgba(35, 6, 12, 0.75);
+            border: 1px solid rgba(247, 225, 228, 0.3);
+            color: #fdf6f7;
+            padding: 14px 12px;
             border-radius: 14px;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.1rem;
-            font-weight: 700;
+            font-size: 1.05rem;
+            font-weight: 600;
             cursor: pointer;
             text-align: center;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.25s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
         }
-        .btn-source:hover, .btn-source:active {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+
+        .btn-source:hover {
+            border-color: #f7e1e4;
+            background: rgba(140, 43, 62, 0.5);
         }
+
         .btn-source.selected {
-            background: linear-gradient(135deg, #d4af37 0%, #b89228 100%);
-            border-color: #8c6d15;
-            color: #120e0c;
-            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
+            background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
+            border-color: #f7e1e4;
+            color: #ffffff;
+            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.5);
         }
+
         .preview-container {
             width: 100%;
             max-height: 400px;
             margin: 1.25rem 0;
             border-radius: 12px;
             overflow: hidden;
-            background: #1a1715;
+            background: rgba(15, 3, 6, 0.85);
             display: none;
             text-align: center;
+            padding: 8px;
+            box-sizing: border-box;
         }
+
         .preview-container img {
             max-width: 100%;
-            max-height: 400px;
+            max-height: 380px;
             object-fit: contain;
+            border-radius: 8px;
         }
+
         .progress-bar-container {
             width: 100%;
             height: 10px;
-            background: #e0d7ce;
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 10px;
             overflow: hidden;
             margin-top: 1rem;
             display: none;
         }
+
         .progress-bar-fill {
             height: 100%;
             width: 0%;
-            background: var(--brand-gold-primary);
+            background: linear-gradient(90deg, #8c2b3e, #e6c594);
             transition: width 0.3s ease;
         }
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            color: var(--brand-gold-dark);
-            text-decoration: none;
+
+        .btn-burgundy-full {
+            background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
+            border: 1px solid rgba(247, 225, 228, 0.25);
+            color: #fdf6f7;
             font-weight: 600;
-            margin-bottom: 1rem;
+            border-radius: 12px;
+            padding: 0.85rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-size: 1.05rem;
         }
-        .back-link:hover { text-decoration: underline; }
+
+        .btn-burgundy-full:hover {
+            background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
+            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.4);
+        }
+
+        .footer-wedding {
+            text-align: center;
+            padding: 2.5rem 1rem 1.5rem;
+            color: #e2c2c6;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
-    <header class="container wedding-header" style="padding-bottom: 0.5rem;">
+    <header class="container header-section">
         <a href="/menu.html" class="back-link">← Volver al Menú</a>
-        <h1 class="wedding-title">📸 Subir Fotografía</h1>
-        <p style="color: var(--brand-text-muted);">Compartí tus momentos de la boda en tiempo real</p>
+        <h1 class="wedding-title-main">📸 Subir Fotografía</h1>
+        <p class="welcome-subtitle">Compartí tus momentos de la boda en tiempo real</p>
     </header>
 
-    <main class="container" style="max-width: 650px;">
-        <article class="card-custom">
+    <main class="container" style="max-width: 650px; margin: 0 auto; padding: 0 1.25rem;">
+        <article class="card-glass">
             <form id="upload-form">
-                <!-- Nombre del Invitado (OBLIGATORIO) -->
-                <label for="uploaderName">Tu Nombre <span style="color: red;">*</span>:</label>
-                <input type="text" id="uploaderName" name="uploaderName" placeholder="Ej: Sofía y Nahuel" required maxlength="150">
+                <label for="uploaderName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
+                <input type="text" id="uploaderName" name="uploaderName" placeholder="Ej: Sofía y Nahuel" required maxlength="150" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1rem;">
 
-                <!-- Dedicatoria Opcional -->
-                <label for="caption">Dedicatoria para los novios (opcional):</label>
-                <input type="text" id="caption" name="caption" placeholder="¡Momento inolvidable en la fiesta!" maxlength="500">
+                <label for="caption" style="color: #fdf6f7; font-weight: 500;">Dedicatoria para los novios (opcional):</label>
+                <input type="text" id="caption" name="caption" placeholder="¡Momento inolvidable en la fiesta!" maxlength="500" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1rem;">
 
-                <!-- Opciones de Selección de Foto (Cámara o Galería) -->
-                <label>Elegir Imagen <span style="color: red;">*</span>:</label>
+                <label style="color: #fdf6f7; font-weight: 500;">Elegir Imagen <span style="color: #fca5a5;">*</span>:</label>
                 <div class="source-buttons">
                     <button type="button" class="btn-source" id="btn-camera">
                         📷 Tomar Foto
@@ -115,21 +202,18 @@
                     </button>
                 </div>
 
-                <!-- Inputs Ocultos de Archivos -->
                 <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;">
                 <input type="file" id="galleryFile" accept="image/*" style="display: none;">
 
-                <!-- Vista previa de la foto seleccionada -->
                 <div class="preview-container" id="preview-box">
                     <img id="image-preview" src="#" alt="Vista previa de la foto">
                 </div>
 
-                <!-- Barra de Progreso -->
                 <div class="progress-bar-container" id="progress-box">
                     <div class="progress-bar-fill" id="progress-fill"></div>
                 </div>
 
-                <button type="submit" id="btn-submit" class="btn-gold" style="width: 100%; margin-top: 1.5rem;">
+                <button type="submit" id="btn-submit" class="btn-burgundy-full" style="margin-top: 1.5rem;">
                     Subir y Compartir Foto
                 </button>
             </form>
@@ -138,8 +222,8 @@
         </article>
     </main>
 
-    <footer class="container" style="text-align: center; padding: 2rem 0; color: var(--brand-text-muted);">
-        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    <footer class="footer-wedding">
+        <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
     </footer>
 
     <script>
@@ -176,7 +260,6 @@
             cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0], btnCamera));
             galleryFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0], btnGallery));
 
-            // Manejo del formulario de subida
             document.getElementById('upload-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
@@ -189,16 +272,15 @@
                 const caption = document.getElementById('caption').value.trim();
 
                 if (!uploaderName) {
-                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor ingresá tu nombre. Es obligatorio.</div>';
+                    statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor ingresá tu nombre. Es obligatorio.</div>';
                     return;
                 }
 
                 if (!selectedFile) {
-                    statusDiv.innerHTML = '<div class="alert-box alert-error">Por favor seleccioná o tomá una foto usando los botones superiores.</div>';
+                    statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor seleccioná o tomá una foto usando los botones superiores.</div>';
                     return;
                 }
 
-                // Normalización de tipo MIME de imagen
                 let contentType = selectedFile.type || 'image/jpeg';
                 if (contentType.toLowerCase() === 'image/jpg') {
                     contentType = 'image/jpeg';
@@ -210,7 +292,6 @@
                     progressBox.style.display = 'block';
                     progressFill.style.width = '15%';
 
-                    // Optimizar/comprimir imagen en el cliente si supera 1.5MB (para evitar cortes de red móvil)
                     const fileToUpload = await compressImageIfNeeded(selectedFile);
 
                     let contentType = fileToUpload.type || 'image/jpeg';
@@ -223,7 +304,6 @@
 
                     let isSuccess = false;
 
-                    // Estrategia 1: Intentar subida rápida por Presigned URL directa a Cloudflare R2
                     try {
                         const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
                             method: 'POST',
@@ -261,7 +341,6 @@
                         console.warn('Subida directa R2 Presigned bloqueada por el navegador o red. Ejecutando fallback garantizado vía servidor:', presignedErr);
                     }
 
-                    // Estrategia 2 (Fallback 100% Garantizado): Subida Multipart directamente a través de la API
                     if (!isSuccess) {
                         btn.innerText = 'Enviando fotografía...';
                         progressFill.style.width = '70%';
@@ -284,9 +363,8 @@
                     }
 
                     progressFill.style.width = '100%';
-                    statusDiv.innerHTML = '<div class="alert-box alert-success">¡Foto subida con éxito! Quedó registrada y aparecerá en el álbum una vez aprobada. 📸</div>';
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Foto subida con éxito! Quedó registrada y aparecerá en el álbum una vez aprobada. 📸</div>';
 
-                    // Limpiar formulario
                     document.getElementById('caption').value = '';
                     selectedFile = null;
                     cameraFile.value = '';
@@ -295,7 +373,6 @@
                     btnGallery.classList.remove('selected');
                     previewBox.style.display = 'none';
 
-                    // Ocultar barra de progreso y mensaje tras 5 segundos
                     setTimeout(() => {
                         statusDiv.innerHTML = '';
                         progressBox.style.display = 'none';
@@ -304,7 +381,7 @@
 
                 } catch (err) {
                     console.error(err);
-                    statusDiv.innerHTML = `<div class="alert-box alert-error">${escapeHtml(err.message)}</div>`;
+                    statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(err.message)}</div>`;
                     progressBox.style.display = 'none';
                     progressFill.style.width = '0%';
                 } finally {
@@ -319,7 +396,6 @@
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        // Comprime fotos pesadas de cámaras móviles (> 1.5MB) en el cliente para subidas ultra-rápidas sin cortes de red
         async function compressImageIfNeeded(file) {
             if (!file || file.size <= 1.5 * 1024 * 1024) {
                 return file;
@@ -358,7 +434,6 @@
                                 type: 'image/jpeg',
                                 lastModified: Date.now()
                             });
-                            console.log(`Foto optimizada de ${(file.size / 1024 / 1024).toFixed(2)}MB a ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
                             resolve(compressedFile);
                         } else {
                             resolve(file);

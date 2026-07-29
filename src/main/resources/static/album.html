@@ -4,121 +4,295 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Álbum de Fotos | Boda de Marcos y Priscila</title>
+    <!-- Google Fonts & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="/css/theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/theme.css?v=3">
     <style>
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-        }
-        .gallery-card {
-            background: white;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-            border: 1px solid rgba(212, 175, 55, 0.25);
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            display: flex;
-            flex-direction: column;
-        }
-        .gallery-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.2);
-        }
-        .gallery-card img {
-            width: 100%;
-            height: 280px;
-            object-fit: cover;
-            background: #1a1715;
-        }
-        .gallery-card-footer {
-            padding: 0.9rem 1.2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #ffffff;
-        }
-        .badge-uploader {
-            background: var(--brand-gold-light);
-            color: var(--brand-gold-dark);
-            font-weight: 600;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-        }
-        .comments-count {
-            color: var(--brand-text-muted);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
+        html, body {
+            background: linear-gradient(to bottom, rgba(52, 9, 18, 0.82), rgba(20, 3, 7, 0.94)),
+                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: #fdf6f7 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
         }
 
-        /* Modal Styles */
-        dialog.modal-photo {
-            max-width: 750px;
-            width: 95vw;
-            border-radius: 16px;
-            border: none;
-            padding: 0;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
-            overflow: hidden;
+        .gallery-header {
+            text-align: center;
+            padding: 2.5rem 1.25rem 1rem;
         }
-        dialog.modal-photo::backdrop {
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
+
+        .wedding-title-main {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #fdf6f7;
+            margin-bottom: 0.25rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
         }
-        .modal-body {
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 1.5rem;
+
+        .wedding-title-icon {
+            font-size: 2.4rem;
         }
-        .modal-img {
-            width: 100%;
-            max-height: 500px;
-            object-fit: contain;
-            background: #120e0c;
-            border-radius: 10px;
-            display: block;
+
+        .welcome-subtitle {
+            font-size: 1.05rem;
+            color: #e2c2c6;
+            max-width: 500px;
+            margin: 0.4rem auto 1.5rem;
+            line-height: 1.5;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
-        .comment-item {
-            background: #faf7f2;
-            padding: 0.8rem 1rem;
-            border-left: 3px solid var(--brand-gold-primary);
-            border-radius: 6px;
-            margin-bottom: 0.8rem;
-        }
+
         .back-link {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            color: var(--brand-gold-dark);
+            gap: 0.5rem;
+            color: #e6c594;
             text-decoration: none;
             font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.8rem;
+            padding: 6px 14px;
+            background: rgba(59, 10, 20, 0.6);
+            border: 1px solid rgba(247, 225, 228, 0.2);
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: #ffffff;
+            background: rgba(140, 43, 62, 0.6);
+            text-decoration: none;
+        }
+
+        /* Grilla de la Galería */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .gallery-card {
+            background: rgba(59, 10, 20, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(247, 225, 228, 0.22);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .gallery-card:hover {
+            transform: translateY(-4px) scale(1.01);
+            border-color: #f7e1e4;
+            box-shadow: 0 14px 36px rgba(107, 28, 45, 0.5);
+        }
+
+        /* Contenedor de la Imagen: EVITA EL RECORTE DE FOTOS */
+        .gallery-img-wrapper {
+            width: 100%;
+            height: 320px;
+            background: rgba(18, 3, 6, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            padding: 6px;
+            box-sizing: border-box;
+        }
+
+        .gallery-img-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain !important; /* SIN RECORTE DE FOTOS */
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-card:hover .gallery-img-wrapper img {
+            transform: scale(1.02);
+        }
+
+        .gallery-card-footer {
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(35, 6, 12, 0.85);
+            border-top: 1px solid rgba(247, 225, 228, 0.15);
+        }
+
+        .badge-uploader {
+            background: rgba(140, 43, 62, 0.5);
+            color: #fdf6f7;
+            border: 1px solid rgba(247, 225, 228, 0.25);
+            font-weight: 600;
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .comments-count {
+            color: #e2c2c6;
+            font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-weight: 500;
+        }
+
+        /* Modal Styles Glassmorphic */
+        dialog.modal-photo {
+            max-width: 780px;
+            width: 92vw;
+            border-radius: 20px;
+            border: 1px solid rgba(247, 225, 228, 0.3);
+            background: rgba(38, 6, 13, 0.96);
+            color: #fdf6f7;
+            padding: 0;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        dialog.modal-photo::backdrop {
+            background: rgba(15, 3, 6, 0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-body {
+            max-height: 88vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .modal-header-custom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.8rem;
             margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(247, 225, 228, 0.15);
+        }
+
+        .modal-header-custom h4 {
+            margin: 0;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            color: #fdf6f7;
+        }
+
+        .btn-close-modal {
+            background: rgba(247, 225, 228, 0.15);
+            color: #fdf6f7;
+            border: 1px solid rgba(247, 225, 228, 0.3);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn-close-modal:hover {
+            background: rgba(239, 68, 68, 0.4);
+            color: #ffffff;
+        }
+
+        .modal-img-container {
+            width: 100%;
+            max-height: 520px;
+            background: rgba(15, 3, 6, 0.9);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        .modal-img {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .comment-item {
+            background: rgba(59, 10, 20, 0.6);
+            border-left: 3px solid #8c2b3e;
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.8rem;
+            border-top: 1px solid rgba(247, 225, 228, 0.1);
+            border-right: 1px solid rgba(247, 225, 228, 0.1);
+            border-bottom: 1px solid rgba(247, 225, 228, 0.1);
+        }
+
+        .btn-burgundy-full {
+            background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
+            border: 1px solid rgba(247, 225, 228, 0.25);
+            color: #fdf6f7;
+            font-weight: 600;
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-burgundy-full:hover {
+            background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
+            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.4);
+        }
+
+        .footer-wedding {
+            text-align: center;
+            padding: 2.5rem 1rem 1.5rem;
+            color: #e2c2c6;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
         }
     </style>
 </head>
 <body>
-    <header class="container wedding-header" style="padding-bottom: 0.5rem;">
+
+    <header class="container gallery-header">
         <a href="/menu.html" class="back-link">← Volver al Menú</a>
-        <h1 class="wedding-title">🖼️ Álbum de Fotos</h1>
-        <p style="color: var(--brand-text-muted);">Reviví las mejores fotos compartidas por los invitados</p>
+        <h1 class="wedding-title-main">
+            <span class="wedding-title-icon">📸</span> Álbum de Fotos
+        </h1>
+        <p class="welcome-subtitle">Reviví los mejores momentos compartidos por nuestros invitados</p>
     </header>
 
-    <main class="container">
+    <main class="container" style="max-width: 1100px; margin: 0 auto; padding: 0 1.25rem;">
         <div class="gallery-grid" id="gallery-container">
-            <p style="grid-column: 1 / -1; text-align: center; color: var(--brand-text-muted);">Cargando fotografías del evento...</p>
+            <p style="grid-column: 1 / -1; text-align: center; color: #e2c2c6;">Cargando fotografías del evento...</p>
         </div>
 
         <div style="text-align: center; margin-top: 2.5rem; margin-bottom: 2rem;">
-            <button id="btn-load-more" class="btn-gold" style="display: none; width: auto; padding: 0.8rem 2.5rem;">
+            <button id="btn-load-more" class="btn-burgundy-full" style="display: none; width: auto; padding: 0.8rem 2.5rem;">
                 Cargar más fotos
             </button>
         </div>
@@ -127,36 +301,38 @@
     <!-- Modal para ver Foto + Comentarios -->
     <dialog id="photo-modal" class="modal-photo">
         <article class="modal-body" style="margin: 0;">
-            <header style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.8rem; margin-bottom: 1rem; border-bottom: 1px solid #eee;">
-                <h4 style="margin: 0; font-family: var(--font-heading); color: #1f1a17;" id="modal-uploader">Foto de la boda</h4>
-                <button type="button" aria-label="Cerrar" id="btn-close-modal" style="width: auto; padding: 0.3rem 0.8rem; background: #eee; color: #333; border: none; border-radius: 50%; cursor: pointer;">✕</button>
+            <header class="modal-header-custom">
+                <h4 id="modal-uploader">Foto de la boda</h4>
+                <button type="button" aria-label="Cerrar" id="btn-close-modal" class="btn-close-modal">✕</button>
             </header>
 
-            <img id="modal-img" class="modal-img" src="#" alt="Fotografía ampliada">
+            <div class="modal-img-container">
+                <img id="modal-img" class="modal-img" src="#" alt="Fotografía ampliada">
+            </div>
 
             <section style="margin-top: 1.5rem;">
-                <h5 style="font-size: 1.1rem; color: #1f1a17; margin-bottom: 1rem;">💬 Comentarios (<span id="modal-comments-count">0</span>)</h5>
+                <h5 style="font-size: 1.1rem; color: #fdf6f7; margin-bottom: 1rem;">💬 Comentarios (<span id="modal-comments-count">0</span>)</h5>
                 
                 <div id="modal-comments-list">
-                    <p style="color: #888;">Cargando comentarios...</p>
+                    <p style="color: #e2c2c6;">Cargando comentarios...</p>
                 </div>
 
                 <form id="comment-form" style="margin-top: 1.5rem;">
-                    <label for="commentAuthor">Tu Nombre <span style="color: red;">*</span>:</label>
-                    <input type="text" id="commentAuthor" name="authorName" placeholder="Ej: Primo Lucas" required maxlength="150">
+                    <label for="commentAuthor" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
+                    <input type="text" id="commentAuthor" name="authorName" placeholder="Ej: Primo Lucas" required maxlength="150" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px;">
 
-                    <label for="commentText">Comentario <span style="color: red;">*</span>:</label>
-                    <input type="text" id="commentText" name="text" placeholder="¡Qué buena foto!" required maxlength="500">
+                    <label for="commentText" style="color: #fdf6f7; font-weight: 500; margin-top: 0.8rem;">Comentario <span style="color: #fca5a5;">*</span>:</label>
+                    <input type="text" id="commentText" name="text" placeholder="¡Qué linda foto!" required maxlength="500" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px;">
 
-                    <button type="submit" id="btn-comment-submit" class="btn-gold" style="width: 100%;">Enviar Comentario</button>
+                    <button type="submit" id="btn-comment-submit" class="btn-burgundy-full" style="width: 100%; margin-top: 1.2rem;">Enviar Comentario</button>
                 </form>
                 <div id="comment-status"></div>
             </section>
         </article>
     </dialog>
 
-    <footer class="container" style="text-align: center; padding: 2rem 0; color: var(--brand-text-muted);">
-        <small>Boda de Marcos y Priscila &bull; 19/09/2026</small>
+    <footer class="footer-wedding">
+        <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
     </footer>
 
     <script>
@@ -190,7 +366,7 @@
 
                 if (!data.content || data.content.length === 0) {
                     if (page === 0) {
-                        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888;"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
+                        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #e2c2c6;"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
                     }
                     btnMore.style.display = 'none';
                     return;
@@ -206,7 +382,9 @@
                     card.className = 'gallery-card';
                     card.dataset.photoId = photo.id;
                     card.innerHTML = `
-                        <img src="${imageUrl}" alt="Foto de la boda" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop';">
+                        <div class="gallery-img-wrapper">
+                            <img src="${escapeHtml(imageUrl)}" alt="Foto de la boda" onerror="handleImageError(this)">
+                        </div>
                         <div class="gallery-card-footer">
                             <span class="badge-uploader">📸 ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
                             <span class="comments-count" id="count-${photo.id}">💬 ${photo.commentCount || 0}</span>
@@ -228,6 +406,14 @@
             }
         }
 
+        // Manejo elegante si una foto previa en local o dev no está en el servidor
+        function handleImageError(imgElem) {
+            imgElem.onerror = null;
+            // Usar la foto real de los novios de la boda como elegante fallback en vez de imágenes externas no deseadas
+            imgElem.src = '/images/wedding_couple.png';
+            imgElem.style.opacity = '0.85';
+        }
+
         // 2. Abrir Modal de Foto + Comentarios
         async function openPhotoModal(photo) {
             activePhotoId = photo.id;
@@ -243,7 +429,7 @@
             const modalImg = document.getElementById('modal-img');
             modalImg.onerror = function() {
                 this.onerror = null;
-                this.src = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop';
+                this.src = '/images/wedding_couple.png';
             };
             modalImg.src = imageUrl;
 
@@ -269,22 +455,22 @@
                 }
 
                 if (!comments || comments.length === 0) {
-                    listDiv.innerHTML = '<p style="color: #888; font-style: italic;">No hay comentarios en esta foto. ¡Sé el primero en comentar!</p>';
+                    listDiv.innerHTML = '<p style="color: #e2c2c6; font-style: italic;">No hay comentarios en esta foto. ¡Sé el primero en comentar!</p>';
                     return;
                 }
 
                 listDiv.innerHTML = comments.map(c => `
                     <div class="comment-item" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
                         <div>
-                            <strong style="color: #2c2520;">${escapeHtml(c.authorName)}</strong>
-                            <p style="margin: 0.2rem 0 0; color: #444;">${escapeHtml(c.text)}</p>
+                            <strong style="color: #fdf6f7;">${escapeHtml(c.authorName)}</strong>
+                            <p style="margin: 0.2rem 0 0; color: #e2c2c6;">${escapeHtml(c.text)}</p>
                         </div>
-                        <button type="button" onclick="deleteComment('${c.id}')" style="width: auto; padding: 0.2rem 0.5rem; font-size: 0.8rem; background: #fff0f0; color: #d32f2f; border: 1px solid #ffcdd2; border-radius: 6px; cursor: pointer;" title="Eliminar comentario como admin">🗑️</button>
+                        <button type="button" onclick="deleteComment('${c.id}')" style="width: auto; padding: 0.2rem 0.5rem; font-size: 0.8rem; background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); border-radius: 6px; cursor: pointer;" title="Eliminar comentario como admin">🗑️</button>
                     </div>
                 `).join('');
 
             } catch (err) {
-                listDiv.innerHTML = '<p style="color: red;">Error al cargar comentarios.</p>';
+                listDiv.innerHTML = '<p style="color: #fca5a5;">Error al cargar comentarios.</p>';
             }
         }
 
@@ -326,12 +512,12 @@
                     if (!res.ok) throw new Error('Error al enviar el comentario.');
 
                     document.getElementById('commentText').value = '';
-                    statusDiv.innerHTML = '<div class="alert-box alert-success">¡Comentario publicado!</div>';
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Comentario publicado!</div>';
                     setTimeout(() => { statusDiv.innerHTML = ''; }, 4000);
 
                     loadComments(activePhotoId);
                 } catch (err) {
-                    statusDiv.innerHTML = `<div class="alert-box alert-error">${escapeHtml(err.message)}</div>`;
+                    statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(err.message)}</div>`;
                 } finally {
                     btn.disabled = false;
                     btn.innerText = 'Enviar Comentario';
