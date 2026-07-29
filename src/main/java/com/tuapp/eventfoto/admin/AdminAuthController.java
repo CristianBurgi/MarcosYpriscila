@@ -28,6 +28,7 @@ public class AdminAuthController {
         Cookie jwtCookie = new Cookie(JwtAuthenticationFilter.COOKIE_NAME, authResponse.token());
         jwtCookie.setHttpOnly(true);
         jwtCookie.setPath("/");
+        jwtCookie.setSecure(true);
         jwtCookie.setMaxAge((int) (authResponse.expiresInMs() / 1000));
         response.addCookie(jwtCookie);
 

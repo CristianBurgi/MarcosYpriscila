@@ -70,9 +70,9 @@
                 <label for="caption">Dedicatoria para los novios (opcional):</label>
                 <input type="text" id="caption" name="caption" placeholder="¡Momento inolvidable en la fiesta!" maxlength="500">
 
-                <!-- Input de Archivo con capture="environment" para abrir la cámara directa en móvil -->
+                <!-- Input de Archivo (permite tanto cámara nativa como elegir de la galería del celular) -->
                 <label for="photoFile">Seleccionar o Sacar Foto <span style="color: red;">*</span>:</label>
-                <input type="file" id="photoFile" name="file" accept="image/jpeg,image/png,image/webp,image/heic" capture="environment" required>
+                <input type="file" id="photoFile" name="file" accept="image/jpeg,image/png,image/webp,image/heic,image/*" required>
 
                 <!-- Vista previa de la foto seleccionada -->
                 <div class="preview-container" id="preview-box">
