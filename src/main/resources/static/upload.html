@@ -198,9 +198,20 @@
 
                 try {
                     btn.disabled = true;
-                    btn.innerText = 'Iniciando subida...';
+                    btn.innerText = 'Optimizando foto...';
                     progressBox.style.display = 'block';
-                    progressFill.style.width = '20%';
+                    progressFill.style.width = '15%';
+
+                    // Optimizar/comprimir imagen en el cliente si supera 1.5MB (para evitar cortes de red móvil)
+                    const fileToUpload = await compressImageIfNeeded(selectedFile);
+
+                    let contentType = fileToUpload.type || 'image/jpeg';
+                    if (contentType.toLowerCase() === 'image/jpg') {
+                        contentType = 'image/jpeg';
+                    }
+
+                    btn.innerText = 'Iniciando subida...';
+                    progressFill.style.width = '30%';
 
                     let isSuccess = false;
 
@@ -209,22 +220,22 @@
                         const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contentType: contentType, filename: selectedFile.name || 'photo.jpg' })
+                            body: JSON.stringify({ contentType: contentType, filename: fileToUpload.name || 'photo.jpg' })
                         });
 
                         if (presignedRes.ok) {
                             const { uploadUrl, key } = await presignedRes.json();
-                            progressFill.style.width = '50%';
+                            progressFill.style.width = '60%';
                             btn.innerText = 'Subiendo fotografía...';
 
                             const uploadRes = await fetch(uploadUrl, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': contentType },
-                                body: selectedFile
+                                body: fileToUpload
                             });
 
                             if (uploadRes.ok) {
-                                progressFill.style.width = '80%';
+                                progressFill.style.width = '85%';
                                 btn.innerText = 'Registrando en la boda...';
 
                                 const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
@@ -245,10 +256,10 @@
                     // Estrategia 2 (Fallback 100% Garantizado): Subida Multipart directamente a través de la API
                     if (!isSuccess) {
                         btn.innerText = 'Enviando fotografía...';
-                        progressFill.style.width = '60%';
+                        progressFill.style.width = '70%';
 
                         const formData = new FormData();
-                        formData.append('file', selectedFile);
+                        formData.append('file', fileToUpload);
                         formData.append('uploaderName', uploaderName);
                         if (caption) formData.append('caption', caption);
 
@@ -297,6 +308,57 @@
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Comprime fotos pesadas de cámaras móviles (> 1.5MB) en el cliente para subidas ultra-rápidas sin cortes de red
+        async function compressImageIfNeeded(file) {
+            if (!file || file.size <= 1.5 * 1024 * 1024) {
+                return file;
+            }
+
+            return new Promise((resolve) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+
+                    const maxDim = 2048;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const compressedFile = new File([blob], file.name || 'photo.jpg', {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            console.log(`Foto optimizada de ${(file.size / 1024 / 1024).toFixed(2)}MB a ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+                            resolve(compressedFile);
+                        } else {
+                            resolve(file);
+                        }
+                    }, 'image/jpeg', 0.85);
+                };
+                img.onerror = () => resolve(file);
+                img.src = url;
+            });
         }
     </script>
 </body>
