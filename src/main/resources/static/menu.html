@@ -4,44 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boda de Marcos y Priscila | Menú Principal</title>
-    <!-- Google Fonts & Pico.css & Theme -->
+    <!-- Google Fonts & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="/css/theme.css">
+    <link rel="stylesheet" href="/css/theme.css?v=3">
     <style>
-        body {
-            background: linear-gradient(to bottom, rgba(59, 10, 20, 0.78), rgba(28, 4, 9, 0.92)),
-                        url('/images/wedding_couple.png') no-repeat center center fixed;
-            background-size: cover;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+        html, body {
+            background: linear-gradient(to bottom, rgba(52, 9, 18, 0.78), rgba(20, 3, 7, 0.92)),
+                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: #fdf6f7 !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
         }
 
         .hero-header {
             text-align: center;
-            padding: 3rem 1.25rem 1rem;
+            padding: 2.5rem 1.25rem 1rem;
             animation: fadeInDown 0.8s ease-out;
         }
 
         .monogram {
-            font-family: var(--font-heading);
+            font-family: 'Cormorant Garamond', serif;
             font-size: 1.5rem;
             letter-spacing: 4px;
-            color: var(--brand-gold-accent);
+            color: #e6c594;
             text-transform: uppercase;
             margin-bottom: 0.25rem;
             opacity: 0.9;
         }
 
         .wedding-title-main {
-            font-family: var(--font-heading);
+            font-family: 'Cormorant Garamond', serif;
             font-size: 3.2rem;
             font-weight: 700;
-            color: var(--brand-pastel-cream);
+            color: #fdf6f7;
             margin-bottom: 0.25rem;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
             line-height: 1.1;
@@ -49,7 +49,7 @@
 
         .wedding-date-tag {
             font-size: 1.05rem;
-            color: var(--brand-pastel-rose);
+            color: #f7e1e4;
             font-weight: 500;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -58,7 +58,7 @@
 
         .welcome-subtitle {
             font-size: 1.05rem;
-            color: var(--brand-text-muted);
+            color: #e2c2c6;
             max-width: 480px;
             margin: 0 auto 1.5rem;
             line-height: 1.5;
@@ -73,58 +73,45 @@
         }
 
         .menu-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 1rem !important;
+            margin-top: 0 !important;
         }
 
         @media (max-width: 540px) {
             .menu-grid {
-                grid-template-columns: 1fr;
-                gap: 0.85rem;
+                grid-template-columns: 1fr !important;
+                gap: 0.85rem !important;
             }
         }
 
-        .menu-card-compact {
-            background: rgba(59, 10, 20, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(247, 225, 228, 0.22);
-            border-radius: 18px;
-            padding: 1.25rem 1rem;
-            text-decoration: none;
-            color: var(--brand-pastel-cream);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        .menu-card-compact, .menu-card {
+            background: rgba(59, 10, 20, 0.75) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border: 1px solid rgba(247, 225, 228, 0.22) !important;
+            border-radius: 18px !important;
+            padding: 1.25rem 1rem !important;
+            text-decoration: none !important;
+            color: #fdf6f7 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 1rem !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
             position: relative;
             overflow: hidden;
+            box-sizing: border-box;
         }
 
-        .menu-card-compact::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(247, 225, 228, 0.12) 0%, transparent 100%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .menu-card-compact:hover {
-            transform: translateY(-3px) scale(1.01);
-            border-color: var(--brand-pastel-rose);
-            box-shadow: 0 12px 32px rgba(107, 28, 45, 0.45);
-            text-decoration: none;
-            color: #ffffff;
-        }
-
-        .menu-card-compact:hover::before {
-            opacity: 1;
+        .menu-card-compact:hover, .menu-card:hover {
+            transform: translateY(-3px) scale(1.01) !important;
+            border-color: #f7e1e4 !important;
+            box-shadow: 0 12px 32px rgba(107, 28, 45, 0.5) !important;
+            color: #ffffff !important;
         }
 
         .menu-icon-compact {
@@ -153,24 +140,24 @@
         }
 
         .menu-title-compact {
-            font-family: var(--font-heading);
+            font-family: 'Cormorant Garamond', serif;
             font-size: 1.35rem;
             font-weight: 700;
-            color: var(--brand-pastel-cream);
+            color: #fdf6f7;
             line-height: 1.2;
             margin-bottom: 0.2rem;
         }
 
         .menu-desc-compact {
             font-size: 0.85rem;
-            color: var(--brand-text-muted);
+            color: #e2c2c6;
             line-height: 1.35;
         }
 
         .footer-wedding {
             text-align: center;
             padding: 2rem 1rem 1.5rem;
-            color: var(--brand-text-muted);
+            color: #e2c2c6;
             font-size: 0.85rem;
             letter-spacing: 1px;
         }
