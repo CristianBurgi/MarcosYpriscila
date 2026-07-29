@@ -64,7 +64,6 @@ public class R2StorageService implements StorageService {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(key)
-                    .contentType(contentType)
                     .build();
 
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()

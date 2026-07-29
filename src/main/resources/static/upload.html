@@ -17,24 +17,32 @@
             margin: 1rem 0;
         }
         .btn-source {
-            background: rgba(229, 207, 179, 0.15);
-            border: 2px solid var(--brand-gold-primary);
+            background: linear-gradient(135deg, #1e1b18 0%, #2a241f 100%);
+            border: 2px solid var(--brand-gold-primary, #d4af37);
             color: #ffffff;
-            padding: 14px 10px;
-            border-radius: 12px;
+            padding: 16px 12px;
+            border-radius: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            font-size: 1.05rem;
+            gap: 10px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
         }
-        .btn-source:hover, .btn-source.selected {
-            background: var(--brand-gold-primary);
+        .btn-source:hover, .btn-source:active {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.35);
+        }
+        .btn-source.selected {
+            background: linear-gradient(135deg, #d4af37 0%, #b89228 100%);
+            border-color: #8c6d15;
             color: #120e0c;
+            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
         }
         .preview-container {
             width: 100%;
@@ -258,8 +266,9 @@
                         btn.innerText = 'Enviando fotografía...';
                         progressFill.style.width = '70%';
 
+                        const safeFileName = (fileToUpload.name && fileToUpload.name.trim()) ? fileToUpload.name : 'galeria_photo.jpg';
                         const formData = new FormData();
-                        formData.append('file', fileToUpload);
+                        formData.append('file', fileToUpload, safeFileName);
                         formData.append('uploaderName', uploaderName);
                         if (caption) formData.append('caption', caption);
 
@@ -270,7 +279,7 @@
 
                         if (!directRes.ok) {
                             const errData = await directRes.json().catch(() => ({}));
-                            throw new Error(errData.message || 'No se pudo enviar la fotografía. Intentalo de nuevo.');
+                            throw new Error(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.');
                         }
                     }
 
