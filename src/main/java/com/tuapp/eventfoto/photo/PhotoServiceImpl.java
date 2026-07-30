@@ -176,7 +176,7 @@ public class PhotoServiceImpl implements PhotoService {
         Event event = eventService.getEventEntityBySlug(slug);
         return photoRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(event.getId(), pageable)
                 .map(photo -> {
-                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(photo.getId());
+                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
                     return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
                 });
     }
@@ -187,7 +187,7 @@ public class PhotoServiceImpl implements PhotoService {
         Event event = eventService.getEventEntityBySlug(slug);
         return photoRepository.findByEventIdAndIsApprovedFalseOrderByCreatedAtAsc(event.getId(), pageable)
                 .map(photo -> {
-                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(photo.getId());
+                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
                     return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
                 });
     }
@@ -202,7 +202,7 @@ public class PhotoServiceImpl implements PhotoService {
         Photo approvedPhoto = photoRepository.save(photo);
         log.info("Fotografía con ID {} aprobada por administración", photoId);
 
-        List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(photoId);
+        List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photoId);
 
         String publicUrl = storageService.generatePublicUrl(approvedPhoto.getStorageKey());
         PhotoResponseDTO response = PhotoResponseDTO.fromEntity(approvedPhoto, publicUrl, comments);
@@ -248,7 +248,7 @@ public class PhotoServiceImpl implements PhotoService {
         for (Photo photo : pendingPhotos) {
             photo.setApproved(true);
             Photo saved = photoRepository.save(photo);
-            List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(saved.getId());
+            List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(saved.getId());
             String publicUrl = storageService.generatePublicUrl(saved.getStorageKey());
             PhotoResponseDTO response = PhotoResponseDTO.fromEntity(saved, publicUrl, comments);
             

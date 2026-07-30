@@ -68,7 +68,7 @@ public class CommentServiceImpl implements CommentService {
             throw new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId);
         }
 
-        return commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(photoId)
+        return commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photoId)
                 .stream()
                 .map(CommentResponseDTO::fromEntity)
                 .toList();

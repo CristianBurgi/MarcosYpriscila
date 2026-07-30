@@ -11,9 +11,9 @@ import java.util.UUID;
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
-    List<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(UUID photoId);
+    List<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID photoId);
 
-    Page<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(UUID photoId, Pageable pageable);
+    Page<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID photoId, Pageable pageable);
 
     Page<Comment> findByPhotoIdOrderByCreatedAtAsc(UUID photoId, Pageable pageable);
 
