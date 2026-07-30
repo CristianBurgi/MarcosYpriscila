@@ -67,23 +67,16 @@
 
         /* Menú con botones compactos y estilo glassmorphic */
         .menu-container {
-            max-width: 650px;
+            max-width: 520px;
             margin: 0 auto;
             padding: 0 1.25rem;
         }
 
         .menu-grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 1rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.9rem !important;
             margin-top: 0 !important;
-        }
-
-        @media (max-width: 540px) {
-            .menu-grid {
-                grid-template-columns: 1fr !important;
-                gap: 0.85rem !important;
-            }
         }
 
         .menu-card-compact, .menu-card {
@@ -211,15 +204,6 @@
                 <div class="menu-text-content">
                     <div class="menu-title-compact">Libro de Visitas</div>
                     <div class="menu-desc-compact">Dejá tus deseos y felicitaciones a los novios.</div>
-                </div>
-            </a>
-
-            <!-- 4. Pantalla del Salón -->
-            <a href="/screen.html" class="menu-card-compact" target="_blank">
-                <div class="menu-icon-compact">📺</div>
-                <div class="menu-text-content">
-                    <div class="menu-title-compact">Pantalla Salón</div>
-                    <div class="menu-desc-compact">Proyección en vivo transmitida en el evento.</div>
                 </div>
             </a>
         </div>
