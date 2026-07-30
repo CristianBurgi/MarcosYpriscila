@@ -1,5 +1,7 @@
 package com.tuapp.eventfoto.admin;
 
+import com.tuapp.eventfoto.comment.CommentService;
+import com.tuapp.eventfoto.comment.dto.CommentResponseDTO;
 import com.tuapp.eventfoto.event.EventService;
 import com.tuapp.eventfoto.event.dto.EventResponseDTO;
 import com.tuapp.eventfoto.message.MessageService;
@@ -23,6 +25,7 @@ public class AdminViewController {
 
     private final PhotoService photoService;
     private final MessageService messageService;
+    private final CommentService commentService;
     private final EventService eventService;
 
     @GetMapping("/login")
@@ -43,6 +46,7 @@ public class AdminViewController {
         List<PhotoResponseDTO> pendingPhotos = photoService.getPendingPhotos(slug, PageRequest.of(0, 100)).getContent();
         List<PhotoResponseDTO> approvedPhotos = photoService.getApprovedPhotos(slug, PageRequest.of(0, 100)).getContent();
         List<MessageResponseDTO> messages = messageService.getMessages(slug, PageRequest.of(0, 100)).getContent();
+        List<CommentResponseDTO> photoComments = commentService.getEventComments(slug);
 
         model.addAttribute("event", event);
         model.addAttribute("slug", slug);
@@ -52,6 +56,7 @@ public class AdminViewController {
         model.addAttribute("pendingPhotos", pendingPhotos);
         model.addAttribute("approvedPhotos", approvedPhotos);
         model.addAttribute("messages", messages);
+        model.addAttribute("photoComments", photoComments);
 
         return "admin/dashboard";
     }

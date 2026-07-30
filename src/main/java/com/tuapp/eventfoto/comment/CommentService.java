@@ -12,5 +12,7 @@ public interface CommentService {
 
     List<CommentResponseDTO> getPhotoComments(UUID photoId);
 
+    List<CommentResponseDTO> getEventComments(String slug);
+
     void deleteComment(UUID commentId);
 }

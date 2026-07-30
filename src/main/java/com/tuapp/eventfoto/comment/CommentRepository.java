@@ -16,4 +16,6 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     Page<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(UUID photoId, Pageable pageable);
 
     Page<Comment> findByPhotoIdOrderByCreatedAtAsc(UUID photoId, Pageable pageable);
+
+    List<Comment> findByPhotoEventSlugAndIsApprovedTrueOrderByCreatedAtDesc(String slug);
 }

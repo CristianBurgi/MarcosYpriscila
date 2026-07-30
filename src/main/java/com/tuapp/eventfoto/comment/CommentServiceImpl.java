@@ -9,6 +9,7 @@ import com.tuapp.eventfoto.common.moderation.ContentModerationService;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
+import com.tuapp.eventfoto.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class CommentServiceImpl implements CommentService {
     private final RateLimiterService rateLimiterService;
     private final ContentModerationService contentModerationService;
     private final SseBroadcaster sseBroadcaster;
+    private final StorageService storageService;
 
     @Override
     @Transactional
@@ -69,6 +71,21 @@ public class CommentServiceImpl implements CommentService {
         return commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtAsc(photoId)
                 .stream()
                 .map(CommentResponseDTO::fromEntity)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommentResponseDTO> getEventComments(String slug) {
+        return commentRepository.findByPhotoEventSlugAndIsApprovedTrueOrderByCreatedAtDesc(slug)
+                .stream()
+                .map(comment -> {
+                    String photoUrl = null;
+                    if (comment.getPhoto() != null && comment.getPhoto().getStorageKey() != null) {
+                        photoUrl = storageService.generatePublicUrl(comment.getPhoto().getStorageKey());
+                    }
+                    return CommentResponseDTO.fromEntity(comment, photoUrl);
+                })
                 .toList();
     }
 
