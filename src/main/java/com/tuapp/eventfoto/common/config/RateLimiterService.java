@@ -11,8 +11,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Service
 public class RateLimiterService {
 
-    private static final int UPLOAD_URL_LIMIT_PER_MINUTE = 5;
-    private static final int COMMENT_MESSAGE_LIMIT_PER_MINUTE = 3;
+    private static final int UPLOAD_URL_LIMIT_PER_MINUTE = 30;
+    private static final int COMMENT_MESSAGE_LIMIT_PER_MINUTE = 15;
     private static final long ONE_MINUTE_IN_MS = 60_000L;
 
     private final Map<String, Queue<Long>> uploadUrlBuckets = new ConcurrentHashMap<>();
