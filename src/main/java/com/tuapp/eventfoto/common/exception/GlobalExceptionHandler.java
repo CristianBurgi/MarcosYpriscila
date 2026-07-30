@@ -51,6 +51,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
     }
 
+    @ExceptionHandler(ContentModerationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleContentModeration(
+            ContentModerationException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                "Unprocessable Entity - Content Moderated",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
     @ExceptionHandler(EventClosedException.class)
     public ResponseEntity<ErrorResponseDTO> handleEventClosed(
             EventClosedException ex, HttpServletRequest request) {

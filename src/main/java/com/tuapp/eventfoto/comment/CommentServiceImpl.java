@@ -3,9 +3,12 @@ package com.tuapp.eventfoto.comment;
 import com.tuapp.eventfoto.comment.dto.CommentResponseDTO;
 import com.tuapp.eventfoto.comment.dto.CreateCommentRequestDTO;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
+import com.tuapp.eventfoto.common.exception.ContentModerationException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
+import com.tuapp.eventfoto.common.moderation.ContentModerationService;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
+import com.tuapp.eventfoto.realtime.SseBroadcaster;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,8 @@ public class CommentServiceImpl implements CommentService {
     private final CommentRepository commentRepository;
     private final PhotoRepository photoRepository;
     private final RateLimiterService rateLimiterService;
+    private final ContentModerationService contentModerationService;
+    private final SseBroadcaster sseBroadcaster;
 
     @Override
     @Transactional
@@ -29,11 +34,17 @@ public class CommentServiceImpl implements CommentService {
         // 1. Aplicar rate limiting (máx 3 envíos por minuto)
         rateLimiterService.checkCommentMessageRateLimit(clientIp);
 
-        // 2. Validar que la foto exista
+        // 2. Moderación automática de contenido
+        if (!contentModerationService.isAllowed(request.text())) {
+            log.warn("Comentario de foto bloqueado por el filtro de moderación de contenido para la foto {}", photoId);
+            throw new ContentModerationException("Tu comentario no pudo publicarse, revisá el contenido e intentá de nuevo.");
+        }
+
+        // 3. Validar que la foto exista
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
-        // 3. Crear el comentario
+        // 4. Crear el comentario
         Comment comment = Comment.builder()
                 .photo(photo)
                 .authorName(request.authorName().trim())
@@ -66,7 +77,15 @@ public class CommentServiceImpl implements CommentService {
     public void deleteComment(UUID commentId) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el comentario con ID: " + commentId));
+        
+        UUID photoId = comment.getPhoto() != null ? comment.getPhoto().getId() : null;
+        UUID eventId = (comment.getPhoto() != null && comment.getPhoto().getEvent() != null) ? comment.getPhoto().getEvent().getId() : null;
+
         commentRepository.delete(comment);
         log.info("Comentario con ID {} eliminado exitosamente por administración", commentId);
+
+        if (eventId != null && photoId != null) {
+            sseBroadcaster.broadcastCommentDeleted(eventId, commentId, photoId);
+        }
     }
 }

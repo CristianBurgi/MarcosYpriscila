@@ -511,6 +511,14 @@
                     addMessageToTicker(payload);
                 });
 
+                eventSource.addEventListener('MESSAGE_DELETED', (e) => {
+                    const payload = extractPayload(e.data);
+                    const msgId = payload.id || (payload.data ? payload.data.id : null);
+                    if (msgId) {
+                        removeMessageFromTicker(msgId);
+                    }
+                });
+
                 eventSource.onerror = (err) => {
                     console.warn('Reconectando canal SSE del salón...', err);
                 };
@@ -525,6 +533,7 @@
                     const data = await res.json();
                     if (data.content && data.content.length > 0) {
                         tickerQueue = data.content.map(m => ({
+                            id: m.id,
                             authorName: m.authorName && m.authorName.trim() ? m.authorName.trim() : 'Invitado',
                             text: m.text ? m.text.trim() : ''
                         })).filter(m => m.text);
@@ -568,7 +577,7 @@
             }
 
             const author = msgPayload.authorName && msgPayload.authorName.trim() ? msgPayload.authorName.trim() : 'Invitado';
-            const newMsg = { authorName: author, text: msgPayload.text.trim() };
+            const newMsg = { id: msgPayload.id, authorName: author, text: msgPayload.text.trim() };
 
             const lastMsg = tickerQueue[tickerQueue.length - 1];
             if (lastMsg && lastMsg.text === newMsg.text && lastMsg.authorName === newMsg.authorName) {
@@ -582,6 +591,16 @@
                 tickerQueue.shift();
             }
 
+            renderTickerTrack();
+        }
+
+        // 11. Remover mensaje eliminado del ticker en tiempo real
+        function removeMessageFromTicker(messageId) {
+            if (!messageId) return;
+            tickerQueue = tickerQueue.filter(m => m.id !== messageId);
+            if (tickerQueue.length === 0) {
+                tickerQueue = [DEFAULT_TICKER_MESSAGE];
+            }
             renderTickerTrack();
         }
 

@@ -12,4 +12,6 @@ public interface MessageService {
     Page<MessageResponseDTO> getMessages(String slug, Pageable pageable);
 
     long countTotalMessages(String slug);
+
+    void deleteMessage(java.util.UUID messageId);
 }

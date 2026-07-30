@@ -85,6 +85,24 @@ public class SseBroadcaster {
         broadcast(eventId, "MESSAGE_CREATED", notification);
     }
 
+    /**
+     * Transmite la notificación de eliminación de un mensaje del libro de visitas.
+     */
+    public void broadcastMessageDeleted(UUID eventId, UUID messageId) {
+        Map<String, Object> payload = Map.of("id", messageId, "eventId", eventId);
+        SseNotificationEvent notification = SseNotificationEvent.of("MESSAGE_DELETED", payload);
+        broadcast(eventId, "MESSAGE_DELETED", notification);
+    }
+
+    /**
+     * Transmite la notificación de eliminación de un comentario de fotografía.
+     */
+    public void broadcastCommentDeleted(UUID eventId, UUID commentId, UUID photoId) {
+        Map<String, Object> payload = Map.of("id", commentId, "photoId", photoId, "eventId", eventId);
+        SseNotificationEvent notification = SseNotificationEvent.of("COMMENT_DELETED", payload);
+        broadcast(eventId, "COMMENT_DELETED", notification);
+    }
+
     private void broadcast(UUID eventId, String eventName, Object data) {
         List<SseEmitter> emitters = eventEmitters.get(eventId);
         if (emitters == null || emitters.isEmpty()) {

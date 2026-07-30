@@ -3,6 +3,7 @@ package com.tuapp.eventfoto.admin;
 import com.tuapp.eventfoto.event.EventService;
 import com.tuapp.eventfoto.event.dto.EventResponseDTO;
 import com.tuapp.eventfoto.message.MessageService;
+import com.tuapp.eventfoto.message.dto.MessageResponseDTO;
 import com.tuapp.eventfoto.photo.PhotoService;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class AdminViewController {
 
         List<PhotoResponseDTO> pendingPhotos = photoService.getPendingPhotos(slug, PageRequest.of(0, 100)).getContent();
         List<PhotoResponseDTO> approvedPhotos = photoService.getApprovedPhotos(slug, PageRequest.of(0, 100)).getContent();
+        List<MessageResponseDTO> messages = messageService.getMessages(slug, PageRequest.of(0, 100)).getContent();
 
         model.addAttribute("event", event);
         model.addAttribute("slug", slug);
@@ -49,6 +51,7 @@ public class AdminViewController {
         model.addAttribute("totalMessages", totalMessages);
         model.addAttribute("pendingPhotos", pendingPhotos);
         model.addAttribute("approvedPhotos", approvedPhotos);
+        model.addAttribute("messages", messages);
 
         return "admin/dashboard";
     }

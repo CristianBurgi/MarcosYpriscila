@@ -225,4 +225,51 @@ class PublicApiIntegrationTest {
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    @DisplayName("POST /api/v1/events/{slug}/messages - Debe rechazar mensaje ofensivo con 422 Unprocessable Entity")
+    void shouldRejectProfaneMessageWith422() throws Exception {
+        CreateMessageRequestDTO request = new CreateMessageRequestDTO("Spammer", "Sos un h.d.p.");
+
+        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/messages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.status", is(422)))
+                .andExpect(jsonPath("$.message", containsString("Tu mensaje no pudo publicarse")));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/photos/{photoId}/comments - Debe rechazar comentario ofensivo con 422 Unprocessable Entity")
+    void shouldRejectProfaneCommentWith422() throws Exception {
+        Photo photo = photoRepository.save(Photo.builder()
+                .event(testEvent)
+                .storageKey("photos/sample.jpg")
+                .isApproved(true)
+                .build());
+
+        CreateCommentRequestDTO request = new CreateCommentRequestDTO("Troll", "Sos una mierda");
+
+        mockMvc.perform(post("/api/v1/photos/" + photo.getId() + "/comments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.status", is(422)))
+                .andExpect(jsonPath("$.message", containsString("Tu comentario no pudo publicarse")));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/admin/messages/{messageId} - Debe eliminar mensaje del libro de visitas por admin")
+    void shouldDeleteMessageByAdmin() throws Exception {
+        com.tuapp.eventfoto.message.Message message = messageRepository.save(com.tuapp.eventfoto.message.Message.builder()
+                .event(testEvent)
+                .authorName("Spammer")
+                .text("Mensaje indeseado")
+                .isApproved(true)
+                .build());
+
+        mockMvc.perform(delete("/api/v1/admin/messages/" + message.getId())
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isNoContent());
+    }
 }

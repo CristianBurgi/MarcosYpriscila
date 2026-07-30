@@ -441,6 +441,9 @@
         <button class="tab-btn" id="tabBtnApproved" onclick="switchTab('approved')">
             🖼️ Fotos Guardadas / Aprobadas (<span id="tabApprovedBadge" th:text="${approvedPhotos != null ? approvedPhotos.size() : 0}">0</span>)
         </button>
+        <button class="tab-btn" id="tabBtnMessages" onclick="switchTab('messages')">
+            ✍️ Libro de Visitas (<span id="tabMessagesBadge" th:text="${messages != null ? messages.size() : 0}">0</span>)
+        </button>
     </div>
 
     <!-- Pestaña 1: Fotos Pendientes -->
@@ -465,6 +468,15 @@
                 <div class="photo-info">
                     <div>
                         <div class="uploader-name" th:text="${photo.uploaderName}">Invitado</div>
+                        <div th:if="${photo.comments != null and !photo.comments.isEmpty()}" style="margin-top: 8px; background: rgba(15, 23, 42, 0.6); padding: 8px 10px; border-radius: 8px;">
+                            <div th:each="comment : ${photo.comments}" th:id="'comment-item-' + ${comment.id}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
+                                    <strong th:text="${comment.authorName} + ':'">Invitado:</strong>
+                                    <span th:text="'&quot;' + ${comment.text} + '&quot;'">"Mensaje"</span>
+                                </div>
+                                <button type="button" class="action-delete-comment" th:data-id="${comment.id}" style="background: transparent; border: none; color: #fca5a5; cursor: pointer; font-size: 0.85rem; padding: 2px 4px;" title="Eliminar comentario">🗑️</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-actions">
                         <button class="btn-approve action-approve-photo" th:data-id="${photo.id}">Aprobar</button>
@@ -494,6 +506,15 @@
                 <div class="photo-info">
                     <div>
                         <div class="uploader-name" th:text="'📸 ' + ${photo.uploaderName}">Invitado</div>
+                        <div th:if="${photo.comments != null and !photo.comments.isEmpty()}" style="margin-top: 8px; background: rgba(15, 23, 42, 0.6); padding: 8px 10px; border-radius: 8px;">
+                            <div th:each="comment : ${photo.comments}" th:id="'comment-item-' + ${comment.id}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
+                                    <strong th:text="${comment.authorName} + ':'">Invitado:</strong>
+                                    <span th:text="'&quot;' + ${comment.text} + '&quot;'">"Mensaje"</span>
+                                </div>
+                                <button type="button" class="action-delete-comment" th:data-id="${comment.id}" style="background: transparent; border: none; color: #fca5a5; cursor: pointer; font-size: 0.85rem; padding: 2px 4px;" title="Eliminar comentario">🗑️</button>
+                            </div>
+                        </div>
                     </div>
                     <div style="margin-top: 12px;">
                         <button class="btn-reject action-delete-photo" th:data-id="${photo.id}" style="width: 100%;">
@@ -510,7 +531,33 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmación de Borrado -->
+    <!-- Pestaña 3: Mensajes del Libro de Visitas -->
+    <div id="tabContentMessages" style="display: none;">
+        <div class="section-header">
+            <h2 class="section-title">Mensajes del Libro de Visitas</h2>
+        </div>
+
+        <div id="messagesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;" th:if="${messages != null and !messages.isEmpty()}">
+            <div class="photo-card" th:each="msg : ${messages}" th:id="'msg-card-' + ${msg.id}" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="uploader-name" th:text="'✍️ ' + ${msg.authorName}">Invitado</div>
+                    <div style="font-size: 0.95rem; color: #cbd5e1; font-style: italic; margin-top: 8px; line-height: 1.4;" th:text="'&quot;' + ${msg.text} + '&quot;'">"¡Muchas felicidades!"</div>
+                </div>
+                <div style="margin-top: 16px;">
+                    <button class="btn-reject action-delete-message" th:data-id="${msg.id}" style="width: 100%;">
+                        🗑️ Eliminar Mensaje
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="messagesEmptyState" class="empty-state" th:style="${messages == null or messages.isEmpty()} ? 'display:block;' : 'display:none;'">
+            <h3>No hay mensajes aún ✍️</h3>
+            <p>Aún no se enviaron dedicatorias al libro de visitas.</p>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Borrado de Foto -->
     <div id="deleteConfirmModal" class="modal-overlay" style="display: none;">
         <div class="modal-card">
             <div class="modal-header">
@@ -524,6 +571,42 @@
             <div class="modal-actions">
                 <button id="btnCancelDelete" class="btn btn-cancel">Cancelar</button>
                 <button id="btnConfirmDelete" class="btn btn-danger-confirm">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Borrado de Mensaje -->
+    <div id="deleteMsgConfirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-icon">🗑️</div>
+                <h3>Eliminar Mensaje</h3>
+            </div>
+            <div class="modal-body">
+                <p>¿Seguro que querés borrar este mensaje del libro de visitas?</p>
+                <span class="modal-warning">Esta acción es irreversible y eliminará el mensaje de la pantalla en vivo.</span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeDeleteMsgModal()">Cancelar</button>
+                <button class="btn btn-danger-confirm" onclick="executeDeleteMessage()">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Borrado de Comentario -->
+    <div id="deleteCommentConfirmModal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-icon">🗑️</div>
+                <h3>Eliminar Comentario</h3>
+            </div>
+            <div class="modal-body">
+                <p>¿Seguro que querés borrar este comentario de la foto?</p>
+                <span class="modal-warning">Se eliminará el comentario de la foto en el álbum y la pantalla.</span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeDeleteCommentModal()">Cancelar</button>
+                <button class="btn btn-danger-confirm" onclick="executeDeleteComment()">Sí, Eliminar</button>
             </div>
         </div>
     </div>
@@ -560,6 +643,8 @@
 <script th:inline="javascript">
     const slug = /*[[${slug}]]*/ 'marcos-y-priscila';
     let targetPhotoIdToDelete = null;
+    let targetMsgIdToDelete = null;
+    let targetCommentIdToDelete = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         const btnApproveAll = document.getElementById('btnApproveAll');
@@ -587,7 +672,7 @@
             btnConfirmDelete.addEventListener('click', executeDeletePhoto);
         }
 
-        // Delegación de eventos para botones de tarjetas individuales
+        // Delegación de eventos para botones de tarjetas e ítems individuales
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('action-approve-photo')) {
                 const photoId = e.target.getAttribute('data-id');
@@ -595,6 +680,12 @@
             } else if (e.target.classList.contains('action-reject-photo') || e.target.classList.contains('action-delete-photo')) {
                 const photoId = e.target.getAttribute('data-id');
                 if (photoId) openDeleteModal(photoId);
+            } else if (e.target.classList.contains('action-delete-message')) {
+                const msgId = e.target.getAttribute('data-id');
+                if (msgId) openDeleteMsgModal(msgId);
+            } else if (e.target.classList.contains('action-delete-comment')) {
+                const commentId = e.target.getAttribute('data-id');
+                if (commentId) openDeleteCommentModal(commentId);
             }
         });
 
@@ -646,8 +737,70 @@
         }
     }
 
-    function rejectPhoto(photoId) {
-        openDeleteModal(photoId);
+    function openDeleteMsgModal(msgId) {
+        targetMsgIdToDelete = msgId;
+        const modal = document.getElementById('deleteMsgConfirmModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeDeleteMsgModal() {
+        targetMsgIdToDelete = null;
+        const modal = document.getElementById('deleteMsgConfirmModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function executeDeleteMessage() {
+        if (!targetMsgIdToDelete) return;
+        const msgId = targetMsgIdToDelete;
+        closeDeleteMsgModal();
+
+        try {
+            const res = await fetch(`/api/v1/admin/messages/${msgId}`, { method: 'DELETE' });
+            if (res.ok || res.status === 204) {
+                removeMessageCard(msgId);
+            } else if (res.status === 404) {
+                removeMessageCard(msgId);
+            } else {
+                const errText = await res.text().catch(() => '');
+                alert('No se pudo eliminar el mensaje (' + res.status + '): ' + errText);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error de comunicación con el servidor.');
+        }
+    }
+
+    function openDeleteCommentModal(commentId) {
+        targetCommentIdToDelete = commentId;
+        const modal = document.getElementById('deleteCommentConfirmModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeDeleteCommentModal() {
+        targetCommentIdToDelete = null;
+        const modal = document.getElementById('deleteCommentConfirmModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function executeDeleteComment() {
+        if (!targetCommentIdToDelete) return;
+        const commentId = targetCommentIdToDelete;
+        closeDeleteCommentModal();
+
+        try {
+            const res = await fetch(`/api/v1/admin/comments/${commentId}`, { method: 'DELETE' });
+            if (res.ok || res.status === 204) {
+                removeCommentItem(commentId);
+            } else if (res.status === 404) {
+                removeCommentItem(commentId);
+            } else {
+                const errText = await res.text().catch(() => '');
+                alert('No se pudo eliminar el comentario (' + res.status + '): ' + errText);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error de comunicación con el servidor.');
+        }
     }
 
     function setupSSE() {
@@ -666,9 +819,118 @@
             }
         });
 
+        eventSource.addEventListener('MESSAGE_CREATED', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                const msg = payload.data || payload;
+                if (msg && msg.id) addMessageCard(msg);
+            } catch (err) {
+                console.error('Error procesando nuevo mensaje vía SSE:', err);
+            }
+        });
+
+        eventSource.addEventListener('MESSAGE_DELETED', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                const data = payload.data || payload;
+                if (data && data.id) removeMessageCard(data.id);
+            } catch (err) {
+                console.error('Error procesando borrado de mensaje vía SSE:', err);
+            }
+        });
+
+        eventSource.addEventListener('COMMENT_DELETED', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                const data = payload.data || payload;
+                if (data && data.id) removeCommentItem(data.id);
+            } catch (err) {
+                console.error('Error procesando borrado de comentario vía SSE:', err);
+            }
+        });
+
         eventSource.onerror = (e) => {
             console.warn('Conexión SSE del dashboard reconectando...', e);
         };
+    }
+
+    function addMessageCard(msg) {
+        if (document.getElementById(`msg-card-${msg.id}`)) return;
+
+        const emptyState = document.getElementById('messagesEmptyState');
+        if (emptyState) emptyState.style.display = 'none';
+
+        const messagesGrid = document.getElementById('messagesGrid');
+        if (!messagesGrid) return;
+
+        const card = document.createElement('div');
+        card.className = 'photo-card';
+        card.id = `msg-card-${msg.id}`;
+        card.style.padding = '20px';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.justifyContent = 'space-between';
+        card.style.animation = 'fadeIn 0.5s ease-out';
+
+        card.innerHTML = `
+            <div>
+                <div class="uploader-name">✍️ ${escapeHtml(msg.authorName || 'Invitado')}</div>
+                <div style="font-size: 0.95rem; color: #cbd5e1; font-style: italic; margin-top: 8px; line-height: 1.4;">"${escapeHtml(msg.text)}"</div>
+            </div>
+            <div style="margin-top: 16px;">
+                <button class="btn-reject action-delete-message" data-id="${msg.id}" style="width: 100%;">
+                    🗑️ Eliminar Mensaje
+                </button>
+            </div>
+        `;
+
+        messagesGrid.insertBefore(card, messagesGrid.firstChild);
+
+        const badge = document.getElementById('tabMessagesBadge');
+        if (badge) {
+            let current = parseInt(badge.innerText) || 0;
+            badge.innerText = current + 1;
+        }
+    }
+
+    function removeMessageCard(msgId) {
+        const card = document.getElementById(`msg-card-${msgId}`);
+        if (card) card.remove();
+
+        const messagesGrid = document.getElementById('messagesGrid');
+        if (messagesGrid && messagesGrid.children.length === 0) {
+            const emptyState = document.getElementById('messagesEmptyState');
+            if (emptyState) emptyState.style.display = 'block';
+        }
+
+        const badge = document.getElementById('tabMessagesBadge');
+        if (badge) {
+            let current = parseInt(badge.innerText) || 0;
+            badge.innerText = Math.max(0, current - 1);
+        }
+    }
+
+    function removeCommentItem(commentId) {
+        const elem = document.getElementById(`comment-item-${commentId}`);
+        if (elem) elem.remove();
+    }
+
+    function switchTab(tabName) {
+        const pendingTab = document.getElementById('tabContentPending');
+        const approvedTab = document.getElementById('tabContentApproved');
+        const messagesTab = document.getElementById('tabContentMessages');
+
+        const btnPending = document.getElementById('tabBtnPending');
+        const btnApproved = document.getElementById('tabBtnApproved');
+        const btnMessages = document.getElementById('tabBtnMessages');
+
+        if (pendingTab) pendingTab.style.display = tabName === 'pending' ? 'block' : 'none';
+        if (approvedTab) approvedTab.style.display = tabName === 'approved' ? 'block' : 'none';
+        if (messagesTab) messagesTab.style.display = tabName === 'messages' ? 'block' : 'none';
+
+        if (btnPending) btnPending.classList.toggle('active', tabName === 'pending');
+        if (btnApproved) btnApproved.classList.toggle('active', tabName === 'approved');
+        if (btnMessages) btnMessages.classList.toggle('active', tabName === 'messages');
     }
 
     function addPendingPhotoCard(photo) {
