@@ -181,11 +181,11 @@
     <main class="menu-container">
         <div class="menu-grid">
             <!-- 1. Subir Foto -->
-            <a href="/upload.html" class="menu-card-compact">
+            <a href="/upload.html" class="menu-card-compact" id="upload-card">
                 <div class="menu-icon-compact">📸</div>
                 <div class="menu-text-content">
                     <div class="menu-title-compact">Subir Foto</div>
-                    <div class="menu-desc-compact">Sacá o elegí una foto para compartir en vivo.</div>
+                    <div class="menu-desc-compact" id="upload-desc">Sacá o elegí una foto para compartir en vivo.</div>
                 </div>
             </a>
 
@@ -214,5 +214,24 @@
         <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
     </footer>
 
+    <script>
+        const SLUG = 'marcos-y-priscila';
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}`);
+                if (res.ok) {
+                    const eventData = await res.json();
+                    if (eventData && eventData.isActive === false) {
+                        const uploadDesc = document.getElementById('upload-desc');
+                        if (uploadDesc) {
+                            uploadDesc.innerHTML = '🔒 <span style="color: #fca5a5; font-weight: 600;">Recepción de fotos cerrada</span>';
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Error verificando estado del evento:', e);
+            }
+        });
+    </script>
 </body>
 </html>

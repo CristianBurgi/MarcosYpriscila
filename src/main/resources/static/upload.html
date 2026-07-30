@@ -185,6 +185,9 @@
 
     <main class="container" style="max-width: 650px; margin: 0 auto; padding: 0 1.25rem;">
         <article class="card-glass">
+            <div id="event-closed-banner" style="display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 14px 18px; border-radius: 14px; text-align: center; margin-bottom: 1.5rem; font-weight: 600; font-size: 1.05rem;">
+                🔒 La recepción de fotografías se encuentra temporalmente cerrada por los novios.
+            </div>
             <form id="upload-form">
                 <label for="uploaderName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
                 <input type="text" id="uploaderName" name="uploaderName" placeholder="Ej: Sofía y Nahuel" required maxlength="150" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1rem;">
@@ -231,6 +234,8 @@
         let selectedFile = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            checkEventStatus();
+
             const btnCamera = document.getElementById('btn-camera');
             const btnGallery = document.getElementById('btn-gallery');
             const cameraFile = document.getElementById('cameraFile');
@@ -385,11 +390,52 @@
                     progressBox.style.display = 'none';
                     progressFill.style.width = '0%';
                 } finally {
-                    btn.disabled = false;
-                    btn.innerText = 'Subir y Compartir Foto';
+                    const btn = document.getElementById('btn-submit');
+                    if (btn && !btn.getAttribute('data-closed')) {
+                        btn.disabled = false;
+                        btn.innerText = 'Subir y Compartir Foto';
+                    }
                 }
             });
         });
+
+        async function checkEventStatus() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}`);
+                if (res.ok) {
+                    const eventData = await res.json();
+                    if (eventData && eventData.isActive === false) {
+                        disableUploadForm();
+                    }
+                }
+            } catch (err) {
+                console.warn('No se pudo verificar el estado del evento:', err);
+            }
+        }
+
+        function disableUploadForm() {
+            const closedBanner = document.getElementById('event-closed-banner');
+            if (closedBanner) closedBanner.style.display = 'block';
+
+            const nameInput = document.getElementById('uploaderName');
+            const captionInput = document.getElementById('caption');
+            if (nameInput) nameInput.disabled = true;
+            if (captionInput) captionInput.disabled = true;
+
+            const btnCamera = document.getElementById('btn-camera');
+            const btnGallery = document.getElementById('btn-gallery');
+            const btnSubmit = document.getElementById('btn-submit');
+
+            if (btnCamera) { btnCamera.disabled = true; btnCamera.style.opacity = '0.5'; btnCamera.style.cursor = 'not-allowed'; }
+            if (btnGallery) { btnGallery.disabled = true; btnGallery.style.opacity = '0.5'; btnGallery.style.cursor = 'not-allowed'; }
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.setAttribute('data-closed', 'true');
+                btnSubmit.innerText = '🔒 Recepción de Fotos Cerrada';
+                btnSubmit.style.opacity = '0.5';
+                btnSubmit.style.cursor = 'not-allowed';
+            }
+        }
 
         function escapeHtml(str) {
             if (!str) return '';

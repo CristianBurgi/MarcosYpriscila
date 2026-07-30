@@ -3,6 +3,8 @@ package com.tuapp.eventfoto.photo;
 import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
+import com.tuapp.eventfoto.common.exception.EventClosedException;
+import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
@@ -46,8 +48,11 @@ public class PhotoServiceImpl implements PhotoService {
         // 1. Aplicar rate limiting
         rateLimiterService.checkUploadUrlRateLimit(clientIp);
 
-        // 2. Validar que el evento exista por slug
-        eventService.getEventEntityBySlug(slug);
+        // 2. Validar que el evento exista por slug y esté activo
+        Event event = eventService.getEventEntityBySlug(slug);
+        if (!event.isActive()) {
+            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
+        }
 
         String contentType = request.contentType();
         String filename = request.filename();
@@ -65,6 +70,9 @@ public class PhotoServiceImpl implements PhotoService {
     @Transactional
     public PhotoResponseDTO confirmUpload(String slug, ConfirmUploadRequestDTO request) {
         Event event = eventService.getEventEntityBySlug(slug);
+        if (!event.isActive()) {
+            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
+        }
 
         String uploader = request.uploaderName() != null && !request.uploaderName().isBlank() ? request.uploaderName().trim() : "Invitado";
 
@@ -105,6 +113,9 @@ public class PhotoServiceImpl implements PhotoService {
         }
 
         Event event = eventService.getEventEntityBySlug(slug);
+        if (!event.isActive()) {
+            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
+        }
 
         String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {

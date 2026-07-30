@@ -51,6 +51,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
     }
 
+    @ExceptionHandler(EventClosedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEventClosed(
+            EventClosedException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request - Event Closed",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(MaxUploadLimitReachedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMaxUploadLimit(
             MaxUploadLimitReachedException ex, HttpServletRequest request) {
