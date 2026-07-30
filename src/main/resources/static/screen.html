@@ -62,7 +62,7 @@
             justify-content: center;
             align-items: center;
             padding-top: 5rem;
-            padding-bottom: 2rem;
+            padding-bottom: 4.5rem;
         }
 
         .photo-card-frame {
@@ -153,7 +153,7 @@
 
         .message-banner-overlay {
             position: absolute;
-            bottom: 3.5rem;
+            bottom: 4.5rem;
             left: 50%;
             transform: translateX(-50%) translateY(30px);
             width: 85%;
@@ -194,6 +194,93 @@
             font-size: 1.8rem;
             font-family: 'Cinzel', serif;
         }
+
+        /* Zócalo / Ticker de mensajes en la parte inferior */
+        .ticker-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 48px;
+            background: rgba(15, 12, 10, 0.94);
+            border-top: 1px solid rgba(229, 207, 179, 0.35);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.7);
+        }
+
+        .ticker-badge {
+            background: linear-gradient(135deg, #8c2b3e 0%, #521321 100%);
+            border-right: 1px solid rgba(229, 207, 179, 0.4);
+            color: #fdf6f7;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 0 1.2rem;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            z-index: 105;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .ticker-viewport {
+            flex-grow: 1;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .ticker-track {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            will-change: transform;
+            animation: tickerScroll 35s linear infinite;
+        }
+
+        .ticker-track:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes tickerScroll {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            font-size: 1.05rem;
+            color: #ffffff;
+            padding: 0 0.5rem;
+        }
+
+        .ticker-author {
+            color: #e5cfb3;
+            font-weight: 700;
+            margin-right: 0.35rem;
+        }
+
+        .ticker-separator {
+            margin: 0 1.5rem;
+            color: #d4af37;
+            opacity: 0.75;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -214,14 +301,30 @@
         <div class="banner-text" id="banner-text">¡Les deseamos toda la felicidad!</div>
     </div>
 
+    <!-- Zócalo Ticker de Mensajes (Loop continuo al pie) -->
+    <div class="ticker-bar">
+        <div class="ticker-badge">💌 Libro de Visitas</div>
+        <div class="ticker-viewport">
+            <div class="ticker-track" id="ticker-track"></div>
+        </div>
+    </div>
+
     <script>
         const SLUG = 'marcos-y-priscila';
         let photos = [];
         let currentIndex = 0;
         let slideshowInterval = null;
 
+        let tickerQueue = [];
+        const MAX_TICKER_MESSAGES = 50;
+        const DEFAULT_TICKER_MESSAGE = {
+            authorName: '',
+            text: '✨ ¡Dejá tu mensaje y felicitaciones a los novios escaneando el QR en las mesas! 📸'
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             fetchApprovedPhotos();
+            fetchTickerMessages();
             setupSSE();
         });
 
@@ -405,12 +508,81 @@
                 eventSource.addEventListener('MESSAGE_CREATED', (e) => {
                     const payload = extractPayload(e.data);
                     handleNewMessage(payload);
+                    addMessageToTicker(payload);
                 });
 
                 eventSource.onerror = (err) => {
                     console.warn('Reconectando canal SSE del salón...', err);
                 };
             }
+        }
+
+        // 8. Cargar mensajes iniciales para el ticker del zócalo
+        async function fetchTickerMessages() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/messages?page=0&size=20`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.content && data.content.length > 0) {
+                        tickerQueue = data.content.map(m => ({
+                            authorName: m.authorName && m.authorName.trim() ? m.authorName.trim() : 'Invitado',
+                            text: m.text ? m.text.trim() : ''
+                        })).filter(m => m.text);
+                    }
+                }
+            } catch (err) {
+                console.warn('Error al cargar mensajes del zócalo:', err);
+            }
+
+            if (tickerQueue.length === 0) {
+                tickerQueue = [DEFAULT_TICKER_MESSAGE];
+            }
+
+            renderTickerTrack();
+        }
+
+        // 9. Renderizar zócalo con duplicación (Set 1 + Set 2) para loop suave e infinito sin saltos
+        function renderTickerTrack() {
+            const track = document.getElementById('ticker-track');
+            if (!track) return;
+
+            const itemsHtml = tickerQueue.map(m => {
+                const authorHtml = m.authorName ? `<span class="ticker-author">${escapeHtml(m.authorName)}:</span>` : '';
+                return `<div class="ticker-item">${authorHtml}"${escapeHtml(m.text)}"</div><span class="ticker-separator">✨</span>`;
+            }).join('');
+
+            track.innerHTML = itemsHtml + itemsHtml;
+
+            // Calcular duración dinámica basada en la longitud total del texto (~70px/s)
+            const textLength = tickerQueue.reduce((acc, m) => acc + (m.authorName ? m.authorName.length : 0) + m.text.length, 0);
+            const duration = Math.max(18, Math.round(textLength * 0.32));
+            track.style.animationDuration = `${duration}s`;
+        }
+
+        // 10. Agregar nuevo mensaje en tiempo real al ticker
+        function addMessageToTicker(msgPayload) {
+            if (!msgPayload || !msgPayload.text) return;
+
+            if (tickerQueue.length === 1 && tickerQueue[0] === DEFAULT_TICKER_MESSAGE) {
+                tickerQueue = [];
+            }
+
+            const author = msgPayload.authorName && msgPayload.authorName.trim() ? msgPayload.authorName.trim() : 'Invitado';
+            const newMsg = { authorName: author, text: msgPayload.text.trim() };
+
+            const lastMsg = tickerQueue[tickerQueue.length - 1];
+            if (lastMsg && lastMsg.text === newMsg.text && lastMsg.authorName === newMsg.authorName) {
+                return;
+            }
+
+            tickerQueue.push(newMsg);
+
+            // Mantener máximo 50 mensajes en memoria descartando los más antiguos
+            if (tickerQueue.length > MAX_TICKER_MESSAGES) {
+                tickerQueue.shift();
+            }
+
+            renderTickerTrack();
         }
 
         function escapeHtml(str) {
