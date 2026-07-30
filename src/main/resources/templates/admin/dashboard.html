@@ -1055,24 +1055,6 @@
         }
     }
 
-    function switchTab(tabName) {
-        const pendingTab = document.getElementById('tabContentPending');
-        const approvedTab = document.getElementById('tabContentApproved');
-        const btnPending = document.getElementById('tabBtnPending');
-        const btnApproved = document.getElementById('tabBtnApproved');
-
-        if (tabName === 'approved') {
-            if (pendingTab) pendingTab.style.display = 'none';
-            if (approvedTab) approvedTab.style.display = 'block';
-            if (btnPending) btnPending.classList.remove('active');
-            if (btnApproved) btnApproved.classList.add('active');
-        } else {
-            if (pendingTab) pendingTab.style.display = 'block';
-            if (approvedTab) approvedTab.style.display = 'none';
-            if (btnPending) btnPending.classList.add('active');
-            if (btnApproved) btnApproved.classList.remove('active');
-        }
-    }
 
     function removePhotoCard(photoId) {
         const card = document.getElementById(`photo-card-${photoId}`);
