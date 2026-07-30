@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Álbum de Fotos | Boda de Marcos y Priscila</title>
-    <!-- Google Fonts & Theme -->
+    <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/theme.css?v=3">
     <style>
         html, body {
@@ -27,16 +28,16 @@
         }
 
         .wedding-title-main {
-            font-family: 'Cormorant Garamond', serif;
+            font-family: 'Playfair Display', 'Cormorant Garamond', serif;
             font-size: 3rem;
-            font-weight: 700;
+            font-weight: 600;
             color: #fdf6f7;
             margin-bottom: 0.25rem;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .wedding-title-icon {
@@ -279,9 +280,9 @@
 <body>
 
     <header class="container gallery-header">
-        <a href="/menu.html" class="back-link">← Volver al Menú</a>
+        <a href="/menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
         <h1 class="wedding-title-main">
-            <span class="wedding-title-icon">📸</span> Álbum de Fotos
+            <i class="fa-solid fa-images" style="color: #e6c594;"></i> Álbum de Fotos
         </h1>
         <p class="welcome-subtitle">Reviví los mejores momentos compartidos por nuestros invitados</p>
     </header>
@@ -313,7 +314,7 @@
             <section style="margin-top: 1.2rem;">
                 <!-- Formulario para publicar comentario (arriba) -->
                 <form id="comment-form" style="margin-bottom: 1.2rem; background: rgba(20, 3, 7, 0.5); padding: 1rem 1.2rem; border-radius: 14px; border: 1px solid rgba(247, 225, 228, 0.15);">
-                    <h5 style="font-size: 1rem; color: #fdf6f7; margin: 0 0 0.8rem 0; font-family: 'Plus Jakarta Sans', sans-serif;">💬 Dejá tu comentario</h5>
+                    <h5 style="font-size: 1rem; color: #fdf6f7; margin: 0 0 0.8rem 0; font-family: 'Plus Jakarta Sans', sans-serif;"><i class="fa-solid fa-comment-medical" style="color: #e6c594; margin-right: 6px;"></i> Dejá tu comentario</h5>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
                         <div>
@@ -330,7 +331,7 @@
                     <div id="comment-status"></div>
                 </form>
 
-                <h5 style="font-size: 1.05rem; color: #fdf6f7; margin-bottom: 0.8rem;">💬 Comentarios (<span id="modal-comments-count">0</span>)</h5>
+                <h5 style="font-size: 1.05rem; color: #fdf6f7; margin-bottom: 0.8rem;"><i class="fa-solid fa-comments" style="color: #e6c594; margin-right: 6px;"></i> Comentarios (<span id="modal-comments-count">0</span>)</h5>
                 
                 <div id="modal-comments-list" style="max-height: 240px; overflow-y: auto; padding-right: 4px;">
                     <p style="color: #e2c2c6;">Cargando comentarios...</p>
@@ -340,7 +341,7 @@
     </dialog>
 
     <footer class="footer-wedding">
-        <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
+        <small>✦ Boda de Marcos y Priscila &bull; Celebrando el amor ✦</small>
     </footer>
 
     <script>
@@ -394,8 +395,8 @@
                             <img src="${escapeHtml(imageUrl)}" alt="Foto de la boda" onerror="handleImageError(this)">
                         </div>
                         <div class="gallery-card-footer">
-                            <span class="badge-uploader">📸 ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
-                            <span class="comments-count" id="count-${photo.id}">💬 ${photo.commentCount || 0}</span>
+                            <span class="badge-uploader"><i class="fa-solid fa-camera" style="font-size: 0.8rem; margin-right: 4px;"></i> ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
+                            <span class="comments-count" id="count-${photo.id}"><i class="fa-solid fa-comments" style="font-size: 0.8rem; margin-right: 4px;"></i> ${photo.commentCount || 0}</span>
                         </div>
                     `;
                     card.addEventListener('click', () => openPhotoModal(photo));
@@ -432,7 +433,7 @@
                 imageUrl = '/' + imageUrl;
             }
 
-            document.getElementById('modal-uploader').innerText = `📸 Subida por ${photo.uploaderName || 'Invitado'}`;
+            document.getElementById('modal-uploader').innerHTML = `<i class="fa-solid fa-camera" style="margin-right: 8px; color: #e6c594;"></i> Subida por ${escapeHtml(photo.uploaderName || 'Invitado')}`;
             
             const modalImg = document.getElementById('modal-img');
             modalImg.onerror = function() {

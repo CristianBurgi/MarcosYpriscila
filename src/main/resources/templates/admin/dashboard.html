@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e1035 100%);
@@ -398,16 +399,18 @@
 <body>
 
 <nav class="navbar">
-    <div class="navbar-brand">Panel de Moderación — Boda</div>
+    <div class="navbar-brand"><i class="fa-solid fa-gem" style="margin-right: 8px;"></i> Panel de Moderación — Boda</div>
     <div class="navbar-user">
         <span th:text="${event.name}">Boda de Marcos y Priscila</span>
         <a href="/screen.html" target="_blank" class="btn btn-toggle-event" style="padding: 6px 14px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-            📺 Pantalla Salón
+            <i class="fa-solid fa-desktop"></i> Pantalla Salón
         </a>
-        <button class="btn btn-toggle-event" id="btnOpenQrModal" onclick="openQrModal()" style="padding: 6px 14px; font-size: 0.9rem;">
-            📱 Código QR Mesas
+        <button class="btn btn-toggle-event" id="btnOpenQrModal" onclick="openQrModal()" style="padding: 6px 14px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-qrcode"></i> Código QR Mesas
         </button>
-        <button class="btn-logout" id="btnLogout">Cerrar Sesión</button>
+        <button class="btn-logout" id="btnLogout" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+        </button>
     </div>
 </nav>
 
@@ -436,16 +439,16 @@
     <!-- Navegación por Pestañas -->
     <div class="tabs-header">
         <button class="tab-btn active" id="tabBtnPending" onclick="switchTab('pending')">
-            ⏳ Fotos Pendientes (<span id="tabPendingBadge" th:text="${pendingCount}">0</span>)
+            <i class="fa-solid fa-hourglass-half" style="color: #f59e0b; margin-right: 6px;"></i> Fotos Pendientes (<span id="tabPendingBadge" th:text="${pendingCount}">0</span>)
         </button>
         <button class="tab-btn" id="tabBtnApproved" onclick="switchTab('approved')">
-            🖼️ Fotos Guardadas / Aprobadas (<span id="tabApprovedBadge" th:text="${approvedPhotos != null ? approvedPhotos.size() : 0}">0</span>)
+            <i class="fa-solid fa-images" style="color: #3b82f6; margin-right: 6px;"></i> Fotos Guardadas (<span id="tabApprovedBadge" th:text="${approvedPhotos != null ? approvedPhotos.size() : 0}">0</span>)
         </button>
         <button class="tab-btn" id="tabBtnMessages" onclick="switchTab('messages')">
-            ✍️ Libro de Visitas (<span id="tabMessagesBadge" th:text="${messages != null ? messages.size() : 0}">0</span>)
+            <i class="fa-solid fa-book-open-reader" style="color: #a855f7; margin-right: 6px;"></i> Libro de Visitas (<span id="tabMessagesBadge" th:text="${messages != null ? messages.size() : 0}">0</span>)
         </button>
         <button class="tab-btn" id="tabBtnComments" onclick="switchTab('comments')">
-            💬 Comentarios en Fotos (<span id="tabCommentsBadge" th:text="${photoComments != null ? photoComments.size() : 0}">0</span>)
+            <i class="fa-solid fa-comments" style="color: #ec4899; margin-right: 6px;"></i> Comentarios en Fotos (<span id="tabCommentsBadge" th:text="${photoComments != null ? photoComments.size() : 0}">0</span>)
         </button>
     </div>
 

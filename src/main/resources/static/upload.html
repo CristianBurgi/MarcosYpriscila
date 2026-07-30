@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subir Fotografía | Boda de Marcos y Priscila</title>
-    <!-- Google Fonts & Theme -->
+    <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/theme.css?v=3">
     <style>
         html, body {
@@ -27,18 +28,24 @@
         }
 
         .wedding-title-main {
-            font-family: 'Cormorant Garamond', serif;
+            font-family: 'Playfair Display', 'Cormorant Garamond', serif;
             font-size: 3rem;
-            font-weight: 700;
+            font-weight: 600;
             color: #fdf6f7;
             margin-bottom: 0.25rem;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
         }
 
         .welcome-subtitle {
             font-size: 1.05rem;
             color: #e2c2c6;
+            max-width: 500px;
             margin: 0.4rem auto 1.5rem;
+            line-height: 1.5;
             text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
 
@@ -68,78 +75,80 @@
             background: rgba(59, 10, 20, 0.75);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-radius: 18px;
-            padding: 1.6rem;
+            border-radius: 20px;
+            padding: 1.8rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
             border: 1px solid rgba(247, 225, 228, 0.22);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            margin-bottom: 2rem;
+            box-sizing: border-box;
         }
 
         .source-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin: 1rem 0;
+            gap: 0.8rem;
+            margin-top: 0.6rem;
+            margin-bottom: 1.2rem;
         }
 
         .btn-source {
-            background: rgba(35, 6, 12, 0.75);
+            background: rgba(20, 3, 7, 0.6);
             border: 1px solid rgba(247, 225, 228, 0.3);
             color: #fdf6f7;
-            padding: 14px 12px;
+            padding: 1rem;
             border-radius: 14px;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.05rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            text-align: center;
-            transition: all 0.25s ease;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
         }
 
         .btn-source:hover {
-            border-color: #f7e1e4;
             background: rgba(140, 43, 62, 0.5);
+            border-color: #f7e1e4;
+            transform: translateY(-2px);
         }
 
         .btn-source.selected {
-            background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
-            border-color: #f7e1e4;
-            color: #ffffff;
+            background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
+            border-color: #e6c594;
             box-shadow: 0 4px 16px rgba(140, 43, 62, 0.5);
         }
 
         .preview-container {
             width: 100%;
-            max-height: 400px;
-            margin: 1.25rem 0;
-            border-radius: 12px;
-            overflow: hidden;
+            max-height: 380px;
             background: rgba(15, 3, 6, 0.85);
+            border-radius: 12px;
             display: none;
-            text-align: center;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.2rem;
+            overflow: hidden;
+            border: 1px solid rgba(247, 225, 228, 0.2);
             padding: 8px;
             box-sizing: border-box;
         }
 
         .preview-container img {
             max-width: 100%;
-            max-height: 380px;
+            max-height: 360px;
             object-fit: contain;
             border-radius: 8px;
         }
 
         .progress-bar-container {
             width: 100%;
-            height: 10px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
+            height: 8px;
+            background: rgba(20, 3, 7, 0.8);
+            border-radius: 4px;
             overflow: hidden;
-            margin-top: 1rem;
             display: none;
+            margin-top: 1rem;
+            border: 1px solid rgba(247, 225, 228, 0.2);
         }
 
         .progress-bar-fill {
@@ -150,21 +159,21 @@
         }
 
         .btn-burgundy-full {
+            width: 100%;
             background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
             border: 1px solid rgba(247, 225, 228, 0.25);
             color: #fdf6f7;
             font-weight: 600;
+            font-size: 1.05rem;
             border-radius: 12px;
-            padding: 0.85rem 1.5rem;
+            padding: 0.9rem 1.5rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            width: 100%;
-            font-size: 1.05rem;
         }
 
         .btn-burgundy-full:hover {
             background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
-            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.4);
+            box-shadow: 0 4px 18px rgba(140, 43, 62, 0.4);
         }
 
         .footer-wedding {
@@ -178,15 +187,17 @@
 </head>
 <body>
     <header class="container header-section">
-        <a href="/menu.html" class="back-link">← Volver al Menú</a>
-        <h1 class="wedding-title-main">📸 Subir Fotografía</h1>
+        <a href="/menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <h1 class="wedding-title-main">
+            <i class="fa-solid fa-cloud-arrow-up" style="color: #e6c594;"></i> Subir Fotografía
+        </h1>
         <p class="welcome-subtitle">Compartí tus momentos de la boda en tiempo real</p>
     </header>
 
     <main class="container" style="max-width: 650px; margin: 0 auto; padding: 0 1.25rem;">
         <article class="card-glass">
             <div id="event-closed-banner" style="display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 14px 18px; border-radius: 14px; text-align: center; margin-bottom: 1.5rem; font-weight: 600; font-size: 1.05rem;">
-                🔒 La recepción de fotografías se encuentra temporalmente cerrada por los novios.
+                <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por los novios.
             </div>
             <form id="upload-form">
                 <label for="uploaderName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
@@ -198,10 +209,10 @@
                 <label style="color: #fdf6f7; font-weight: 500;">Elegir Imagen <span style="color: #fca5a5;">*</span>:</label>
                 <div class="source-buttons">
                     <button type="button" class="btn-source" id="btn-camera">
-                        📷 Tomar Foto
+                        <i class="fa-solid fa-camera" style="font-size: 1.4rem; color: #e6c594;"></i> Tomar Foto
                     </button>
                     <button type="button" class="btn-source" id="btn-gallery">
-                        🖼️ Abrir Galería
+                        <i class="fa-solid fa-images" style="font-size: 1.4rem; color: #e6c594;"></i> Abrir Galería
                     </button>
                 </div>
 
@@ -226,7 +237,7 @@
     </main>
 
     <footer class="footer-wedding">
-        <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
+        <small>✦ Boda de Marcos y Priscila &bull; Celebrando el amor ✦</small>
     </footer>
 
     <script>

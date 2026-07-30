@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Libro de Visitas | Boda de Marcos y Priscila</title>
-    <!-- Google Fonts & Theme -->
+    <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/theme.css?v=3">
     <style>
         html, body {
@@ -27,12 +28,16 @@
         }
 
         .wedding-title-main {
-            font-family: 'Cormorant Garamond', serif;
+            font-family: 'Playfair Display', 'Cormorant Garamond', serif;
             font-size: 3rem;
-            font-weight: 700;
+            font-weight: 600;
             color: #fdf6f7;
             margin-bottom: 0.25rem;
             text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
         }
 
         .welcome-subtitle {
@@ -88,10 +93,10 @@
         }
 
         .message-author {
-            font-family: 'Cormorant Garamond', serif;
+            font-family: 'Playfair Display', serif;
             font-size: 1.3rem;
             color: #fdf6f7;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .message-text {
@@ -105,7 +110,9 @@
             color: #e6c594;
             font-size: 0.82rem;
             margin-top: 0.6rem;
-            display: block;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .btn-burgundy-full {
@@ -136,14 +143,16 @@
 </head>
 <body>
     <header class="container header-section">
-        <a href="/menu.html" class="back-link">← Volver al Menú</a>
-        <h1 class="wedding-title-main">✍️ Libro de Visitas</h1>
+        <a href="/menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <h1 class="wedding-title-main">
+            <i class="fa-solid fa-book-open-reader" style="color: #e6c594;"></i> Libro de Visitas
+        </h1>
         <p class="welcome-subtitle">Dejá tus buenos deseos para Marcos y Priscila</p>
     </header>
 
     <main class="container" style="max-width: 750px; margin: 0 auto; padding: 0 1.25rem;">
         <article class="card-glass">
-            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; color: #fdf6f7; margin-bottom: 1.2rem;">Escribir un Mensaje</h3>
+            <h3 style="font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #fdf6f7; margin-bottom: 1.2rem;"><i class="fa-solid fa-pen-nib" style="color: #e6c594; margin-right: 6px;"></i> Escribir un Mensaje</h3>
             
             <form id="message-form">
                 <label for="authorName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
@@ -160,7 +169,7 @@
         </article>
 
         <section style="margin-top: 2rem;">
-            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: #fdf6f7; margin-bottom: 1.2rem;">💬 Felicitaciones de los Invitados</h3>
+            <h3 style="font-family: 'Playfair Display', serif; font-size: 1.6rem; color: #fdf6f7; margin-bottom: 1.2rem;"><i class="fa-solid fa-comments" style="color: #e6c594; margin-right: 6px;"></i> Felicitaciones de los Invitados</h3>
             <div id="messages-list">
                 <p style="color: #e2c2c6;">Cargando mensajes del libro de visitas...</p>
             </div>
@@ -168,7 +177,7 @@
     </main>
 
     <footer class="footer-wedding">
-        <small>✨ Boda de Marcos y Priscila &bull; Celebrando el amor ✨</small>
+        <small>✦ Boda de Marcos y Priscila &bull; Celebrando el amor ✦</small>
     </footer>
 
     <script>
@@ -195,7 +204,7 @@
                     <div class="message-card">
                         <div class="message-author">${escapeHtml(msg.authorName)}</div>
                         <div class="message-text">${escapeHtml(msg.text)}</div>
-                        <span class="message-time">⏰ ${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
+                        <span class="message-time"><i class="fa-regular fa-clock" style="font-size: 0.8rem;"></i> ${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
                     </div>
                 `).join('');
 
@@ -239,7 +248,7 @@
                         throw new Error(errData.message || 'Error al enviar el mensaje.');
                     }
 
-                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Mensaje enviado con éxito a los novios! ❤️</div>';
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Mensaje enviado con éxito a los novios! <i class="fa-solid fa-heart" style="color: #f472b6;"></i></div>';
                     document.getElementById('messageText').value = '';
 
                     setTimeout(() => { statusDiv.innerHTML = ''; }, 5000);
