@@ -281,6 +281,71 @@
             opacity: 0.75;
             font-size: 0.9rem;
         }
+
+        /* Tarjeta Flotante QR para Pantalla Salón */
+        .qr-floating-card {
+            position: fixed;
+            bottom: 4.2rem;
+            right: 2rem;
+            z-index: 90;
+            background: linear-gradient(135deg, rgba(28, 22, 18, 0.92), rgba(16, 12, 10, 0.95));
+            border: 1px solid rgba(229, 207, 179, 0.4);
+            border-radius: 18px;
+            padding: 0.85rem 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.3s ease;
+        }
+
+        .qr-floating-card:hover {
+            transform: translateY(-4px);
+            border-color: #d4af37;
+            box-shadow: 0 16px 48px rgba(212, 175, 55, 0.35);
+        }
+
+        .qr-img-wrapper {
+            background: #ffffff;
+            padding: 6px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        }
+
+        .qr-img-wrapper img {
+            width: 76px;
+            height: 76px;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .qr-text-group {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .qr-title {
+            color: #e5cfb3;
+            font-family: 'Cinzel', serif;
+            font-size: 1.08rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .qr-subtitle {
+            color: #ffffff;
+            font-size: 0.88rem;
+            font-weight: 600;
+            opacity: 0.92;
+            line-height: 1.25;
+        }
     </style>
 </head>
 <body>
@@ -289,6 +354,17 @@
         <div class="wedding-brand">💍 MARCOS & PRISCILA</div>
         <div class="header-tag">📸 ¡Subí tus fotos a la boda desde tu celular!</div>
     </header>
+
+    <!-- Tarjeta Flotante con Código QR para los invitados -->
+    <div class="qr-floating-card">
+        <div class="qr-img-wrapper">
+            <img src="/api/v1/events/marcos-y-priscila/qr?size=300" alt="Código QR Boda Marcos y Priscila">
+        </div>
+        <div class="qr-text-group">
+            <div class="qr-title">📱 Escaneá el QR</div>
+            <div class="qr-subtitle">¡y subí tu foto en vivo!</div>
+        </div>
+    </div>
 
     <div class="slideshow-stage" id="stage">
         <div class="empty-state" id="empty-message">
