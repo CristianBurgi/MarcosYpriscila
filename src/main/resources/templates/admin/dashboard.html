@@ -493,9 +493,6 @@
         <div class="section-header">
             <h2 class="section-title">Fotografías Pendientes de Aprobación</h2>
             <div class="actions-group">
-                <button class="btn btn-download-zip" id="btnDownloadFullZip">
-                    📦 Descargar Álbum Completo (ZIP)
-                </button>
                 <button class="btn btn-toggle-event" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar Subidas' : 'Reabrir Subidas'">
                     Cerrar Subidas
                 </button>
@@ -535,18 +532,28 @@
             <h3>¡Todo al día! 🎉</h3>
             <p>No hay fotografías pendientes de moderación en este momento.</p>
         </div>
-        </div>
     </div>
 
     <!-- Pestaña 2: Fotos Aprobadas y Guardadas en la BD -->
     <div id="tabContentApproved" style="display: none;">
         <div class="section-header">
             <h2 class="section-title">Fotografías Guardadas en el Álbum / Base de Datos</h2>
+            <div class="actions-group">
+                <button class="btn btn-download-selected" id="btnDownloadSelectedZip">
+                    📥 Descargar Seleccionadas (ZIP)
+                </button>
+                <button class="btn btn-download-zip" id="btnDownloadFullZip">
+                    📦 Descargar Álbum Completo (ZIP)
+                </button>
+            </div>
         </div>
 
         <div id="approvedPhotosGrid" class="photos-grid" th:if="${approvedPhotos != null and !approvedPhotos.isEmpty()}">
             <div class="photo-card" th:each="photo : ${approvedPhotos}" th:id="'photo-card-' + ${photo.id}">
-                <div class="photo-img-wrapper">
+                <div class="photo-img-wrapper" style="position: relative;">
+                    <label style="position: absolute; top: 10px; left: 10px; z-index: 10; cursor: pointer; background: rgba(15, 23, 42, 0.85); border-radius: 8px; padding: 6px 10px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                        <input type="checkbox" class="approved-photo-checkbox" th:value="${photo.id}"> Seleccionar
+                    </label>
                     <img th:src="${photo.url}" alt="Fotografía guardada" loading="lazy">
                 </div>
                 <div class="photo-info">
@@ -562,10 +569,9 @@
                             </div>
                         </div>
                     </div>
-                    <div style="margin-top: 12px;">
-                        <button class="btn-reject action-delete-photo" th:data-id="${photo.id}" style="width: 100%;">
-                            🗑️ Eliminar Definitivamente
-                        </button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+                        <button class="btn-download action-download-single" th:data-id="${photo.id}">⬇️ Descargar</button>
+                        <button class="btn-reject action-delete-photo" th:data-id="${photo.id}">🗑️ Eliminar</button>
                     </div>
                 </div>
             </div>
@@ -730,6 +736,15 @@
             btnDownloadFullZip.addEventListener('click', downloadFullZip);
         }
 
+        const btnDownloadSelectedZip = document.getElementById('btnDownloadSelectedZip');
+        if (btnDownloadSelectedZip) {
+            btnDownloadSelectedZip.addEventListener('click', () => {
+                const checkedBoxes = document.querySelectorAll('.approved-photo-checkbox:checked');
+                const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+                downloadSelectedPhotos(selectedIds);
+            });
+        }
+
         const btnToggleEvent = document.getElementById('btnToggleEvent');
         if (btnToggleEvent) {
             btnToggleEvent.addEventListener('click', toggleEventStatus);
@@ -755,7 +770,13 @@
             if (e.target.classList.contains('action-approve-photo')) {
                 const photoId = e.target.getAttribute('data-id');
                 if (photoId) approvePhoto(photoId);
+            } else if (e.target.classList.contains('action-download-single')) {
+                const photoId = e.target.getAttribute('data-id');
+                if (photoId) downloadSinglePhoto(photoId);
             } else if (e.target.classList.contains('action-reject-photo') || e.target.classList.contains('action-delete-photo')) {
+                const photoId = e.target.getAttribute('data-id');
+                if (photoId) openDeleteModal(photoId);
+            } else if (e.target.classList.contains('action-delete-message')) {
                 const photoId = e.target.getAttribute('data-id');
                 if (photoId) openDeleteModal(photoId);
             } else if (e.target.classList.contains('action-delete-message')) {
