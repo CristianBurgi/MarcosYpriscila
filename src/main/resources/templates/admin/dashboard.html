@@ -171,6 +171,42 @@
             background: rgba(168, 85, 247, 0.4);
         }
 
+        .btn-download-zip {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+        }
+
+        .btn-download-zip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-download-selected {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+        }
+
+        .btn-download-selected:hover {
+            background: rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-download {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-download:hover {
+            background: rgba(59, 130, 246, 0.4);
+        }
+
         .photos-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -457,6 +493,9 @@
         <div class="section-header">
             <h2 class="section-title">Fotografías Pendientes de Aprobación</h2>
             <div class="actions-group">
+                <button class="btn btn-download-zip" id="btnDownloadFullZip">
+                    📦 Descargar Álbum Completo (ZIP)
+                </button>
                 <button class="btn btn-toggle-event" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar Subidas' : 'Reabrir Subidas'">
                     Cerrar Subidas
                 </button>
@@ -486,7 +525,7 @@
                     </div>
                     <div class="card-actions">
                         <button class="btn-approve action-approve-photo" th:data-id="${photo.id}">Aprobar</button>
-                        <button class="btn-reject action-delete-photo" th:data-id="${photo.id}">Rechazar</button>
+                        <button class="btn-reject action-reject-photo" th:data-id="${photo.id}">Rechazar</button>
                     </div>
                 </div>
             </div>
@@ -495,6 +534,7 @@
         <div id="emptyState" class="empty-state" th:style="${pendingPhotos.isEmpty()} ? 'display:block;' : 'display:none;'">
             <h3>¡Todo al día! 🎉</h3>
             <p>No hay fotografías pendientes de moderación en este momento.</p>
+        </div>
         </div>
     </div>
 
@@ -685,6 +725,11 @@
             btnApproveAll.addEventListener('click', approveAll);
         }
 
+        const btnDownloadFullZip = document.getElementById('btnDownloadFullZip');
+        if (btnDownloadFullZip) {
+            btnDownloadFullZip.addEventListener('click', downloadFullZip);
+        }
+
         const btnToggleEvent = document.getElementById('btnToggleEvent');
         if (btnToggleEvent) {
             btnToggleEvent.addEventListener('click', toggleEventStatus);
@@ -849,6 +894,31 @@
                 }
             } catch (err) {
                 console.error('Error procesando foto pendiente vía SSE:', err);
+            }
+        });
+
+        eventSource.addEventListener('PHOTO_REJECTED', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                const data = payload.data || payload;
+                const photoId = data.photoId || data.id;
+                if (photoId) {
+                    removePhotoCard(photoId);
+                }
+            } catch (err) {
+                console.error('Error procesando foto rechazada vía SSE:', err);
+            }
+        });
+
+        eventSource.addEventListener('PHOTO_APPROVED', (e) => {
+            try {
+                const payload = JSON.parse(e.data);
+                const photo = payload.data || payload;
+                if (photo && photo.id) {
+                    removePhotoCard(photo.id);
+                }
+            } catch (err) {
+                console.error('Error procesando foto aprobada vía SSE:', err);
             }
         });
 
@@ -1142,6 +1212,23 @@
             let updatedApproved = Math.max(0, currentApproved - 1);
             approvedBadge.innerText = updatedApproved;
         }
+    }
+
+    function downloadFullZip() {
+        window.location.href = `/api/v1/admin/photos/download-zip?slug=${encodeURIComponent(slug)}`;
+    }
+
+    function downloadSinglePhoto(photoId) {
+        window.location.href = `/api/v1/admin/photos/${encodeURIComponent(photoId)}/download`;
+    }
+
+    function downloadSelectedPhotos(photoIds) {
+        if (!photoIds || photoIds.length === 0) {
+            alert('Por favor selecciona al menos una fotografía para descargar.');
+            return;
+        }
+        const idsParam = photoIds.join(',');
+        window.location.href = `/api/v1/admin/photos/download-zip?slug=${encodeURIComponent(slug)}&photoIds=${encodeURIComponent(idsParam)}`;
     }
 
     async function logout() {

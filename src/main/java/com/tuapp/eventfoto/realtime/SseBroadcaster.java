@@ -78,6 +78,15 @@ public class SseBroadcaster {
     }
 
     /**
+     * Transmite la notificación de una fotografía rechazada y eliminada.
+     */
+    public void broadcastPhotoRejected(UUID eventId, UUID photoId) {
+        Map<String, Object> data = Map.of("photoId", photoId);
+        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_REJECTED", data);
+        broadcast(eventId, "PHOTO_REJECTED", notification);
+    }
+
+    /**
      * Transmite la notificación de un nuevo mensaje en el libro de visitas a todos los suscriptores del evento.
      */
     public void broadcastMessageCreated(UUID eventId, MessageResponseDTO message) {

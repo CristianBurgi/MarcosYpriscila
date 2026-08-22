@@ -17,6 +17,10 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
     List<Photo> findByEventIdAndIsApprovedFalse(UUID eventId);
 
+    List<Photo> findByEventIdAndIsApprovedTrue(UUID eventId);
+
+    List<Photo> findByIdInAndIsApprovedTrue(List<UUID> ids);
+
     Page<Photo> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
 
     long countByEventId(UUID eventId);

@@ -8,6 +8,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
+
+import java.io.IOException;
+import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,13 +63,19 @@ public class AdminPhotoController {
 
     /**
      * DELETE /api/v1/admin/photos/{photoId}
-     * Elimina definitivamente una fotografía del almacenamiento R2/local y de la base de datos.
+     * PATCH /api/v1/admin/photos/{photoId}/reject
+     * Rechaza y elimina una fotografía de R2 y de la base de datos.
      */
     @DeleteMapping("/{photoId}")
-    public ResponseEntity<Void> deletePhoto(@PathVariable String photoId) {
+    public ResponseEntity<Void> rejectPhoto(@PathVariable String photoId) {
         UUID uuid = parseUUID(photoId);
-        photoService.deletePhoto(uuid);
+        photoService.rejectPhoto(uuid);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{photoId}/reject")
+    public ResponseEntity<Void> rejectPhotoPatch(@PathVariable String photoId) {
+        return rejectPhoto(photoId);
     }
 
     /**
@@ -75,6 +87,45 @@ public class AdminPhotoController {
             @RequestParam(defaultValue = "marcos-y-priscila") String slug) {
         List<PhotoResponseDTO> approvedPhotos = photoService.approveAllPendingPhotos(slug);
         return ResponseEntity.ok(approvedPhotos);
+    }
+
+    /**
+     * GET /api/v1/admin/photos/{photoId}/download
+     * Genera una Presigned GET URL en R2 y redirige (HTTP 302) al cliente para descarga directa.
+     */
+    @GetMapping("/{photoId}/download")
+    public ResponseEntity<Void> downloadSinglePhoto(@PathVariable String photoId) {
+        UUID uuid = parseUUID(photoId);
+        String presignedDownloadUrl = photoService.generateDownloadUrl(uuid);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(presignedDownloadUrl))
+                .build();
+    }
+
+    /**
+     * GET /api/v1/admin/photos/download-zip?slug=marcos-y-priscila&photoIds=uuid1,uuid2
+     * Transmite en tiempo real (streaming) un archivo ZIP con las fotografías aprobadas.
+     */
+    @GetMapping({"/download-zip", "/events/{slug}/download-zip"})
+    public void downloadPhotosZip(
+            @PathVariable(required = false) String slugPath,
+            @RequestParam(defaultValue = "marcos-y-priscila") String slug,
+            @RequestParam(required = false) List<String> photoIds,
+            HttpServletResponse response) throws IOException {
+
+        String effectiveSlug = (slugPath != null && !slugPath.isBlank()) ? slugPath : slug;
+
+        List<UUID> parsedUuids = Collections.emptyList();
+        if (photoIds != null && !photoIds.isEmpty()) {
+            parsedUuids = photoIds.stream()
+                    .map(this::parseUUID)
+                    .toList();
+        }
+
+        response.setContentType("application/zip");
+        response.setHeader("Content-Disposition", String.format("attachment; filename=\"album-%s.zip\"", effectiveSlug));
+
+        photoService.streamPhotosZip(effectiveSlug, parsedUuids, response.getOutputStream());
     }
 
     private UUID parseUUID(String rawId) {

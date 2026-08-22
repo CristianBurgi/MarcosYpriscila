@@ -25,11 +25,17 @@ import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.StorageException;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Slf4j
 @Service
@@ -213,29 +219,27 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     @Transactional
-    public void deletePhoto(UUID photoId) {
+    public void rejectPhoto(UUID photoId) {
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
+        UUID eventId = photo.getEvent().getId();
         String storageKey = photo.getStorageKey();
-        if (storageKey != null && !storageKey.isBlank()) {
-            try {
-                storageService.deleteFile(storageKey);
-                log.info("Archivo en almacenamiento con clave '{}' eliminado para la foto ID {}", storageKey, photoId);
-            } catch (Exception e) {
-                log.warn("Fallo al eliminar archivo en almacenamiento para clave '{}' (foto ID {}): {}. Se procederá a eliminar la foto de la BD de todas formas.",
-                        storageKey, photoId, e.getMessage());
-            }
+
+        // 1. Eliminar primero el objeto en almacenamiento (Cloudflare R2 o local)
+        try {
+            storageService.deleteFile(storageKey);
+        } catch (Exception e) {
+            log.error("Error al eliminar objeto '{}' del storage para la foto {}: {}", storageKey, photoId, e.getMessage());
+            // No detenemos el flujo para asegurar que el registro de la BD sea limpiado si el almacenamiento responde con error
         }
 
+        // 2. Eliminar registro en BD (los comentarios asociados se eliminan en cascada)
         photoRepository.delete(photo);
-        log.info("Fotografía con ID {} eliminada exitosamente de la base de datos por administración", photoId);
-    }
+        log.info("Fotografía con ID {} rechazada y eliminada de R2/Storage y BD por administración", photoId);
 
-    @Override
-    @Transactional
-    public void rejectPhoto(UUID photoId) {
-        deletePhoto(photoId);
+        // 3. Notificar en tiempo real vía SSE
+        sseBroadcaster.broadcastPhotoRejected(eventId, photoId);
     }
 
     @Override
@@ -273,6 +277,80 @@ public class PhotoServiceImpl implements PhotoService {
     public long countPendingPhotos(String slug) {
         Event event = eventService.getEventEntityBySlug(slug);
         return photoRepository.countByEventIdAndIsApprovedFalse(event.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String generateDownloadUrl(UUID photoId) {
+        Photo photo = photoRepository.findById(photoId)
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
+
+        if (!photo.isApproved()) {
+            throw new ResourceNotFoundException("La fotografía especificada no está aprobada para su descarga.");
+        }
+
+        return storageService.generateDownloadUrl(photo.getStorageKey());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void streamPhotosZip(String slug, List<UUID> photoIds, OutputStream outputStream) {
+        Event event = eventService.getEventEntityBySlug(slug);
+
+        List<Photo> photosToZip;
+        if (photoIds != null && !photoIds.isEmpty()) {
+            photosToZip = photoRepository.findByIdInAndIsApprovedTrue(photoIds);
+        } else {
+            photosToZip = photoRepository.findByEventIdAndIsApprovedTrue(event.getId());
+        }
+
+        if (photosToZip.isEmpty()) {
+            log.info("No se encontraron fotografías aprobadas para empaquetar en el archivo ZIP del evento '{}'", slug);
+        }
+
+        Set<String> usedEntryNames = new HashSet<>();
+
+        try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
+            for (Photo photo : photosToZip) {
+                String entryName = buildZipEntryName(photo, usedEntryNames);
+                ZipEntry zipEntry = new ZipEntry(entryName);
+                zos.putNextEntry(zipEntry);
+
+                try (InputStream is = storageService.streamObject(photo.getStorageKey())) {
+                    is.transferTo(zos);
+                } catch (Exception e) {
+                    log.error("Error al transmitir la foto ID {} ('{}') al archivo ZIP: {}", photo.getId(), photo.getStorageKey(), e.getMessage());
+                }
+
+                zos.closeEntry();
+            }
+            zos.finish();
+            log.info("ZIP streaming completado exitosamente con {} fotografías aprobadas para el evento '{}'", photosToZip.size(), slug);
+        } catch (IOException e) {
+            log.error("Error de E/S al generar la transmisión del archivo ZIP: {}", e.getMessage(), e);
+            throw new StorageException("Error al generar la descarga del archivo ZIP", e);
+        }
+    }
+
+    private String buildZipEntryName(Photo photo, Set<String> usedNames) {
+        String shortId = photo.getId().toString().substring(0, 8);
+        String uploader = photo.getUploaderName() != null && !photo.getUploaderName().isBlank()
+                ? photo.getUploaderName().replaceAll("[^a-zA-Z0-9_-]", "_")
+                : "Invitado";
+
+        String ext = ".jpg";
+        if (photo.getStorageKey() != null && photo.getStorageKey().contains(".")) {
+            ext = photo.getStorageKey().substring(photo.getStorageKey().lastIndexOf("."));
+        }
+
+        String baseName = String.format("%s_%s%s", shortId, uploader, ext);
+        String finalName = baseName;
+        int counter = 1;
+        while (usedNames.contains(finalName)) {
+            finalName = String.format("%s_%s_%d%s", shortId, uploader, counter++, ext);
+        }
+        usedNames.add(finalName);
+        return finalName;
     }
 
     private String getFileExtension(String filename, String contentType) {

@@ -194,4 +194,32 @@ class AdminSecurityTest {
         Event updatedEvent = eventRepository.findById(event.getId()).orElseThrow();
         assertFalse(updatedEvent.isActive());
     }
+
+    @Test
+    @DisplayName("Redirigir HTTP 302 para descarga individual de foto aprobada")
+    void shouldRedirectForSinglePhotoDownload() throws Exception {
+        Photo approvedPhoto = photoRepository.saveAndFlush(Photo.builder()
+                .event(event)
+                .storageKey("photos/marcos-y-priscila/approved.jpg")
+                .uploaderName("Carlos")
+                .isApproved(true)
+                .build());
+
+        mockMvc.perform(get("/api/v1/admin/photos/" + approvedPhoto.getId() + "/download")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    @DisplayName("Generar descarga ZIP de fotos aprobadas mediante streaming")
+    void shouldStreamApprovedPhotosZip() throws Exception {
+        photoRepository.save(Photo.builder().event(event).storageKey("p1.jpg").isApproved(true).build());
+        photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p2.jpg").isApproved(true).build());
+
+        mockMvc.perform(get("/api/v1/admin/photos/download-zip?slug=" + event.getSlug())
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/zip"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"album-marcos-y-priscila.zip\""));
+    }
 }

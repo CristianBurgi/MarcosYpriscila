@@ -108,4 +108,37 @@ class StorageServiceTest {
         // Assert
         assertEquals("https://account-id.r2.cloudflarestorage.com/test-boda-bucket/photos/foto1.jpg", publicUrl);
     }
+
+    @Test
+    @DisplayName("Debe invocar a S3Client.deleteObject al llamar a deleteFile")
+    void shouldDeleteFileFromR2() {
+        // Arrange
+        String key = "photos/foto1.jpg";
+
+        // Act
+        assertDoesNotThrow(() -> storageService.deleteFile(key));
+
+        // Assert
+        verify(s3Client, times(1)).deleteObject(any(software.amazon.awssdk.services.s3.model.DeleteObjectRequest.class));
+    }
+
+    @Test
+    @DisplayName("Debe generar exitosamente una Presigned GET URL de descarga")
+    void shouldGenerateDownloadUrl() throws MalformedURLException {
+        // Arrange
+        String key = "photos/foto1.jpg";
+        URL fakeUrl = URI.create("https://account-id.r2.cloudflarestorage.com/test-boda-bucket/" + key + "?signature=download123").toURL();
+        software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest presignedGetObjectRequest = mock(software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest.class);
+
+        when(presignedGetObjectRequest.url()).thenReturn(fakeUrl);
+        when(s3Presigner.presignGetObject(any(software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class))).thenReturn(presignedGetObjectRequest);
+
+        // Act
+        String downloadUrl = storageService.generateDownloadUrl(key);
+
+        // Assert
+        assertNotNull(downloadUrl);
+        assertTrue(downloadUrl.contains("signature=download123"));
+        verify(s3Presigner, times(1)).presignGetObject(any(software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest.class));
+    }
 }

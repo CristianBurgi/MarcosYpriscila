@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.OutputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,4 +36,8 @@ public interface PhotoService {
     long countTotalPhotos(String slug);
 
     long countPendingPhotos(String slug);
+
+    String generateDownloadUrl(UUID photoId);
+
+    void streamPhotosZip(String slug, List<UUID> photoIds, OutputStream outputStream);
 }

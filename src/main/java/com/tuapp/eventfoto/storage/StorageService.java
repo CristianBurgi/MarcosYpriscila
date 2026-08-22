@@ -1,5 +1,7 @@
 package com.tuapp.eventfoto.storage;
 
+import java.io.InputStream;
+
 public interface StorageService {
 
     /**
@@ -11,6 +13,14 @@ public interface StorageService {
      * @return URL prefirmada HTTPS lista para PUT desde el cliente
      */
     String generateUploadUrl(String key, String contentType);
+
+    /**
+     * Genera una Presigned GET URL de descarga directa con expiración corta (10 minutos) para un objeto en R2.
+     *
+     * @param key Clave del objeto en el bucket
+     * @return URL prefirmada HTTPS de lectura directa
+     */
+    String generateDownloadUrl(String key);
 
     /**
      * Genera la URL pública de acceso a un archivo almacenado en Cloudflare R2.
@@ -38,9 +48,18 @@ public interface StorageService {
     byte[] convertHeicToJpeg(byte[] heicBytes);
 
     /**
-     * Elimina un archivo u objeto del almacenamiento (Cloudflare R2 o almacenamiento local).
+    /**
+     * Elimina de forma permanente un objeto del almacenamiento (Cloudflare R2 o disco local).
      *
-     * @param key Clave del objeto en el bucket o ruta relativa
+     * @param key Clave del objeto a eliminar
      */
     void deleteFile(String key);
+
+    /**
+     * Abre y devuelve un InputStream hacia el contenido del objeto almacenado en R2 o disco local.
+     *
+     * @param key Clave del objeto a transmitir
+     * @return InputStream del objeto
+     */
+    InputStream streamObject(String key);
 }
