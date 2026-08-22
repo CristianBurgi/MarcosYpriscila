@@ -247,7 +247,6 @@ public class R2StorageService implements StorageService {
         } catch (Exception e) {
             log.error("Error al obtener InputStream del objeto '{}' en Cloudflare R2: {}", key, e.getMessage(), e);
             throw new StorageException("Error al transmitir el archivo desde Cloudflare R2", e);
->>>>>>> b9595d5 (feat(admin): agregar descarga de fotos (302 y ZIP streaming) y borrado en R2 al rechazar)
         }
     }
 

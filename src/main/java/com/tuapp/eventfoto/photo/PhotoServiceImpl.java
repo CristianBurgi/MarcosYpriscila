@@ -244,6 +244,12 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     @Transactional
+    public void deletePhoto(UUID photoId) {
+        rejectPhoto(photoId);
+    }
+
+    @Override
+    @Transactional
     public List<PhotoResponseDTO> approveAllPendingPhotos(String slug) {
         Event event = eventService.getEventEntityBySlug(slug);
         List<Photo> pendingPhotos = photoRepository.findByEventIdAndIsApprovedFalse(event.getId());
