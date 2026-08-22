@@ -9,7 +9,7 @@ Los invitados escanean un QR, suben sus fotos desde el celular sin instalar nada
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.2-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Railway-4169E1?logo=postgresql&logoColor=white)
 ![Cloudflare R2](https://img.shields.io/badge/Storage-Cloudflare%20R2-F38020?logo=cloudflare&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-36%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)
 ![Deploy](https://img.shields.io/badge/deploy-Railway-8B5CF6)
 
 </div>
@@ -82,13 +82,14 @@ La aplicación está desplegada en producción en Railway:
 - 🖼️ **Álbum colaborativo** — Galería masonry con todas las fotos aprobadas del evento, paginada y optimizada para conexiones móviles.
 - 💬 **Comentarios por foto** — Cada foto del álbum admite comentarios de otros invitados (los más recientes primero).
 - 💌 **Libro de Visitas** — Un muro de mensajes de texto dedicado para que los invitados le dejen buenos deseos a los novios.
-- ⬇️ **Descarga de fotos** — Cualquier invitado puede descargar las fotos del álbum.
 - 📲 **PWA instalable** — El menú se puede agregar a la pantalla de inicio del celular como una app nativa.
 
 ### Para el Organizador (Admin)
 - 🔒 **Panel de administración** — Protegido con JWT. Acceso por usuario y contraseña.
 - ✅ **Moderación de fotos** — Las fotos entran en estado *pendiente*. El admin las aprueba una por una, o todas a la vez con el botón "Aprobar Todas".
-- 🗑️ **Borrado completo** — Elimina una foto del álbum y del bucket de almacenamiento en un solo clic.
+- ❌ **Rechazo con borrado inmediato (R2 + BD)** — Al rechazar una foto pendiente, se elimina inmediatamente del bucket Cloudflare R2 y de PostgreSQL, disparando la notificación SSE `PHOTO_REJECTED`.
+- 📦 **Descarga del Álbum (ZIP streaming & Selección)** — En la pestaña *Fotos Guardadas*, el admin puede empaquetar y descargar el álbum completo o una selección personalizada de fotos aprobadas en un archivo ZIP por streaming directo (eficiente en memoria RAM). También admite descargas individuales presignadas (HTTP 302).
+- 🗑️ **Borrado definitivo** — Elimina cualquier foto aprobada de R2 y de la base de datos en un solo clic.
 - 💬 **Moderación de comentarios** — Panel dedicado con miniatura de la foto, nombre del autor y texto, con botón de borrado directo.
 - 📨 **Moderación del Libro de Visitas** — Listado de mensajes con nombre de remitente y texto, con botón de borrado.
 - 📺 **Control de subidas** — El admin puede cerrar/abrir las subidas de fotos desde el panel. Cuando están cerradas, los invitados ven un mensaje informativo.
@@ -359,7 +360,9 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | `GET` | `/api/v1/admin/photos/pending` | Lista fotos pendientes de aprobación |
 | `PATCH` | `/api/v1/admin/photos/{photoId}/approve` | Aprueba una foto |
 | `POST` | `/api/v1/admin/photos/approve-all` | Aprueba todas las fotos pendientes |
-| `DELETE` | `/api/v1/admin/photos/{photoId}` | Borra una foto (R2 + BD) |
+| `DELETE` / `PATCH` | `/api/v1/admin/photos/{photoId}/reject` | Rechaza y elimina una foto de R2 y de la base de datos |
+| `GET` | `/api/v1/admin/photos/{photoId}/download` | Genera presigned URL de lectura y redirige (HTTP 302) |
+| `GET` | `/api/v1/admin/photos/download-zip` | Genera y transmite en ZIP streaming el álbum completo o selección (`?photoIds=...`) |
 | `GET` | `/api/v1/admin/comments/all` | Lista todos los comentarios de fotos |
 | `DELETE` | `/api/v1/admin/comments/{commentId}` | Borra un comentario |
 | `GET` | `/api/v1/admin/messages/all` | Lista todos los mensajes del Libro de Visitas |
@@ -638,7 +641,7 @@ Railway conecta automáticamente el servicio de PostgreSQL mediante variables de
 
 ## 🧪 Pruebas Automatizadas
 
-El proyecto cuenta con **36 tests** que cubren las áreas críticas:
+El proyecto cuenta con **40 tests** que cubren las áreas críticas:
 
 ```bash
 mvn test
@@ -646,12 +649,12 @@ mvn test
 
 | Suite | Tests | Qué verifica |
 |---|---|---|
-| `AdminSecurityTest` | 9 | Acceso protegido a rutas admin, rechazo de credenciales inválidas, respuesta con token válido |
+| `AdminSecurityTest` | 11 | Acceso protegido a rutas admin, JWT, aprobación/rechazo de fotos (R2 + BD), descargas 302 y ZIP streaming |
 | `PublicApiIntegrationTest` | 12 | Flujo completo de subida (upload-url → confirm), consulta de fotos, comentarios, mensajes |
 | `ContentModerationServiceTest` | 6 | Detección de palabras bloqueadas, normalización de acentos, case-insensitive, textos limpios |
 | `QrCodeTest` | 3 | Generación del PNG de QR con URL correcta y dimensiones esperadas |
 | `RealtimeIntegrationTest` | 2 | Suscripción SSE, emisión de eventos `PHOTO_APPROVED` y `MESSAGE_CREATED` |
-| `StorageServiceTest` | 4 | Generación de presigned URLs, rechazo de tipos de archivo no permitidos |
+| `StorageServiceTest` | 6 | Generación de presigned URLs de subida/descarga, borrado en R2, rechazo de tipos no permitidos |
 
 Los tests de integración usan **H2 en memoria** (no necesitan PostgreSQL ni R2 reales). Los tests de storage usan mocks para evitar conexiones externas.
 
@@ -707,7 +710,9 @@ El script simula **simultáneamente**:
 | **Fase 5** | ✅ Completado | Frontend de invitados: menu, upload, album, messages (HTML/CSS/JS vanilla, PWA) |
 | **Fase 5b** | ✅ Completado | Panel de administración: login JWT, dashboard con 4 tabs, moderación de fotos/comentarios/mensajes |
 | **Fase 5c** | ✅ Completado | Moderación automática de contenido (filtro de palabras bloqueadas) + Rate Limiting por IP |
+| **Fase 5d** | ✅ Completado | Descarga de fotos exclusiva para organizador: Presigned GET (HTTP 302) + ZIP streaming masivo/selección |
 | **Fase 6** | ✅ Completado | Pantalla del salón (`screen.html`): carrusel, zócalo de mensajes, tarjeta QR flotante |
+| **Fase 6 Fix** | ✅ Completado | Rechazo con borrado inmediato y coordinado en Cloudflare R2 y PostgreSQL + notificaciones SSE |
 | **Fase 7** | ✅ Completado | Despliegue en Railway con Dockerfile multi-stage |
 | **Fase 7b** | ✅ Completado | Diseño final: tipografía Playfair Display/Alex Brush + iconografía Font Awesome 6 |
 | **Fase 8** | ✅ Completado | Prueba de carga previa al evento: script `load-test.js` + ajuste de rate limits |
