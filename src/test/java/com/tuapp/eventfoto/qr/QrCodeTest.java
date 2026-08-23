@@ -43,7 +43,6 @@ class QrCodeTest {
 
         assertNotNull(qrBytes);
         assertTrue(qrBytes.length > 100);
-        fail("Test roto a propósito para verificar que el CI bloquea PRs — revertir antes de mergear");
         // Verificar firma de archivo PNG (0x89 0x50 0x4E 0x47 en los primeros bytes)
         assertEquals((byte) 0x89, qrBytes[0]);
         assertEquals((byte) 0x50, qrBytes[1]);
