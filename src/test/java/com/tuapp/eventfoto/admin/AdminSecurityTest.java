@@ -47,11 +47,15 @@ class AdminSecurityTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private com.tuapp.eventfoto.common.config.RateLimiterService rateLimiterService;
+
     private Event event;
     private String adminJwtToken;
 
     @BeforeEach
     void setUp() {
+        rateLimiterService.resetRateLimits();
         photoRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
 
@@ -65,6 +69,7 @@ class AdminSecurityTest {
 
         adminJwtToken = jwtTokenProvider.generateToken("admin@boda.com");
     }
+
 
     @Test
     @DisplayName("Redirigir a /admin/login al intentar acceder al dashboard sin JWT")
@@ -222,4 +227,68 @@ class AdminSecurityTest {
                 .andExpect(header().string("Content-Type", "application/zip"))
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"album-marcos-y-priscila.zip\""));
     }
+
+    @Test
+    @DisplayName("Validar encabezado Set-Cookie con atributos HttpOnly, Secure y SameSite=Strict en login")
+    void shouldReturnSetCookieHeaderWithSameSiteStrictOnLogin() throws Exception {
+        LoginRequestDTO loginRequest = new LoginRequestDTO("admin@boda.com", "admin123");
+
+        mockMvc.perform(post("/api/v1/admin/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("SameSite=Strict")))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("HttpOnly")))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Secure")));
+    }
+
+    @Test
+    @DisplayName("Bloquear intentos de login si superan el límite de rate limit por IP (429 Too Many Requests)")
+    void shouldBlockLoginAfterMaxFailedAttempts() throws Exception {
+        LoginRequestDTO badRequest = new LoginRequestDTO("admin@boda.com", "wrongpass");
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/admin/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(badRequest)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // El sexto intento debe ser bloqueado por RateLimiterService (HTTP 429)
+        mockMvc.perform(post("/api/v1/admin/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRequest)))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("Permitir acceso público únicamente a GET /actuator/health y proteger otros endpoints de Actuator")
+    void shouldAllowPublicAccessToActuatorHealthOnly() throws Exception {
+        // GET /actuator/health debe responder HTTP 200 OK
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+
+        // GET /actuator/env no debe expenerse públicamente (devuelve 401, 302 o 404 si no está expuesto)
+        mockMvc.perform(get("/actuator/env"))
+                .andExpect(status().is(org.hamcrest.Matchers.in(java.util.List.of(401, 302, 404))));
+    }
+
+    @Test
+    @DisplayName("Permitir que un invitado suba fotos localmente vía PUT /api/v1/storage/local-upload sin JWT en modo local")
+    void shouldAllowGuestLocalUploadWithoutJwt() throws Exception {
+        byte[] content = "dummy image bytes".getBytes();
+        mockMvc.perform(put("/api/v1/storage/local-upload?key=photos/test-guest-upload.jpg")
+                        .content(content))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Aplicar default-deny (.anyRequest().authenticated()) a rutas no mapeadas")
+    void shouldEnforceDefaultDenyForUnknownRoutes() throws Exception {
+        mockMvc.perform(get("/api/v1/unmapped-private-route"))
+                .andExpect(status().isUnauthorized());
+    }
 }
+
+

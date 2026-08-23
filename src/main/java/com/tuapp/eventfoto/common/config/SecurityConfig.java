@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -38,13 +39,19 @@ public class SecurityConfig {
                 // Rutas públicas de vistas y recursos estáticos
                 .requestMatchers(
                     "/", "/index.html", "/album.html", "/pantalla.html", "/screen.html", "/upload.html", "/menu.html", "/messages.html",
-                    "/css/**", "/js/**", "/images/**", "/actuator/**", "/uploads/**"
+                    "/css/**", "/js/**", "/images/**", "/uploads/**"
                 ).permitAll()
+
+                // Actuator: únicamente GET /actuator/health es público (requerido por Railway)
+                .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+
+                // Almacenamiento local (subida PUT y lectura GET explícitas para desarrollo)
+                .requestMatchers(HttpMethod.GET, "/api/v1/storage/files", "/api/v1/storage/files/**").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/v1/storage/local-upload").permitAll()
                 
-                // Rutas públicas de la API REST
+                // Rutas públicas de la API REST para invitados
                 .requestMatchers(
-                    "/api/public/**", "/api/v1/events/**", "/api/v1/photos/**", "/api/v1/messages/**", "/api/v1/comments/**",
-                    "/api/events/**", "/api/photos/**", "/api/messages/**", "/api/comments/**", "/api/sse/**", "/api/storage/**"
+                    "/api/v1/events/**", "/api/v1/photos/**", "/api/v1/messages/**", "/api/v1/comments/**"
                 ).permitAll()
                 
                 // Rutas de Login y Autenticación Admin
@@ -53,7 +60,8 @@ public class SecurityConfig {
                 // Rutas protegidas que requieren rol ADMIN
                 .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                 
-                .anyRequest().permitAll()
+                // Cierre por defecto: cualquier otra request requiere autenticación
+                .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -72,3 +80,4 @@ public class SecurityConfig {
         };
     }
 }
+

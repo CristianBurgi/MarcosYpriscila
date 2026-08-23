@@ -49,5 +49,15 @@ security:
     secret: ${JWT_SECRET:very_secret_jwt_key_that_is_at_least_256_bits_long_for_security_reasons}
     expiration-ms: ${JWT_EXPIRATION_MS:28800000} # 8 horas (28,800,000 ms)
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
 server:
   port: ${PORT:8080}
+

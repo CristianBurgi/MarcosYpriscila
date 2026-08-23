@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.storage;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,7 +11,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/storage/test")
 @RequiredArgsConstructor
+@Profile({"dev", "local", "test"})
 public class StorageTestController {
+
 
     private final StorageService storageService;
 

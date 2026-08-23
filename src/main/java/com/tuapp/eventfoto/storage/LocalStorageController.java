@@ -3,9 +3,11 @@ package com.tuapp.eventfoto.storage;
 import com.tuapp.eventfoto.common.exception.StorageException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,17 +26,33 @@ public class LocalStorageController {
 
     private static final String UPLOADS_DIR = "uploads";
 
+    @Value("${app.storage.mode:local}")
+    private String storageMode;
+
     /**
      * PUT /api/v1/storage/local-upload?key=photos/...
      * Recibe los bytes de la foto en desarrollo local y los guarda en el disco local (/uploads).
+     * En producción (mode=r2) responde inmediatamente 403 Forbidden.
      */
     @PutMapping("/local-upload")
     public ResponseEntity<Void> uploadLocalFile(
             @RequestParam String key,
             HttpServletRequest request) {
 
+        if (!"local".equalsIgnoreCase(storageMode)) {
+            log.warn("Intento de subida local bloqueado porque app.storage.mode es '{}'", storageMode);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         try {
-            Path targetPath = Paths.get(UPLOADS_DIR, key);
+            Path baseDir = Paths.get(UPLOADS_DIR).toAbsolutePath().normalize();
+            Path targetPath = baseDir.resolve(key).normalize();
+
+            if (!targetPath.startsWith(baseDir)) {
+                log.error("Acceso denegado: intento de path traversal detectado en key='{}'", key);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             Files.createDirectories(targetPath.getParent());
 
             byte[] bytes = request.getInputStream().readAllBytes();
@@ -58,7 +76,14 @@ public class LocalStorageController {
     @GetMapping("/files")
     public ResponseEntity<Resource> getLocalFile(@RequestParam String key) {
         try {
-            Path filePath = Paths.get(UPLOADS_DIR, key);
+            Path baseDir = Paths.get(UPLOADS_DIR).toAbsolutePath().normalize();
+            Path filePath = baseDir.resolve(key).normalize();
+
+            if (!filePath.startsWith(baseDir)) {
+                log.error("Acceso denegado: intento de path traversal detectado en key='{}'", key);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             File file = filePath.toFile();
 
             if (!file.exists()) {
@@ -82,3 +107,4 @@ public class LocalStorageController {
         }
     }
 }
+
