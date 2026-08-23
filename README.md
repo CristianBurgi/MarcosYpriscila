@@ -9,7 +9,7 @@ Los invitados escanean un QR, suben sus fotos desde el celular sin instalar nada
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.2-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Railway-4169E1?logo=postgresql&logoColor=white)
 ![Cloudflare R2](https://img.shields.io/badge/Storage-Cloudflare%20R2-F38020?logo=cloudflare&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen)
 ![Deploy](https://img.shields.io/badge/deploy-Railway-8B5CF6)
 
 </div>
@@ -38,6 +38,8 @@ Los invitados escanean un QR, suben sus fotos desde el celular sin instalar nada
 - [Cómo correr el proyecto localmente](#-cómo-correr-el-proyecto-localmente)
 - [Variables de Entorno](#-variables-de-entorno)
 - [Docker y Despliegue en Railway](#-docker-y-despliegue-en-railway)
+- [Monitoreo de Errores (Sentry)](#-monitoreo-de-errores-sentry)
+- [Integración Continua (CI)](#-integración-continua-ci)
 - [Pruebas Automatizadas](#-pruebas-automatizadas)
 - [Prueba de Carga Previa al Evento](#-prueba-de-carga-previa-al-evento)
 - [Roadmap Completo](#-roadmap-completo)
@@ -594,6 +596,8 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `JWT_EXPIRATION_MS` | Duración del JWT en ms (por defecto 8 horas = `28800000`) | Opcional |
 | `APP_BASE_URL` | URL pública de la app (usada para generar el QR) | ✅ |
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
+| `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
+| `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |
 
 > Ver [`.env.example`](.env.example) para la plantilla completa.
 
@@ -639,9 +643,51 @@ Railway conecta automáticamente el servicio de PostgreSQL mediante variables de
 
 ---
 
+## 🚨 Monitoreo de Errores (Sentry)
+
+[Sentry](https://sentry.io) es un servicio que avisa por email, en minutos, cuando la app tira un error inesperado en producción — en vez de enterarte porque un invitado se queja o revisando logs a mano.
+
+**Qué se reporta:** solo excepciones no manejadas (errores 500 genéricos, bugs). Los errores esperados del negocio — login incorrecto (401), evento no encontrado (404), rate limit (429), contenido moderado (422), foto inválida (400) — **no** se reportan a Sentry, porque ya tienen su propio manejo controlado y no son señal de que algo esté roto.
+
+**Cómo configurarlo (opcional, pero recomendado antes del evento real):**
+
+1. Creá una cuenta gratis en [sentry.io](https://sentry.io) (el plan gratuito alcanza de sobra para este volumen).
+2. Creá un proyecto nuevo, elegí la plataforma **Java → Spring Boot**.
+3. Sentry te va a mostrar un **DSN** (una URL larga tipo `https://xxxx@xxxx.ingest.sentry.io/xxxx`) — copialo.
+4. En Railway, andá a tu servicio → pestaña **Variables** → agregá:
+   - `SENTRY_DSN` = el DSN que copiaste
+   - `SENTRY_ENVIRONMENT` = `production`
+5. Railway va a redesplegar solo al guardar las variables nuevas.
+
+**Sin `SENTRY_DSN` configurado, la app funciona exactamente igual** — Sentry queda "apagado" (modo no-op), no rompe nada ni en desarrollo local ni en los tests automáticos.
+
+Para probarlo en desarrollo local sin tocar producción, hay un endpoint de diagnóstico (`GET /api/diagnostics/test/throw`) que solo existe cuando corrés la app con un perfil de desarrollo activo (`dev`, `local` o `test`) — el mismo patrón que ya usa `StorageTestController`. En Railway no se activa ningún perfil, así que este endpoint nunca queda expuesto en producción.
+
+---
+
+## ⚙️ Integración Continua (CI)
+
+Cada `push` a `main` y cada Pull Request corre automáticamente los 45 tests del proyecto vía [GitHub Actions](.github/workflows/ci.yml) — así un cambio que rompe algo no llega a mezclarse con el código principal sin que nadie lo note. Podés ver el resultado de cada corrida en la pestaña **Actions** del repositorio en GitHub.
+
+Esto es necesario porque el `Dockerfile` de despliegue usa `mvn clean package -DskipTests` (para que el build a producción sea rápido) — sin este workflow, los tests nunca se ejecutarían de forma automática en el camino hacia Railway.
+
+**Paso manual único, recomendado:** para que el check de CI realmente *bloquee* un Pull Request con tests rotos (y no solo lo marque en rojo como advertencia), hay que activar una regla de protección de rama en GitHub:
+
+1. En el repo de GitHub, andá a **Settings → Branches**.
+2. **Add branch protection rule** → en "Branch name pattern" escribí `main`.
+3. Tildá **"Require status checks to pass before merging"**.
+4. Buscá y tildá el check llamado **`test`** (así se llama el job en `ci.yml`).
+5. Guardá con **Create** / **Save changes**.
+
+A partir de ahí, un Pull Request con un test roto no se puede mezclar a `main` hasta que se corrija.
+
+> Railway también tiene un toggle opcional llamado **"Wait for CI"** en la configuración del servicio, que espera a que el check de GitHub Actions pase antes de desplegar. Es un plus si funciona, pero hay reportes de que a veces el deploy queda colgado en estado "Waiting" sin avanzar — la regla de protección de rama de GitHub (pasos de arriba) es el gate que realmente importa y no depende de esa integración.
+
+---
+
 ## 🧪 Pruebas Automatizadas
 
-El proyecto cuenta con **40 tests** que cubren las áreas críticas:
+El proyecto cuenta con **45 tests** que cubren las áreas críticas:
 
 ```bash
 mvn test
@@ -649,10 +695,10 @@ mvn test
 
 | Suite | Tests | Qué verifica |
 |---|---|---|
-| `AdminSecurityTest` | 11 | Acceso protegido a rutas admin, JWT, aprobación/rechazo de fotos (R2 + BD), descargas 302 y ZIP streaming |
+| `AdminSecurityTest` | 17 | Acceso protegido a rutas admin, JWT, aprobación/rechazo de fotos (R2 + BD), descargas 302 y ZIP streaming |
 | `PublicApiIntegrationTest` | 12 | Flujo completo de subida (upload-url → confirm), consulta de fotos, comentarios, mensajes |
 | `ContentModerationServiceTest` | 6 | Detección de palabras bloqueadas, normalización de acentos, case-insensitive, textos limpios |
-| `QrCodeTest` | 3 | Generación del PNG de QR con URL correcta y dimensiones esperadas |
+| `QrCodeTest` | 2 | Generación del PNG de QR con URL correcta y dimensiones esperadas |
 | `RealtimeIntegrationTest` | 2 | Suscripción SSE, emisión de eventos `PHOTO_APPROVED` y `MESSAGE_CREATED` |
 | `StorageServiceTest` | 6 | Generación de presigned URLs de subida/descarga, borrado en R2, rechazo de tipos no permitidos |
 

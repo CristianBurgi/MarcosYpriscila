@@ -22,6 +22,7 @@
         <aws.sdk.version>2.25.15</aws.sdk.version>
         <jjwt.version>0.12.5</jjwt.version>
         <zxing.version>3.5.3</zxing.version>
+        <sentry.version>8.16.0</sentry.version>
     </properties>
 
     <dependencies>
@@ -51,6 +52,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Observabilidad: reporte de excepciones no manejadas a Sentry -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>${sentry.version}</version>
+        </dependency>
 
         <!-- Dotenv integration for loading .env variables automatically -->
         <dependency>

@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.common.exception;
 
+import io.sentry.Sentry;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -131,6 +132,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex, HttpServletRequest request) {
         log.error("Excepción interna no capturada en {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+        Sentry.captureException(ex);
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",

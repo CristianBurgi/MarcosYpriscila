@@ -58,6 +58,12 @@ management:
     health:
       show-details: when-authorized
 
+# Observabilidad de errores: sin SENTRY_DSN, el SDK queda en modo no-op (no rompe nada).
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:development}
+  traces-sample-rate: 0.0 # solo error tracking, sin performance monitoring en esta fase
+
 server:
   port: ${PORT:8080}
 
