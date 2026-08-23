@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,7 +21,9 @@ public class EventFotoApplication {
     }
 
     @Bean
-    public CommandLineRunner logActiveProfiles(Environment env) {
+    public CommandLineRunner logActiveProfiles(
+            Environment env,
+            @Value("${app.storage.mode:local}") String storageMode) {
         return args -> {
             String[] activeProfiles = env.getActiveProfiles();
             if (activeProfiles.length == 0) {
@@ -28,6 +31,7 @@ public class EventFotoApplication {
             } else {
                 log.info("Perfiles de Spring activos: {}", Arrays.toString(activeProfiles));
             }
+            log.info("Modo de almacenamiento activo: [{}]", storageMode);
         };
     }
 }

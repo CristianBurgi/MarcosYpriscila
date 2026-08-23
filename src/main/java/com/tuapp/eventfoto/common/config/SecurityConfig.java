@@ -9,8 +9,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -25,6 +27,23 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * Define explícitamente un UserDetailsService vacío para que Spring Boot NO
+     * active su auto-configuración por defecto (UserDetailsServiceAutoConfiguration),
+     * que genera un usuario "user" con contraseña aleatoria en cada arranque y la
+     * imprime en el log ("Using generated security password: ...").
+     *
+     * La app no usa el AuthenticationManager/UserDetailsService de Spring Security
+     * para nada: la autenticación de admin es 100% propia (ver AdminAuthService,
+     * que valida contra security.admin.email/password y emite un JWT), y el
+     * filtro es STATELESS. Este bean es solo para silenciar el warning; no
+     * habilita ningún login adicional porque no tiene usuarios cargados.
+     */
+    @Bean
+    public UserDetailsService userDetailsService() {
+        return new InMemoryUserDetailsManager();
     }
 
     @Bean
