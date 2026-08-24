@@ -82,40 +82,52 @@
             box-sizing: border-box;
         }
 
-        .source-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.8rem;
+        #upload-form {
+            text-align: center;
+        }
+
+        #upload-form label {
+            display: block;
+        }
+
+        #upload-form input[type="text"] {
+            display: block;
+            width: 100%;
+            max-width: 360px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .btn-camera-primary {
+            width: 100%;
             margin-top: 0.6rem;
-            margin-bottom: 1.2rem;
-        }
-
-        .btn-source {
-            background: rgba(20, 3, 7, 0.6);
-            border: 1px solid rgba(247, 225, 228, 0.3);
-            color: #fdf6f7;
-            padding: 1rem;
-            border-radius: 14px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 0.4rem;
-            transition: all 0.2s ease;
+            justify-content: center;
+            gap: 0.7rem;
+            font-size: 1.1rem;
+            padding: 1.1rem 1.5rem;
         }
 
-        .btn-source:hover {
-            background: rgba(140, 43, 62, 0.5);
-            border-color: #f7e1e4;
-            transform: translateY(-2px);
+        .gallery-link-wrapper {
+            text-align: center;
+            margin: 0.7rem 0 1.2rem;
         }
 
-        .btn-source.selected {
-            background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
-            border-color: #e6c594;
-            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.5);
+        .gallery-link {
+            color: #c9a8ac;
+            font-size: 0.82rem;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .gallery-link:hover {
+            color: #e6c594;
+        }
+
+        .gallery-link[data-disabled="true"] {
+            pointer-events: none;
         }
 
         .preview-container {
@@ -207,18 +219,13 @@
                 <label for="uploaderName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
                 <input type="text" id="uploaderName" name="uploaderName" placeholder="Ej: Sofía y Nahuel" required maxlength="150" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1rem;">
 
-                <label for="caption" style="color: #fdf6f7; font-weight: 500;">Dedicatoria para los novios (opcional):</label>
-                <input type="text" id="caption" name="caption" placeholder="¡Momento inolvidable en la fiesta!" maxlength="500" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1rem;">
-
                 <label style="color: #fdf6f7; font-weight: 500;">Elegir Imagen <span style="color: #fca5a5;">*</span>:</label>
-                <div class="source-buttons">
-                    <button type="button" class="btn-source" id="btn-camera">
-                        <i class="fa-solid fa-camera" style="font-size: 1.4rem; color: #e6c594;"></i> Tomar Foto
-                    </button>
-                    <button type="button" class="btn-source" id="btn-gallery">
-                        <i class="fa-solid fa-images" style="font-size: 1.4rem; color: #e6c594;"></i> Abrir Galería
-                    </button>
-                </div>
+                <button type="button" id="btn-camera" class="btn-burgundy-full btn-camera-primary">
+                    <i class="fa-solid fa-camera"></i> Tomar Foto
+                </button>
+                <p class="gallery-link-wrapper">
+                    <a href="#" id="btn-gallery" class="gallery-link">o elegí una foto de tu galería</a>
+                </p>
 
                 <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;">
                 <input type="file" id="galleryFile" accept="image/*" style="display: none;">
@@ -272,15 +279,15 @@
             const imagePreview = document.getElementById('image-preview');
 
             btnCamera.addEventListener('click', () => cameraFile.click());
-            btnGallery.addEventListener('click', () => galleryFile.click());
+            btnGallery.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (btnGallery.getAttribute('data-disabled') === 'true') return;
+                galleryFile.click();
+            });
 
-            const handleFileSelected = (file, sourceBtn) => {
+            const handleFileSelected = (file) => {
                 if (!file) return;
                 selectedFile = file;
-
-                btnCamera.classList.remove('selected');
-                btnGallery.classList.remove('selected');
-                if (sourceBtn) sourceBtn.classList.add('selected');
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -290,8 +297,8 @@
                 reader.readAsDataURL(file);
             };
 
-            cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0], btnCamera));
-            galleryFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0], btnGallery));
+            cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
+            galleryFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
 
             document.getElementById('upload-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -302,7 +309,6 @@
                 const progressFill = document.getElementById('progress-fill');
 
                 const uploaderName = document.getElementById('uploaderName').value.trim();
-                const caption = document.getElementById('caption').value.trim();
 
                 if (!uploaderName) {
                     statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor ingresá tu nombre. Es obligatorio.</div>';
@@ -365,7 +371,7 @@
                                 const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ key, uploaderName, caption, guestToken: GUEST_TOKEN })
+                                    body: JSON.stringify({ key, uploaderName, guestToken: GUEST_TOKEN })
                                 });
 
                                 if (confirmRes.status === 403) {
@@ -391,7 +397,6 @@
                         const formData = new FormData();
                         formData.append('file', fileToUpload, safeFileName);
                         formData.append('uploaderName', uploaderName);
-                        if (caption) formData.append('caption', caption);
                         formData.append('guestToken', GUEST_TOKEN);
 
                         const directRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, {
@@ -414,12 +419,9 @@
 
                     loadGuestQuota();
 
-                    document.getElementById('caption').value = '';
                     selectedFile = null;
                     cameraFile.value = '';
                     galleryFile.value = '';
-                    btnCamera.classList.remove('selected');
-                    btnGallery.classList.remove('selected');
                     previewBox.style.display = 'none';
 
                     setTimeout(() => {
@@ -497,16 +499,14 @@
             }
 
             const nameInput = document.getElementById('uploaderName');
-            const captionInput = document.getElementById('caption');
             if (nameInput) nameInput.disabled = true;
-            if (captionInput) captionInput.disabled = true;
 
             const btnCamera = document.getElementById('btn-camera');
             const btnGallery = document.getElementById('btn-gallery');
             const btnSubmit = document.getElementById('btn-submit');
 
             if (btnCamera) { btnCamera.disabled = true; btnCamera.style.opacity = '0.5'; btnCamera.style.cursor = 'not-allowed'; }
-            if (btnGallery) { btnGallery.disabled = true; btnGallery.style.opacity = '0.5'; btnGallery.style.cursor = 'not-allowed'; }
+            if (btnGallery) { btnGallery.setAttribute('data-disabled', 'true'); btnGallery.style.opacity = '0.5'; btnGallery.style.cursor = 'not-allowed'; }
             if (btnSubmit) {
                 btnSubmit.disabled = true;
                 btnSubmit.setAttribute('data-closed', 'true');
