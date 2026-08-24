@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.common.exception.EventClosedException;
+import com.tuapp.eventfoto.common.exception.GuestQuotaExceededException;
 import com.tuapp.eventfoto.common.exception.InvalidFileContentException;
 import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
@@ -51,6 +52,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final StorageService storageService;
     private final SseBroadcaster sseBroadcaster;
     private final RateLimiterService rateLimiterService;
+    private final GuestQuotaService guestQuotaService;
 
     @Override
     public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp) {
@@ -62,6 +64,11 @@ public class PhotoServiceImpl implements PhotoService {
         if (!event.isActive()) {
             throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
         }
+
+        // 3. Chequeo previo (no atómico) del cupo del invitado: evita gastar una presigned
+        // URL si ya sabemos que no tiene fotos disponibles. La verdad final y atómica se
+        // aplica en confirmUpload() vía GuestQuotaService.incrementUsageOrThrow().
+        guestQuotaService.assertQuotaAvailable(event.getId(), request.guestToken());
 
         String contentType = request.contentType();
         String filename = request.filename();
@@ -88,6 +95,24 @@ public class PhotoServiceImpl implements PhotoService {
         // objeto contra el que se pueda validar (ver validateUploadedFileSignature),
         // se elimina de storage y se rechaza antes de crear cualquier registro en BD.
         validateUploadedFileSignature(request.key());
+
+        // Incremento atómico del cupo del invitado, solo después de confirmar que el
+        // archivo es una imagen real. Si el cupo ya está agotado (incluso por una
+        // condición de carrera entre dos pestañas), se rechaza acá, antes de crear el
+        // registro Photo -- el cupo consumido no se puede "devolver" después. El objeto
+        // ya está en storage (lo subió el cliente vía la presigned URL antes de llamar a
+        // /confirm), así que si el cupo lo rechaza acá, se elimina para no dejar basura.
+        try {
+            guestQuotaService.incrementUsageOrThrow(event, request.guestToken());
+        } catch (GuestQuotaExceededException e) {
+            log.warn("Cupo agotado al confirmar; eliminando objeto huérfano '{}' de storage", request.key());
+            try {
+                storageService.deleteFile(request.key());
+            } catch (Exception cleanupEx) {
+                log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", request.key(), cleanupEx.getMessage());
+            }
+            throw e;
+        }
 
         String uploader = request.uploaderName() != null && !request.uploaderName().isBlank() ? request.uploaderName().trim() : "Invitado";
 
@@ -122,7 +147,7 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     @Transactional
-    public PhotoResponseDTO uploadDirect(String slug, org.springframework.web.multipart.MultipartFile file, String uploaderName, String caption) {
+    public PhotoResponseDTO uploadDirect(String slug, org.springframework.web.multipart.MultipartFile file, String uploaderName, String caption, String guestToken) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileFormatException("El archivo enviado está vacío.");
         }
@@ -131,6 +156,10 @@ public class PhotoServiceImpl implements PhotoService {
         if (!event.isActive()) {
             throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
         }
+
+        // Chequeo previo (no atómico) del cupo del invitado: evita gastar tiempo/CPU
+        // subiendo bytes a storage si ya sabemos que no tiene fotos disponibles.
+        guestQuotaService.assertQuotaAvailable(event.getId(), guestToken);
 
         String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {
@@ -161,6 +190,23 @@ public class PhotoServiceImpl implements PhotoService {
             }
 
             storageService.uploadBytes(key, bytes, contentType);
+
+            // Incremento atómico del cupo del invitado, solo después de que la subida a
+            // storage tuvo éxito -- mismo criterio que en confirmUpload: se cuenta
+            // únicamente lo que realmente terminó guardado. Si el cupo lo rechaza justo
+            // acá (condición de carrera), se elimina el objeto recién subido para no
+            // dejar basura en storage sin un registro Photo que lo referencie.
+            try {
+                guestQuotaService.incrementUsageOrThrow(event, guestToken);
+            } catch (GuestQuotaExceededException e) {
+                log.warn("Cupo agotado tras subir a storage en upload-direct; eliminando objeto huérfano '{}'", key);
+                try {
+                    storageService.deleteFile(key);
+                } catch (Exception cleanupEx) {
+                    log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", key, cleanupEx.getMessage());
+                }
+                throw e;
+            }
 
             Photo photo = Photo.builder()
                     .event(event)

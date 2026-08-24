@@ -192,12 +192,16 @@
             <i class="fa-solid fa-cloud-arrow-up" style="color: #e6c594;"></i> Subir Fotografía
         </h1>
         <p class="welcome-subtitle">Compartí tus momentos de la boda en tiempo real</p>
+        <div id="quota-badge" style="display: none; margin: 0 auto 0.5rem; width: fit-content; color: #e6c594; text-decoration: none; font-weight: 600; font-size: 0.9rem; padding: 6px 16px; background: rgba(59, 10, 20, 0.6); border: 1px solid rgba(247, 225, 228, 0.2); border-radius: 20px;"></div>
     </header>
 
     <main class="container" style="max-width: 650px; margin: 0 auto; padding: 0 1.25rem;">
         <article class="card-glass">
             <div id="event-closed-banner" style="display: none; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 14px 18px; border-radius: 14px; text-align: center; margin-bottom: 1.5rem; font-weight: 600; font-size: 1.05rem;">
                 <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por los novios.
+            </div>
+            <div id="quota-exceeded-banner" style="display: none; background: rgba(230, 197, 148, 0.18); border: 1px solid rgba(230, 197, 148, 0.4); color: #f3dfa8; padding: 14px 18px; border-radius: 14px; text-align: center; margin-bottom: 1.5rem; font-weight: 600; font-size: 1.05rem;">
+                <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> Ya usaste tus 24 fotos para este evento — ¡gracias por compartir tantos momentos! 🎉
             </div>
             <form id="upload-form">
                 <label for="uploaderName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
@@ -244,8 +248,21 @@
         const SLUG = 'marcos-y-priscila';
         let selectedFile = null;
 
+        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        function getOrCreateGuestToken() {
+            let token = localStorage.getItem(GUEST_TOKEN_KEY);
+            if (!token) {
+                token = crypto.randomUUID();
+                localStorage.setItem(GUEST_TOKEN_KEY, token);
+            }
+            return token;
+        }
+        const GUEST_TOKEN = getOrCreateGuestToken();
+        const QUOTA_EXCEEDED_MESSAGE = 'Ya usaste tus 24 fotos para este evento — ¡gracias por compartir tantos momentos! 🎉';
+
         document.addEventListener('DOMContentLoaded', () => {
             checkEventStatus();
+            loadGuestQuota();
 
             const btnCamera = document.getElementById('btn-camera');
             const btnGallery = document.getElementById('btn-gallery');
@@ -319,15 +336,18 @@
                     progressFill.style.width = '30%';
 
                     let isSuccess = false;
+                    let quotaExceeded = false;
 
                     try {
                         const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contentType: contentType, filename: fileToUpload.name || 'photo.jpg' })
+                            body: JSON.stringify({ contentType: contentType, filename: fileToUpload.name || 'photo.jpg', guestToken: GUEST_TOKEN })
                         });
 
-                        if (presignedRes.ok) {
+                        if (presignedRes.status === 403) {
+                            quotaExceeded = true;
+                        } else if (presignedRes.ok) {
                             const { uploadUrl, key } = await presignedRes.json();
                             progressFill.style.width = '60%';
                             btn.innerText = 'Subiendo fotografía...';
@@ -345,16 +365,22 @@
                                 const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ key, uploaderName, caption })
+                                    body: JSON.stringify({ key, uploaderName, caption, guestToken: GUEST_TOKEN })
                                 });
 
-                                if (confirmRes.ok) {
+                                if (confirmRes.status === 403) {
+                                    quotaExceeded = true;
+                                } else if (confirmRes.ok) {
                                     isSuccess = true;
                                 }
                             }
                         }
                     } catch (presignedErr) {
                         console.warn('Subida directa R2 Presigned bloqueada por el navegador o red. Ejecutando fallback garantizado vía servidor:', presignedErr);
+                    }
+
+                    if (quotaExceeded) {
+                        throw new Error(QUOTA_EXCEEDED_MESSAGE);
                     }
 
                     if (!isSuccess) {
@@ -366,11 +392,16 @@
                         formData.append('file', fileToUpload, safeFileName);
                         formData.append('uploaderName', uploaderName);
                         if (caption) formData.append('caption', caption);
+                        formData.append('guestToken', GUEST_TOKEN);
 
                         const directRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, {
                             method: 'POST',
                             body: formData
                         });
+
+                        if (directRes.status === 403) {
+                            throw new Error(QUOTA_EXCEEDED_MESSAGE);
+                        }
 
                         if (!directRes.ok) {
                             const errData = await directRes.json().catch(() => ({}));
@@ -380,6 +411,8 @@
 
                     progressFill.style.width = '100%';
                     statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Foto subida con éxito! Quedó registrada y aparecerá en el álbum una vez aprobada. 📸</div>';
+
+                    loadGuestQuota();
 
                     document.getElementById('caption').value = '';
                     selectedFile = null;
@@ -400,6 +433,13 @@
                     statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(err.message)}</div>`;
                     progressBox.style.display = 'none';
                     progressFill.style.width = '0%';
+
+                    if (err.message === QUOTA_EXCEEDED_MESSAGE) {
+                        // El backend rechazó por cupo agotado en una condición de carrera que
+                        // el frontend no había detectado a tiempo (ej. otra pestaña gastó el
+                        // último cupo justo antes). Se refresca el badge/estado del form.
+                        loadGuestQuota();
+                    }
                 } finally {
                     const btn = document.getElementById('btn-submit');
                     if (btn && !btn.getAttribute('data-closed')) {
@@ -416,7 +456,7 @@
                 if (res.ok) {
                     const eventData = await res.json();
                     if (eventData && eventData.isActive === false) {
-                        disableUploadForm();
+                        disableUploadForm('closed');
                     }
                 }
             } catch (err) {
@@ -424,9 +464,37 @@
             }
         }
 
-        function disableUploadForm() {
+        async function loadGuestQuota() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/guest-quota?token=${encodeURIComponent(GUEST_TOKEN)}`);
+                if (res.ok) {
+                    const { remainingPhotos, maxPhotosPerGuest } = await res.json();
+                    updateQuotaBadge(remainingPhotos, maxPhotosPerGuest);
+                    if (remainingPhotos <= 0) {
+                        disableUploadForm('quota');
+                    }
+                }
+            } catch (err) {
+                console.warn('No se pudo verificar el cupo de fotos del invitado:', err);
+            }
+        }
+
+        function updateQuotaBadge(remaining, max) {
+            const badge = document.getElementById('quota-badge');
+            if (!badge) return;
+            badge.style.display = 'inline-block';
+            badge.innerHTML = `<i class="fa-solid fa-camera-retro" style="margin-right: 6px;"></i> Te quedan <strong>${remaining}</strong> de ${max} fotos`;
+        }
+
+        function disableUploadForm(reason = 'closed') {
             const closedBanner = document.getElementById('event-closed-banner');
-            if (closedBanner) closedBanner.style.display = 'block';
+            const quotaBanner = document.getElementById('quota-exceeded-banner');
+
+            if (reason === 'quota') {
+                if (quotaBanner) quotaBanner.style.display = 'block';
+            } else {
+                if (closedBanner) closedBanner.style.display = 'block';
+            }
 
             const nameInput = document.getElementById('uploaderName');
             const captionInput = document.getElementById('caption');
@@ -442,7 +510,7 @@
             if (btnSubmit) {
                 btnSubmit.disabled = true;
                 btnSubmit.setAttribute('data-closed', 'true');
-                btnSubmit.innerText = '🔒 Recepción de Fotos Cerrada';
+                btnSubmit.innerText = reason === 'quota' ? '🎉 Ya usaste tus 24 fotos' : '🔒 Recepción de Fotos Cerrada';
                 btnSubmit.style.opacity = '0.5';
                 btnSubmit.style.cursor = 'not-allowed';
             }

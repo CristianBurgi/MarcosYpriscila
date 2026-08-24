@@ -8,6 +8,7 @@ import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventRepository;
 import com.tuapp.eventfoto.message.MessageRepository;
 import com.tuapp.eventfoto.message.dto.CreateMessageRequestDTO;
+import com.tuapp.eventfoto.photo.GuestQuotaRepository;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
@@ -50,6 +51,9 @@ class PublicApiIntegrationTest {
     private PhotoRepository photoRepository;
 
     @Autowired
+    private GuestQuotaRepository guestQuotaRepository;
+
+    @Autowired
     private CommentRepository commentRepository;
 
     @Autowired
@@ -73,6 +77,7 @@ class PublicApiIntegrationTest {
         commentRepository.deleteAll();
         messageRepository.deleteAll();
         photoRepository.deleteAll();
+        guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
 
         testEvent = Event.builder()
@@ -122,7 +127,7 @@ class PublicApiIntegrationTest {
         when(storageService.generateUploadUrl(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn("https://r2.test-storage.com/upload-presigned-url");
 
-        UploadUrlRequestDTO request = new UploadUrlRequestDTO("image/jpeg", "boda.jpg");
+        UploadUrlRequestDTO request = new UploadUrlRequestDTO("image/jpeg", "boda.jpg", "guest-token-upload-url-test");
 
         mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/upload-url")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +140,7 @@ class PublicApiIntegrationTest {
     @Test
     @DisplayName("POST /api/v1/events/{slug}/photos/confirm - Debe registrar foto con isApproved=false")
     void shouldConfirmUploadAndCreateUnapprovedPhoto() throws Exception {
-        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/test.jpg", "Invitado Feliz", "¡Felicidades!");
+        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/test.jpg", "Invitado Feliz", "¡Felicidades!", "guest-token-confirm-test");
 
         mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -262,6 +267,82 @@ class PublicApiIntegrationTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.status", is(422)))
                 .andExpect(jsonPath("$.message", containsString("Tu comentario no pudo publicarse")));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/events/{slug}/guest-quota - Debe devolver 24 fotos disponibles para un token nuevo")
+    void shouldReturnFullQuotaForNewGuestToken() throws Exception {
+        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/guest-quota")
+                        .param("token", "guest-token-quota-fresh"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.remainingPhotos", is(24)))
+                .andExpect(jsonPath("$.maxPhotosPerGuest", is(24)));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/events/{slug}/guest-quota - Debe decrecer tras confirmar una subida")
+    void shouldDecrementQuotaAfterConfirm() throws Exception {
+        String guestToken = "guest-token-quota-decrement";
+        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-decrement.jpg", "Invitado", null, guestToken);
+
+        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/guest-quota")
+                        .param("token", guestToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.remainingPhotos", is(23)));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/events/{slug}/photos/confirm - Debe rechazar con 403 al superar el cupo de 24 fotos por invitado")
+    void shouldRejectConfirmWithForbiddenWhenGuestQuotaExceeded() throws Exception {
+        String guestToken = "guest-token-quota-limit";
+
+        for (int i = 1; i <= 24; i++) {
+            ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-limit-" + i + ".jpg", "Invitado", null, guestToken);
+            mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated());
+        }
+
+        ConfirmUploadRequestDTO request25 = new ConfirmUploadRequestDTO("photos/quota-limit-25.jpg", "Invitado", null, guestToken);
+        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request25)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is(403)))
+                .andExpect(jsonPath("$.message", containsString("Ya usaste tus 24 fotos")));
+
+        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/guest-quota")
+                        .param("token", guestToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.remainingPhotos", is(0)));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/events/{slug}/photos/upload-url - Debe rechazar con 403 si el invitado ya agotó su cupo")
+    void shouldRejectUploadUrlWithForbiddenWhenGuestQuotaAlreadyExceeded() throws Exception {
+        String guestToken = "guest-token-quota-upload-url";
+
+        for (int i = 1; i <= 24; i++) {
+            ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-upload-url-" + i + ".jpg", "Invitado", null, guestToken);
+            mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated());
+        }
+
+        UploadUrlRequestDTO uploadUrlRequest = new UploadUrlRequestDTO("image/jpeg", "otra-mas.jpg", guestToken);
+        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/upload-url")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(uploadUrlRequest)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is(403)))
+                .andExpect(jsonPath("$.message", containsString("Ya usaste tus 24 fotos")));
     }
 
     @Test

@@ -100,6 +100,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(GuestQuotaExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handleGuestQuotaExceeded(
+            GuestQuotaExceededException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.FORBIDDEN.value(),
+                "Forbidden - Guest Photo Quota Exceeded",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
     @ExceptionHandler(InvalidFileContentException.class)
     public ResponseEntity<ErrorResponseDTO> handleInvalidFileContent(
             InvalidFileContentException ex, HttpServletRequest request) {

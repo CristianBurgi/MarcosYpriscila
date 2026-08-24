@@ -58,9 +58,10 @@ public class PhotoController {
             @PathVariable String slug,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @RequestParam("uploaderName") String uploaderName,
-            @RequestParam(value = "caption", required = false) String caption) {
+            @RequestParam(value = "caption", required = false) String caption,
+            @RequestParam("guestToken") String guestToken) {
 
-        PhotoResponseDTO response = photoService.uploadDirect(slug, file, uploaderName, caption);
+        PhotoResponseDTO response = photoService.uploadDirect(slug, file, uploaderName, caption, guestToken);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

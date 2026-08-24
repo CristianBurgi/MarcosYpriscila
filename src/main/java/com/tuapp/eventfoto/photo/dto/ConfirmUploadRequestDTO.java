@@ -11,5 +11,8 @@ public record ConfirmUploadRequestDTO(
     String uploaderName,
 
     @Size(max = 500, message = "La dedicatoria o pie de foto no puede superar los 500 caracteres")
-    String caption
+    String caption,
+
+    @NotBlank(message = "El token de invitado (guestToken) es obligatorio")
+    String guestToken
 ) {}

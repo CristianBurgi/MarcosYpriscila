@@ -19,7 +19,7 @@ public interface PhotoService {
 
     PhotoResponseDTO confirmUpload(String slug, ConfirmUploadRequestDTO request);
 
-    PhotoResponseDTO uploadDirect(String slug, MultipartFile file, String uploaderName, String caption);
+    PhotoResponseDTO uploadDirect(String slug, MultipartFile file, String uploaderName, String caption, String guestToken);
 
     Page<PhotoResponseDTO> getApprovedPhotos(String slug, Pageable pageable);
 
