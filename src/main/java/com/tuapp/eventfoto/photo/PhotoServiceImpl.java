@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.common.exception.EventClosedException;
+import com.tuapp.eventfoto.common.exception.InvalidFileContentException;
 import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.event.Event;
@@ -13,6 +14,7 @@ import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlResponseDTO;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
+import com.tuapp.eventfoto.storage.FileSignatureValidator;
 import com.tuapp.eventfoto.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -79,6 +82,12 @@ public class PhotoServiceImpl implements PhotoService {
         if (!event.isActive()) {
             throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
         }
+
+        // Verificación de contenido real (magic bytes) del objeto ya subido a storage,
+        // independiente del Content-Type que haya declarado el cliente. Si no es un
+        // objeto contra el que se pueda validar (ver validateUploadedFileSignature),
+        // se elimina de storage y se rechaza antes de crear cualquier registro en BD.
+        validateUploadedFileSignature(request.key());
 
         String uploader = request.uploaderName() != null && !request.uploaderName().isBlank() ? request.uploaderName().trim() : "Invitado";
 
@@ -141,6 +150,16 @@ public class PhotoServiceImpl implements PhotoService {
 
         try {
             byte[] bytes = file.getBytes();
+
+            // Verificación de contenido real (magic bytes) antes de subir a storage:
+            // el Content-Type multipart declarado por el cliente puede mentir.
+            if (!FileSignatureValidator.isValidImageSignature(headerOf(bytes))) {
+                log.warn("Subida directa rechazada: la firma binaria del archivo no corresponde a una imagen válida (Content-Type declarado: '{}')", contentType);
+                throw new InvalidFileContentException(
+                        "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
+                );
+            }
+
             storageService.uploadBytes(key, bytes, contentType);
 
             Photo photo = Photo.builder()
@@ -357,6 +376,39 @@ public class PhotoServiceImpl implements PhotoService {
         }
         usedNames.add(finalName);
         return finalName;
+    }
+
+    /**
+     * Lee los primeros bytes del objeto ya subido a storage y verifica su firma
+     * binaria real contra los formatos de imagen permitidos. Si no coincide con
+     * ninguna firma válida, elimina el objeto de storage (no deja basura en el
+     * bucket) y rechaza con InvalidFileContentException (422) antes de que
+     * confirmUpload cree el registro Photo.
+     */
+    private void validateUploadedFileSignature(String key) {
+        byte[] header;
+        try (InputStream is = storageService.streamObject(key)) {
+            header = is.readNBytes(12);
+        } catch (IOException e) {
+            log.error("Error al leer los bytes del objeto '{}' para validar su firma: {}", key, e.getMessage());
+            throw new StorageException("No se pudo leer el archivo subido para validar su contenido", e);
+        }
+
+        if (!FileSignatureValidator.isValidImageSignature(header)) {
+            log.warn("Confirmación rechazada: la firma binaria del objeto '{}' no corresponde a una imagen válida. Eliminando de storage.", key);
+            try {
+                storageService.deleteFile(key);
+            } catch (Exception e) {
+                log.error("No se pudo eliminar el objeto inválido '{}' del storage tras rechazar su firma: {}", key, e.getMessage());
+            }
+            throw new InvalidFileContentException(
+                    "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
+            );
+        }
+    }
+
+    private byte[] headerOf(byte[] bytes) {
+        return bytes.length > 12 ? Arrays.copyOf(bytes, 12) : bytes;
     }
 
     private String getFileExtension(String filename, String contentType) {

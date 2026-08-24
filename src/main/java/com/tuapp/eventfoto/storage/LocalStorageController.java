@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.storage;
 
+import com.tuapp.eventfoto.common.exception.InvalidFileContentException;
 import com.tuapp.eventfoto.common.exception.StorageException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,17 @@ public class LocalStorageController {
             Files.createDirectories(targetPath.getParent());
 
             byte[] bytes = request.getInputStream().readAllBytes();
+
+            // Verificación de contenido real (magic bytes) antes de escribir a disco,
+            // igual que en el flujo de R2: no confiar únicamente en el Content-Type declarado.
+            byte[] header = bytes.length > 12 ? java.util.Arrays.copyOf(bytes, 12) : bytes;
+            if (!FileSignatureValidator.isValidImageSignature(header)) {
+                log.warn("Subida local rechazada: la firma binaria del archivo no corresponde a una imagen válida para key='{}'", key);
+                throw new InvalidFileContentException(
+                        "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
+                );
+            }
+
             try (FileOutputStream fos = new FileOutputStream(targetPath.toFile())) {
                 fos.write(bytes);
             }

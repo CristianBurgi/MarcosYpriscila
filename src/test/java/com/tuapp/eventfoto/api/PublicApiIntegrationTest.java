@@ -24,6 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 
 import static org.hamcrest.Matchers.*;
@@ -90,6 +91,11 @@ class PublicApiIntegrationTest {
                 .thenReturn("https://r2.test-storage.com/upload-presigned-url");
         when(storageService.generatePublicUrl(org.mockito.ArgumentMatchers.any()))
                 .thenReturn("https://r2.test-storage.com/public-photo-url.jpg");
+        // Firma JPEG válida (FF D8 FF) para que la verificación de magic bytes en /confirm
+        // (PhotoServiceImpl.validateUploadedFileSignature) pase con un StorageService mockeado.
+        when(storageService.streamObject(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> new ByteArrayInputStream(
+                        new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
     }
 
     @Test

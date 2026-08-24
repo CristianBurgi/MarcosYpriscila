@@ -277,7 +277,9 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Permitir que un invitado suba fotos localmente vía PUT /api/v1/storage/local-upload sin JWT en modo local")
     void shouldAllowGuestLocalUploadWithoutJwt() throws Exception {
-        byte[] content = "dummy image bytes".getBytes();
+        // Firma JPEG válida (FF D8 FF...) para pasar la verificación de magic bytes:
+        // este test valida que el endpoint sea público (permitAll), no la validación de contenido.
+        byte[] content = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0, 0, 0, 0, 0, 0, 0};
         mockMvc.perform(put("/api/v1/storage/local-upload?key=photos/test-guest-upload.jpg")
                         .content(content))
                 .andExpect(status().isOk());

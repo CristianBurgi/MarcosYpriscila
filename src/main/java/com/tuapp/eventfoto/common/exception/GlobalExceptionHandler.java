@@ -100,6 +100,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(InvalidFileContentException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidFileContent(
+            InvalidFileContentException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                "Unprocessable Entity - Invalid File Content",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
