@@ -7,177 +7,116 @@
     <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/theme.css?v=3">
+    <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
     <style>
         html, body {
-            background: linear-gradient(to bottom, rgba(52, 9, 18, 0.82), rgba(20, 3, 7, 0.94)),
+            background: linear-gradient(to bottom, rgba(36, 10, 13, 0.86), rgba(16, 4, 5, 0.95)),
                         url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
             background-size: cover !important;
             min-height: 100vh !important;
             margin: 0 !important;
             padding: 0 !important;
-            color: #fdf6f7 !important;
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            color: var(--cream) !important;
+            font-family: 'Cormorant Garamond', serif !important;
         }
 
         .header-section {
             text-align: center;
-            padding: 2.5rem 1.25rem 1rem;
+            padding: 2rem 1.25rem 0.5rem;
+            max-width: 480px;
+            margin: 0 auto;
         }
 
-        .wedding-title-main {
-            font-family: 'Playfair Display', 'Cormorant Garamond', serif;
-            font-size: 3rem;
-            font-weight: 600;
-            color: #fdf6f7;
-            margin-bottom: 0.25rem;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
+        .form-card-elegant {
+            max-width: 420px;
+            margin: 0 auto 2.5rem;
+            padding: 1.6rem;
+            border: 1px solid rgba(201, 161, 90, 0.3);
         }
 
-        .welcome-subtitle {
-            font-size: 1.05rem;
-            color: #e2c2c6;
-            margin: 0.4rem auto 1.5rem;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
+        #message-form { text-align: center; }
 
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #e6c594;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            margin-bottom: 0.8rem;
-            padding: 6px 14px;
-            background: rgba(59, 10, 20, 0.6);
-            border: 1px solid rgba(247, 225, 228, 0.2);
-            border-radius: 20px;
-            transition: all 0.2s ease;
-        }
-
-        .back-link:hover {
-            color: #ffffff;
-            background: rgba(140, 43, 62, 0.6);
-            text-decoration: none;
-        }
-
-        .card-glass {
-            background: rgba(59, 10, 20, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 18px;
-            padding: 1.5rem;
-            border: 1px solid rgba(247, 225, 228, 0.22);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            margin-bottom: 2rem;
-        }
+        .field-elegant { text-align: center; }
 
         .message-card {
-            background: rgba(35, 6, 12, 0.75);
-            padding: 1.25rem 1.4rem;
-            border-left: 4px solid #8c2b3e;
-            border-radius: 12px;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-            border-top: 1px solid rgba(247, 225, 228, 0.15);
-            border-right: 1px solid rgba(247, 225, 228, 0.15);
-            border-bottom: 1px solid rgba(247, 225, 228, 0.15);
+            background: rgba(201, 161, 90, 0.04);
+            border-left: 2px solid var(--gold);
+            padding: 1.1rem 1.3rem;
+            margin-bottom: 1.1rem;
         }
 
         .message-author {
             font-family: 'Playfair Display', serif;
-            font-size: 1.3rem;
-            color: #fdf6f7;
-            font-weight: 600;
+            font-style: italic;
+            font-weight: 500;
+            font-size: 1.2rem;
+            color: var(--cream);
         }
 
         .message-text {
-            color: #e2c2c6;
-            font-size: 1rem;
+            color: var(--cream-muted);
+            font-size: 1.02rem;
             margin-top: 0.4rem;
             line-height: 1.45;
+            font-family: 'Cormorant Garamond', serif;
         }
 
         .message-time {
-            color: #e6c594;
-            font-size: 0.82rem;
+            color: var(--gold-soft);
+            font-size: 0.8rem;
             margin-top: 0.6rem;
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            letter-spacing: .05em;
         }
 
-        .btn-burgundy-full {
-            background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
-            border: 1px solid rgba(247, 225, 228, 0.25);
-            color: #fdf6f7;
-            font-weight: 600;
-            border-radius: 12px;
-            padding: 0.8rem 1.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 100%;
-        }
-
-        .btn-burgundy-full:hover {
-            background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
-            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.4);
-        }
-
-        .footer-wedding {
-            text-align: center;
-            padding: 2.5rem 1rem 1.5rem;
-            color: #e2c2c6;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
+        .messages-section {
+            max-width: 620px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
         }
     </style>
 </head>
 <body>
-    <header class="container header-section">
-        <a href="/menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
-        <h1 class="wedding-title-main">
-            <i class="fa-solid fa-book-open-reader" style="color: #e6c594;"></i> Libro de Visitas
-        </h1>
-        <p class="welcome-subtitle">Dejá tus buenos deseos para Marcos y Priscila</p>
+    <header class="header-section">
+        <a href="/menu.html" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+        <h1 class="page-title">Libro de Visitas</h1>
+        <p class="page-sub">Dejá tus buenos deseos para los novios</p>
     </header>
 
-    <main class="container" style="max-width: 750px; margin: 0 auto; padding: 0 1.25rem;">
-        <article class="card-glass">
-            <h3 style="font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #fdf6f7; margin-bottom: 1.2rem;"><i class="fa-solid fa-pen-nib" style="color: #e6c594; margin-right: 6px;"></i> Escribir un Mensaje</h3>
-            
+    <main>
+        <article class="form-card-elegant">
+            <div class="divider" style="margin-top: 0;"><span class="l"></span>Escribir un mensaje<span class="l"></span></div>
+
             <form id="message-form">
-                <label for="authorName" style="color: #fdf6f7; font-weight: 500;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
-                <input type="text" id="authorName" name="authorName" placeholder="Ej: Padrino Juan" required maxlength="150" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1rem;">
+                <label for="authorName" class="field-label">Tu Nombre</label>
+                <input type="text" id="authorName" name="authorName" class="field-elegant" placeholder="Ej: Padrino Juan" required maxlength="150">
 
-                <label for="messageText" style="color: #fdf6f7; font-weight: 500;">Mensaje para los novios <span style="color: #fca5a5;">*</span>:</label>
-                <textarea id="messageText" name="text" rows="3" placeholder="¡Les deseamos toda la felicidad y amor en esta nueva etapa juntos!" required maxlength="1000" style="background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; margin-bottom: 1.2rem;"></textarea>
+                <label for="messageText" class="field-label">Mensaje para los novios</label>
+                <textarea id="messageText" name="text" rows="3" class="field-elegant" placeholder="¡Les deseamos toda la felicidad y amor en esta nueva etapa juntos!" required maxlength="1000"></textarea>
 
-                <button type="submit" id="btn-submit" class="btn-burgundy-full">
+                <button type="submit" id="btn-submit" class="btn-primary-elegant">
                     Enviar Mensaje
                 </button>
             </form>
             <div id="status-message"></div>
         </article>
 
-        <section style="margin-top: 2rem;">
-            <h3 style="font-family: 'Playfair Display', serif; font-size: 1.6rem; color: #fdf6f7; margin-bottom: 1.2rem;"><i class="fa-solid fa-comments" style="color: #e6c594; margin-right: 6px;"></i> Felicitaciones de los Invitados</h3>
+        <section class="messages-section">
+            <div class="divider"><span class="l"></span>Felicitaciones de los invitados<span class="l"></span></div>
             <div id="messages-list">
-                <p style="color: #e2c2c6;">Cargando mensajes del libro de visitas...</p>
+                <p style="color: var(--cream-muted); text-align: center;">Cargando mensajes del libro de visitas...</p>
             </div>
         </section>
     </main>
 
-    <footer class="footer-wedding">
-        <small>✦ Boda de Marcos y Priscila &bull; Celebrando el amor ✦</small>
+    <footer class="footer-note" style="margin-top: 2.5rem; padding-bottom: 1.5rem;">
+        <small>✦ Celebrando el amor ✦</small>
     </footer>
 
     <script>
@@ -196,7 +135,7 @@
                 const container = document.getElementById('messages-list');
 
                 if (!data.content || data.content.length === 0) {
-                    container.innerHTML = '<p style="color: #e2c2c6; font-style: italic;">Aún no hay mensajes. ¡Sé el primero en escribir a los novios!</p>';
+                    container.innerHTML = '<p style="color: var(--cream-muted); font-style: italic; text-align: center;">Aún no hay mensajes. ¡Sé el primero en escribir a los novios!</p>';
                     return;
                 }
 
@@ -204,7 +143,7 @@
                     <div class="message-card">
                         <div class="message-author">${escapeHtml(msg.authorName)}</div>
                         <div class="message-text">${escapeHtml(msg.text)}</div>
-                        <span class="message-time"><i class="fa-regular fa-clock" style="font-size: 0.8rem;"></i> ${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
+                        <span class="message-time"><i class="fa-regular fa-clock" style="font-size: 0.75rem;"></i> ${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
                     </div>
                 `).join('');
 
