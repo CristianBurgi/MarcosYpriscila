@@ -7,112 +7,61 @@
     <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/theme.css?v=3">
+    <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
     <style>
         html, body {
-            background: linear-gradient(to bottom, rgba(52, 9, 18, 0.82), rgba(20, 3, 7, 0.94)),
+            background: linear-gradient(to bottom, rgba(36, 10, 13, 0.86), rgba(16, 4, 5, 0.95)),
                         url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
             background-size: cover !important;
             min-height: 100vh !important;
             margin: 0 !important;
             padding: 0 !important;
-            color: #fdf6f7 !important;
-            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            color: var(--cream) !important;
+            font-family: 'Cormorant Garamond', serif !important;
         }
 
         .gallery-header {
             text-align: center;
-            padding: 2.5rem 1.25rem 1rem;
-        }
-
-        .wedding-title-main {
-            font-family: 'Playfair Display', 'Cormorant Garamond', serif;
-            font-size: 3rem;
-            font-weight: 600;
-            color: #fdf6f7;
-            margin-bottom: 0.25rem;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-        }
-
-        .wedding-title-icon {
-            font-size: 2.4rem;
-        }
-
-        .welcome-subtitle {
-            font-size: 1.05rem;
-            color: #e2c2c6;
-            max-width: 500px;
-            margin: 0.4rem auto 1.5rem;
-            line-height: 1.5;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #e6c594;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            margin-bottom: 0.8rem;
-            padding: 6px 14px;
-            background: rgba(59, 10, 20, 0.6);
-            border: 1px solid rgba(247, 225, 228, 0.2);
-            border-radius: 20px;
-            transition: all 0.2s ease;
-        }
-
-        .back-link:hover {
-            color: #ffffff;
-            background: rgba(140, 43, 62, 0.6);
-            text-decoration: none;
+            padding: 2rem 1.25rem 0.5rem;
+            max-width: 480px;
+            margin: 0 auto;
         }
 
         /* Grilla de la Galería */
         .gallery-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 1.4rem;
             margin-top: 1rem;
         }
 
         .gallery-card {
-            background: rgba(59, 10, 20, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 18px;
+            background: rgba(90, 26, 32, 0.18);
+            border: 1px solid rgba(201, 161, 90, 0.35);
+            border-radius: 2px;
             overflow: hidden;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(247, 225, 228, 0.22);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.25s ease;
             display: flex;
             flex-direction: column;
         }
 
         .gallery-card:hover {
-            transform: translateY(-4px) scale(1.01);
-            border-color: #f7e1e4;
-            box-shadow: 0 14px 36px rgba(107, 28, 45, 0.5);
+            border-color: var(--gold);
+            transform: translateY(-3px);
         }
 
-        /* Contenedor de la Imagen: EVITA EL RECORTE DE FOTOS */
         .gallery-img-wrapper {
             width: 100%;
-            height: 320px;
-            background: rgba(18, 3, 6, 0.75);
+            height: 300px;
+            background: rgba(16, 4, 5, 0.75);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            position: relative;
             padding: 6px;
             box-sizing: border-box;
         }
@@ -122,8 +71,8 @@
             max-height: 100%;
             width: auto;
             height: auto;
-            object-fit: contain !important; /* SIN RECORTE DE FOTOS */
-            border-radius: 8px;
+            object-fit: contain !important;
+            border-radius: 2px;
             transition: transform 0.3s ease;
         }
 
@@ -132,58 +81,53 @@
         }
 
         .gallery-card-footer {
-            padding: 1rem 1.25rem;
+            padding: 0.8rem 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(35, 6, 12, 0.85);
-            border-top: 1px solid rgba(247, 225, 228, 0.15);
+            border-top: 1px solid rgba(201, 161, 90, 0.25);
+            font-size: 0.9rem;
         }
 
         .badge-uploader {
-            background: rgba(140, 43, 62, 0.5);
-            color: #fdf6f7;
-            border: 1px solid rgba(247, 225, 228, 0.25);
-            font-weight: 600;
-            padding: 0.35rem 0.85rem;
-            border-radius: 20px;
-            font-size: 0.88rem;
+            color: var(--gold-soft);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.95rem;
             display: inline-flex;
             align-items: center;
             gap: 6px;
         }
 
         .comments-count {
-            color: #e2c2c6;
+            color: var(--cream-muted);
             font-size: 0.88rem;
             display: flex;
             align-items: center;
             gap: 0.35rem;
-            font-weight: 500;
         }
 
-        /* Modal Styles Glassmorphic */
+        /* Modal */
         dialog.modal-photo {
             max-width: 780px;
             width: 92vw;
-            border-radius: 20px;
-            border: 1px solid rgba(247, 225, 228, 0.3);
-            background: rgba(38, 6, 13, 0.96);
-            color: #fdf6f7;
+            border-radius: 4px;
+            border: 1px solid rgba(201, 161, 90, 0.4);
+            background: linear-gradient(180deg, var(--wine) 0%, var(--wine-deep) 100%);
+            color: var(--cream);
             padding: 0;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7);
             overflow: hidden;
         }
 
         dialog.modal-photo::backdrop {
-            background: rgba(15, 3, 6, 0.85);
-            backdrop-filter: blur(8px);
+            background: rgba(10, 2, 3, 0.85);
+            backdrop-filter: blur(6px);
         }
 
         .modal-body {
             max-height: 88vh;
             overflow-y: auto;
-            padding: 1.5rem;
+            padding: 1.6rem;
         }
 
         .modal-header-custom {
@@ -192,41 +136,43 @@
             align-items: center;
             padding-bottom: 0.8rem;
             margin-bottom: 1rem;
-            border-bottom: 1px solid rgba(247, 225, 228, 0.15);
+            border-bottom: 1px solid rgba(201, 161, 90, 0.25);
         }
 
         .modal-header-custom h4 {
             margin: 0;
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.5rem;
-            color: #fdf6f7;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-weight: 500;
+            font-size: 1.3rem;
+            color: var(--cream);
         }
 
         .btn-close-modal {
-            background: rgba(247, 225, 228, 0.15);
-            color: #fdf6f7;
-            border: 1px solid rgba(247, 225, 228, 0.3);
-            width: 34px;
-            height: 34px;
+            background: transparent;
+            color: var(--gold-soft);
+            border: 1px solid rgba(201, 161, 90, 0.5);
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
+            font-weight: 400;
             transition: all 0.2s ease;
         }
 
         .btn-close-modal:hover {
-            background: rgba(239, 68, 68, 0.4);
-            color: #ffffff;
+            border-color: var(--gold);
+            color: var(--cream);
         }
 
         .modal-img-container {
             width: 100%;
-            max-height: 520px;
-            background: rgba(15, 3, 6, 0.9);
-            border-radius: 12px;
+            max-height: 480px;
+            background: rgba(10, 2, 3, 0.85);
+            border: 1px solid rgba(201, 161, 90, 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -236,64 +182,52 @@
 
         .modal-img {
             max-width: 100%;
-            max-height: 500px;
+            max-height: 460px;
             object-fit: contain;
-            border-radius: 8px;
         }
 
         .comment-item {
-            background: rgba(59, 10, 20, 0.6);
-            border-left: 3px solid #8c2b3e;
-            border-radius: 8px;
-            padding: 0.8rem 1rem;
-            margin-bottom: 0.8rem;
-            border-top: 1px solid rgba(247, 225, 228, 0.1);
-            border-right: 1px solid rgba(247, 225, 228, 0.1);
-            border-bottom: 1px solid rgba(247, 225, 228, 0.1);
+            background: rgba(201, 161, 90, 0.05);
+            border-left: 2px solid var(--gold);
+            padding: 0.7rem 1rem;
+            margin-bottom: 0.7rem;
         }
 
-        .btn-burgundy-full {
-            background: linear-gradient(135deg, #6b1c2d 0%, #521321 100%);
-            border: 1px solid rgba(247, 225, 228, 0.25);
-            color: #fdf6f7;
-            font-weight: 600;
-            border-radius: 12px;
-            padding: 0.8rem 1.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        .comment-item strong {
+            font-family: 'Playfair Display', serif;
+            color: var(--cream);
+            font-size: 1rem;
         }
 
-        .btn-burgundy-full:hover {
-            background: linear-gradient(135deg, #8c2b3e 0%, #6b1c2d 100%);
-            box-shadow: 0 4px 16px rgba(140, 43, 62, 0.4);
+        .comment-item p {
+            margin: 0.25rem 0 0;
+            color: var(--cream-muted);
+            font-size: 0.95rem;
+            line-height: 1.4;
+            font-family: 'Cormorant Garamond', serif;
         }
 
-        .footer-wedding {
-            text-align: center;
-            padding: 2.5rem 1rem 1.5rem;
-            color: #e2c2c6;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
+        .comment-form-elegant .field-elegant {
+            margin-bottom: 1rem;
         }
     </style>
 </head>
 <body>
 
-    <header class="container gallery-header">
-        <a href="/menu.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
-        <h1 class="wedding-title-main">
-            <i class="fa-solid fa-images" style="color: #e6c594;"></i> Álbum de Fotos
-        </h1>
-        <p class="welcome-subtitle">Reviví los mejores momentos compartidos por nuestros invitados</p>
+    <header class="gallery-header">
+        <a href="/menu.html" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+        <h1 class="page-title">Álbum del Evento</h1>
+        <p class="page-sub">Reviví los mejores momentos compartidos por nuestros invitados</p>
     </header>
 
-    <main class="container" style="max-width: 1100px; margin: 0 auto; padding: 0 1.25rem;">
+    <main style="max-width: 1050px; margin: 0 auto; padding: 0 1.25rem;">
         <div class="gallery-grid" id="gallery-container">
-            <p style="grid-column: 1 / -1; text-align: center; color: #e2c2c6;">Cargando fotografías del evento...</p>
+            <p style="grid-column: 1 / -1; text-align: center; color: var(--cream-muted);">Cargando fotografías del evento...</p>
         </div>
 
-        <div style="text-align: center; margin-top: 2.5rem; margin-bottom: 2rem;">
-            <button id="btn-load-more" class="btn-burgundy-full" style="display: none; width: auto; padding: 0.8rem 2.5rem;">
+        <div style="text-align: center; margin-top: 2rem; margin-bottom: 2rem; max-width: 320px; margin-left: auto; margin-right: auto;">
+            <button id="btn-load-more" class="btn-elegant" style="display: none;">
                 Cargar más fotos
             </button>
         </div>
@@ -313,35 +247,35 @@
 
             <section style="margin-top: 1.2rem;">
                 <!-- Formulario para publicar comentario (arriba) -->
-                <form id="comment-form" style="margin-bottom: 1.2rem; background: rgba(20, 3, 7, 0.5); padding: 1rem 1.2rem; border-radius: 14px; border: 1px solid rgba(247, 225, 228, 0.15);">
-                    <h5 style="font-size: 1rem; color: #fdf6f7; margin: 0 0 0.8rem 0; font-family: 'Plus Jakarta Sans', sans-serif;"><i class="fa-solid fa-comment-medical" style="color: #e6c594; margin-right: 6px;"></i> Dejá tu comentario</h5>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <form id="comment-form" class="comment-form-elegant" style="margin-bottom: 1.4rem; border: 1px solid rgba(201, 161, 90, 0.25); padding: 1rem 1.2rem;">
+                    <div class="divider" style="margin: 0 0 1rem;"><span class="l"></span>Dejá tu comentario<span class="l"></span></div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div>
-                            <label for="commentAuthor" style="color: #fdf6f7; font-size: 0.85rem; font-weight: 500; display: block; margin-bottom: 0.3rem;">Tu Nombre <span style="color: #fca5a5;">*</span>:</label>
-                            <input type="text" id="commentAuthor" name="authorName" placeholder="Ej: Primo Lucas" required maxlength="150" style="width: 100%; box-sizing: border-box; background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; padding: 0.6rem 0.8rem; font-size: 0.9rem;">
+                            <label for="commentAuthor" class="field-label">Tu Nombre</label>
+                            <input type="text" id="commentAuthor" name="authorName" class="field-elegant" placeholder="Ej: Primo Lucas" required maxlength="150" style="margin-bottom: 0;">
                         </div>
                         <div>
-                            <label for="commentText" style="color: #fdf6f7; font-size: 0.85rem; font-weight: 500; display: block; margin-bottom: 0.3rem;">Comentario <span style="color: #fca5a5;">*</span>:</label>
-                            <input type="text" id="commentText" name="text" placeholder="¡Qué linda foto!" required maxlength="500" style="width: 100%; box-sizing: border-box; background: rgba(20, 3, 7, 0.7); color: #fff; border: 1px solid rgba(247, 225, 228, 0.3); border-radius: 10px; padding: 0.6rem 0.8rem; font-size: 0.9rem;">
+                            <label for="commentText" class="field-label">Comentario</label>
+                            <input type="text" id="commentText" name="text" class="field-elegant" placeholder="¡Qué linda foto!" required maxlength="500" style="margin-bottom: 0;">
                         </div>
                     </div>
 
-                    <button type="submit" id="btn-comment-submit" class="btn-burgundy-full" style="width: 100%; margin-top: 0.8rem; padding: 0.65rem;">Enviar Comentario</button>
+                    <button type="submit" id="btn-comment-submit" class="btn-primary-elegant" style="width: 100%; margin-top: 1.2rem; padding: 12px 20px; font-size: 0.9rem;">Enviar Comentario</button>
                     <div id="comment-status"></div>
                 </form>
 
-                <h5 style="font-size: 1.05rem; color: #fdf6f7; margin-bottom: 0.8rem;"><i class="fa-solid fa-comments" style="color: #e6c594; margin-right: 6px;"></i> Comentarios (<span id="modal-comments-count">0</span>)</h5>
-                
+                <div class="divider"><span class="l"></span>Comentarios (<span id="modal-comments-count">0</span>)<span class="l"></span></div>
+
                 <div id="modal-comments-list" style="max-height: 240px; overflow-y: auto; padding-right: 4px;">
-                    <p style="color: #e2c2c6;">Cargando comentarios...</p>
+                    <p style="color: var(--cream-muted);">Cargando comentarios...</p>
                 </div>
             </section>
         </article>
     </dialog>
 
-    <footer class="footer-wedding">
-        <small>✦ Boda de Marcos y Priscila &bull; Celebrando el amor ✦</small>
+    <footer class="footer-note" style="margin-top: 2.5rem; padding-bottom: 1.5rem;">
+        <small>✦ Celebrando el amor ✦</small>
     </footer>
 
     <script>
@@ -375,7 +309,7 @@
 
                 if (!data.content || data.content.length === 0) {
                     if (page === 0) {
-                        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #e2c2c6;"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
+                        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--cream-muted);"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
                     }
                     btnMore.style.display = 'none';
                     return;
@@ -395,8 +329,8 @@
                             <img src="${escapeHtml(imageUrl)}" alt="Foto de la boda" onerror="handleImageError(this)">
                         </div>
                         <div class="gallery-card-footer">
-                            <span class="badge-uploader"><i class="fa-solid fa-camera" style="font-size: 0.8rem; margin-right: 4px;"></i> ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
-                            <span class="comments-count" id="count-${photo.id}"><i class="fa-solid fa-comments" style="font-size: 0.8rem; margin-right: 4px;"></i> ${photo.commentCount || 0}</span>
+                            <span class="badge-uploader"><i class="fa-solid fa-camera" style="font-size: 0.8rem;"></i> ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
+                            <span class="comments-count" id="count-${photo.id}"><i class="fa-solid fa-comments" style="font-size: 0.8rem;"></i> ${photo.commentCount || 0}</span>
                         </div>
                     `;
                     card.addEventListener('click', () => openPhotoModal(photo));
@@ -407,7 +341,7 @@
                 if (data.last) {
                     btnMore.style.display = 'none';
                 } else {
-                    btnMore.style.display = 'inline-block';
+                    btnMore.style.display = 'block';
                 }
 
             } catch (err) {
@@ -427,14 +361,14 @@
         async function openPhotoModal(photo) {
             activePhotoId = photo.id;
             const modal = document.getElementById('photo-modal');
-            
+
             let imageUrl = photo.url || photo.storageKey;
             if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
                 imageUrl = '/' + imageUrl;
             }
 
-            document.getElementById('modal-uploader').innerHTML = `<i class="fa-solid fa-camera" style="margin-right: 8px; color: #e6c594;"></i> Subida por ${escapeHtml(photo.uploaderName || 'Invitado')}`;
-            
+            document.getElementById('modal-uploader').innerHTML = `Subida por ${escapeHtml(photo.uploaderName || 'Invitado')}`;
+
             const modalImg = document.getElementById('modal-img');
             modalImg.onerror = function() {
                 this.onerror = null;
@@ -464,14 +398,14 @@
                 }
 
                 if (!comments || comments.length === 0) {
-                    listDiv.innerHTML = '<p style="color: #e2c2c6; font-style: italic;">No hay comentarios en esta foto. ¡Sé el primero en comentar!</p>';
+                    listDiv.innerHTML = '<p style="color: var(--cream-muted); font-style: italic;">No hay comentarios en esta foto. ¡Sé el primero en comentar!</p>';
                     return;
                 }
 
                 listDiv.innerHTML = comments.map(c => `
                     <div class="comment-item">
-                        <strong style="color: #fdf6f7; font-size: 0.95rem;">${escapeHtml(c.authorName)}</strong>
-                        <p style="margin: 0.25rem 0 0; color: #e2c2c6; font-size: 0.9rem; line-height: 1.4;">${escapeHtml(c.text)}</p>
+                        <strong>${escapeHtml(c.authorName)}</strong>
+                        <p>${escapeHtml(c.text)}</p>
                     </div>
                 `).join('');
 
