@@ -7,6 +7,16 @@ spring:
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres_local_dev_password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Fase 8 - Test 10 (degradacion de infraestructura): con el default de 10
+      # (sin configurar), 50 confirmUpload concurrentes se encolaban en oleadas
+      # de a 10 cada ~9s, llegando la ultima oleada a esperar 30+ segundos.
+      # Subimos el techo a 20 para dar mas margen de concurrencia real de boda.
+      maximum-pool-size: 20
+      # No hace falta bajarlo agresivamente: con los timeouts explicitos del
+      # S3Client (ver S3Config.java), una conexion ya no queda retenida ~9s
+      # esperando a R2 -- el peor caso ahora es de pocos segundos.
+      connection-timeout: 15000
 
   jpa:
     hibernate:
