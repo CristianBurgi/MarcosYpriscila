@@ -406,6 +406,14 @@
         }
 
         // 7. Conexión SSE
+        // Fase 8 - Test 11 (degradación de infraestructura): el navegador reconecta
+        // solo tras un corte de red (comportamiento nativo de EventSource), pero
+        // cualquier evento ocurrido mientras estuvo desconectado se pierde para
+        // siempre -- el servidor no reenvía nada al reconectar. Se detecta la
+        // reconexión (open después de un error) y se vuelve a pedir el estado
+        // completo de fotos aprobadas para resincronizar.
+        let sseWasDisconnected = false;
+
         function setupSSE() {
             if (!!window.EventSource) {
                 const eventSource = new EventSource(`/api/v1/events/${SLUG}/stream`);
@@ -420,11 +428,26 @@
                     handleNewMessage(payload);
                 });
 
+                eventSource.onopen = () => {
+                    if (sseWasDisconnected) {
+                        console.warn('SSE reconectado tras un corte -- resincronizando fotos aprobadas.');
+                        sseWasDisconnected = false;
+                        fetchApprovedPhotos();
+                    }
+                };
+
                 eventSource.onerror = (err) => {
                     console.warn('Conexión SSE reintentando...', err);
+                    sseWasDisconnected = true;
                 };
             }
         }
+
+        // Red de seguridad: resincronizar periódicamente aunque el corte de red no
+        // haya disparado un 'error' limpio en el EventSource (ej. proxies o firewalls
+        // del salón que cortan la conexión sin avisar).
+        const SSE_SAFETY_RESYNC_INTERVAL_MS = 4 * 60 * 1000; // 4 minutos
+        setInterval(fetchApprovedPhotos, SSE_SAFETY_RESYNC_INTERVAL_MS);
 
         function escapeHtml(str) {
             if (!str) return '';
