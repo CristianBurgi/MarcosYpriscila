@@ -15,7 +15,7 @@ import java.util.UUID;
 
 public interface PhotoService {
 
-    UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp);
+    UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken);
 
     PhotoResponseDTO confirmUpload(String slug, ConfirmUploadRequestDTO request);
 

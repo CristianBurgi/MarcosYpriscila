@@ -32,7 +32,8 @@ public class PhotoController {
             HttpServletRequest servletRequest) {
 
         String clientIp = getClientIp(servletRequest);
-        UploadUrlResponseDTO response = photoService.generateUploadUrl(slug, request, clientIp);
+        // Pasar guestToken para rate limiting en dos capas (por guest + por IP)
+        UploadUrlResponseDTO response = photoService.generateUploadUrl(slug, request, clientIp, request.guestToken());
         return ResponseEntity.ok(response);
     }
 
