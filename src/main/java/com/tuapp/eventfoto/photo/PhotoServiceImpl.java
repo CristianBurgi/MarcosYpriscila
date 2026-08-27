@@ -91,10 +91,13 @@ public class PhotoServiceImpl implements PhotoService {
         }
 
         // Verificación de contenido real (magic bytes) del objeto ya subido a storage,
-        // independiente del Content-Type que haya declarado el cliente. Si no es un
-        // objeto contra el que se pueda validar (ver validateUploadedFileSignature),
-        // se elimina de storage y se rechaza antes de crear cualquier registro en BD.
-        validateUploadedFileSignature(request.key());
+        // independiente del Content-Type que haya declarado el cliente. Si es un HEIC/HEIF
+        // real, se convierte acá mismo a JPEG (la mayoria de los navegadores -- Chrome,
+        // Firefox, Android -- no pueden decodificar HEIC nativamente; solo Safari/iOS lo
+        // soporta). Devuelve la key final a usar (la original, o la nueva .jpg si hubo
+        // conversion). Si no es una imagen valida, se elimina de storage y se rechaza antes
+        // de crear cualquier registro en BD.
+        String finalKey = validateAndConvertIfNeeded(request.key());
 
         // Incremento atómico del cupo del invitado, solo después de confirmar que el
         // archivo es una imagen real. Si el cupo ya está agotado (incluso por una
@@ -105,11 +108,11 @@ public class PhotoServiceImpl implements PhotoService {
         try {
             guestQuotaService.incrementUsageOrThrow(event, request.guestToken());
         } catch (GuestQuotaExceededException e) {
-            log.warn("Cupo agotado al confirmar; eliminando objeto huérfano '{}' de storage", request.key());
+            log.warn("Cupo agotado al confirmar; eliminando objeto huérfano '{}' de storage", finalKey);
             try {
-                storageService.deleteFile(request.key());
+                storageService.deleteFile(finalKey);
             } catch (Exception cleanupEx) {
-                log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", request.key(), cleanupEx.getMessage());
+                log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", finalKey, cleanupEx.getMessage());
             }
             throw e;
         }
@@ -118,7 +121,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         Photo photo = Photo.builder()
                 .event(event)
-                .storageKey(request.key())
+                .storageKey(finalKey)
                 .uploaderName(uploader)
                 .isApproved(false) // Requiere aprobación previa por moderación de admin
                 .build();
@@ -187,6 +190,22 @@ public class PhotoServiceImpl implements PhotoService {
                 throw new InvalidFileContentException(
                         "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
                 );
+            }
+
+            // Fase 8 - Test 5: convertir HEIC/HEIF a JPEG antes de guardar -- la gran
+            // mayoría de navegadores (todo menos Safari/iOS) no pueden decodificar HEIC
+            // como <img>, la foto quedaría rota para casi todos los invitados.
+            if (isHeicUpload(contentType, originalFilename)) {
+                log.info("Detectada subida directa HEIC/HEIF: iniciando conversión a JPEG antes de guardar");
+                try {
+                    bytes = storageService.convertHeicToJpeg(bytes);
+                } catch (Exception e) {
+                    log.error("Falló la conversión HEIC->JPEG en upload-direct: {}", e.getMessage());
+                    throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
+                }
+                contentType = "image/jpeg";
+                key = String.format("photos/%s/%s.jpg", slug, UUID.randomUUID());
+                log.info("Conversión HEIC->JPEG exitosa en upload-direct, nueva key: '{}'", key);
             }
 
             storageService.uploadBytes(key, bytes, contentType);
@@ -425,22 +444,30 @@ public class PhotoServiceImpl implements PhotoService {
     }
 
     /**
-     * Lee los primeros bytes del objeto ya subido a storage y verifica su firma
-     * binaria real contra los formatos de imagen permitidos. Si no coincide con
-     * ninguna firma válida, elimina el objeto de storage (no deja basura en el
-     * bucket) y rechaza con InvalidFileContentException (422) antes de que
-     * confirmUpload cree el registro Photo.
+     * Lee el objeto ya subido a storage, verifica su firma binaria real contra los
+     * formatos de imagen permitidos, y si es HEIC/HEIF lo convierte a JPEG antes de
+     * que confirmUpload cree el registro Photo.
+     *
+     * Fase 8 - Test 5: se detectó que HeicConverter/convertHeicToJpeg() existía
+     * completo (con heif-convert instalado en el contenedor Docker) pero nunca se
+     * invocaba desde ningún flujo real de subida -- las fotos HEIC quedaban
+     * guardadas y servidas tal cual, y la gran mayoría de navegadores (Chrome,
+     * Firefox, Android; todo excepto Safari/iOS) no pueden decodificar HEIC como
+     * <img>, mostrando una imagen rota para casi todos los invitados.
+     *
+     * @return la key final a usar para el registro Photo: la misma si no era HEIC,
+     *         o la nueva key .jpg si se convirtió (el objeto HEIC original se borra).
      */
-    private void validateUploadedFileSignature(String key) {
-        byte[] header;
+    private String validateAndConvertIfNeeded(String key) {
+        byte[] fullBytes;
         try (InputStream is = storageService.streamObject(key)) {
-            header = is.readNBytes(12);
+            fullBytes = is.readAllBytes();
         } catch (IOException e) {
             log.error("Error al leer los bytes del objeto '{}' para validar su firma: {}", key, e.getMessage());
             throw new StorageException("No se pudo leer el archivo subido para validar su contenido", e);
         }
 
-        if (!FileSignatureValidator.isValidImageSignature(header)) {
+        if (!FileSignatureValidator.isValidImageSignature(headerOf(fullBytes))) {
             log.warn("Confirmación rechazada: la firma binaria del objeto '{}' no corresponde a una imagen válida. Eliminando de storage.", key);
             try {
                 storageService.deleteFile(key);
@@ -451,6 +478,47 @@ public class PhotoServiceImpl implements PhotoService {
                     "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
             );
         }
+
+        if (!isHeicKey(key)) {
+            return key;
+        }
+
+        log.info("Detectado archivo HEIC/HEIF '{}': iniciando conversión a JPEG antes de confirmar la foto", key);
+        byte[] jpegBytes;
+        try {
+            jpegBytes = storageService.convertHeicToJpeg(fullBytes);
+        } catch (Exception e) {
+            log.error("Falló la conversión HEIC->JPEG para '{}': {}", key, e.getMessage());
+            try {
+                storageService.deleteFile(key);
+            } catch (Exception cleanupEx) {
+                log.error("No se pudo eliminar el objeto HEIC '{}' tras fallar la conversión: {}", key, cleanupEx.getMessage());
+            }
+            throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
+        }
+
+        String jpegKey = key.substring(0, key.lastIndexOf('.')) + ".jpg";
+        storageService.uploadBytes(jpegKey, jpegBytes, "image/jpeg");
+        try {
+            storageService.deleteFile(key);
+        } catch (Exception e) {
+            log.warn("No se pudo eliminar el HEIC original '{}' tras convertirlo a JPEG: {}", key, e.getMessage());
+        }
+        log.info("Conversión HEIC->JPEG exitosa: '{}' -> '{}' ({} bytes -> {} bytes)", key, jpegKey, fullBytes.length, jpegBytes.length);
+        return jpegKey;
+    }
+
+    private boolean isHeicKey(String key) {
+        if (key == null) return false;
+        String lower = key.toLowerCase();
+        return lower.endsWith(".heic") || lower.endsWith(".heif");
+    }
+
+    private boolean isHeicUpload(String contentType, String originalFilename) {
+        if (contentType != null && (contentType.equalsIgnoreCase("image/heic") || contentType.equalsIgnoreCase("image/heif"))) {
+            return true;
+        }
+        return isHeicKey(originalFilename);
     }
 
     private byte[] headerOf(byte[] bytes) {
