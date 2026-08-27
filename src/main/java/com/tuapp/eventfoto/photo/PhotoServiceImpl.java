@@ -55,9 +55,9 @@ public class PhotoServiceImpl implements PhotoService {
     private final GuestQuotaService guestQuotaService;
 
     @Override
-    public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp) {
-        // 1. Aplicar rate limiting
-        rateLimiterService.checkUploadUrlRateLimit(clientIp);
+    public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken) {
+        // 1. Aplicar rate limiting en dos capas: por guestToken (primario) + por IP (secundario)
+        rateLimiterService.checkUploadUrlRateLimit(clientIp, guestToken);
 
         // 2. Validar que el evento exista por slug y esté activo
         Event event = eventService.getEventEntityBySlug(slug);
