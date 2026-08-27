@@ -93,6 +93,14 @@
             <version>${aws.sdk.version}</version>
         </dependency>
 
+        <!-- Cliente HTTP explicito para poder configurar connectionTimeout en S3Config
+             (antes era una transitiva de "s3" sin poder importarla directo para el builder) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache-client</artifactId>
+            <version>${aws.sdk.version}</version>
+        </dependency>
+
         <!-- JWT for Admin Authentication -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
