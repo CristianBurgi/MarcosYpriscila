@@ -283,6 +283,19 @@
         let currentPage = 0;
         let activePhotoId = null;
 
+        // Misma identidad de invitado que usa upload.html para las fotos: así el rate
+        // limiting por guestToken (15 comentarios/min) es por invitado y no compartido.
+        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        function getOrCreateGuestToken() {
+            let token = localStorage.getItem(GUEST_TOKEN_KEY);
+            if (!token) {
+                token = crypto.randomUUID();
+                localStorage.setItem(GUEST_TOKEN_KEY, token);
+            }
+            return token;
+        }
+        const GUEST_TOKEN = getOrCreateGuestToken();
+
         document.addEventListener('DOMContentLoaded', () => {
             loadGalleryPage(0);
 
@@ -434,7 +447,7 @@
                     const res = await fetch(`/api/v1/photos/${activePhotoId}/comments`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ authorName, text })
+                        body: JSON.stringify({ authorName, text, guestToken: GUEST_TOKEN })
                     });
 
                     if (!res.ok) {

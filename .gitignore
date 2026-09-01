@@ -26,3 +26,6 @@ logs/
 # OS Specific
 .DS_Store
 Thumbs.db
+
+# Almacenamiento local de fotos en modo dev (STORAGE_MODE=local)
+uploads/
