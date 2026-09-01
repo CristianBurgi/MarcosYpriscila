@@ -30,10 +30,8 @@ import com.tuapp.eventfoto.common.exception.StorageException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +51,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final SseBroadcaster sseBroadcaster;
     private final RateLimiterService rateLimiterService;
     private final GuestQuotaService guestQuotaService;
+    private final PhotoPersistenceService photoPersistenceService;
 
     @Override
     public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken) {
@@ -83,7 +82,6 @@ public class PhotoServiceImpl implements PhotoService {
     }
 
     @Override
-    @Transactional
     public PhotoResponseDTO confirmUpload(String slug, ConfirmUploadRequestDTO request) {
         Event event = eventService.getEventEntityBySlug(slug);
         if (!event.isActive()) {
@@ -97,16 +95,23 @@ public class PhotoServiceImpl implements PhotoService {
         // soporta). Devuelve la key final a usar (la original, o la nueva .jpg si hubo
         // conversion). Si no es una imagen valida, se elimina de storage y se rechaza antes
         // de crear cualquier registro en BD.
+        //
+        // IMPORTANTE: esto ocurre FUERA de cualquier transacción de BD. Lee de R2, invoca
+        // el proceso externo heif-convert y vuelve a subir/borrar en R2 -- operaciones
+        // lentas que no deben retener una conexión de HikariCP ni mantener una transacción
+        // abierta. Si algo acá falla, todavía no se tocó la base ni el cupo del invitado.
         String finalKey = validateAndConvertIfNeeded(request.key());
 
-        // Incremento atómico del cupo del invitado, solo después de confirmar que el
-        // archivo es una imagen real. Si el cupo ya está agotado (incluso por una
-        // condición de carrera entre dos pestañas), se rechaza acá, antes de crear el
-        // registro Photo -- el cupo consumido no se puede "devolver" después. El objeto
-        // ya está en storage (lo subió el cliente vía la presigned URL antes de llamar a
-        // /confirm), así que si el cupo lo rechaza acá, se elimina para no dejar basura.
+        String publicUrl = storageService.generatePublicUrl(finalKey);
+
+        // Transacción corta (en un bean separado, vía proxy): incremento atómico del cupo
+        // + insert de la foto. Si el cupo ya está agotado, se rechaza acá -- el objeto ya
+        // está en storage (lo subió el cliente vía la presigned URL antes de /confirm),
+        // así que se elimina para no dejar basura.
+        PhotoResponseDTO response;
         try {
-            guestQuotaService.incrementUsageOrThrow(event, request.guestToken());
+            response = photoPersistenceService.persistConfirmedPhoto(
+                    event, finalKey, request.uploaderName(), request.caption(), request.guestToken(), publicUrl);
         } catch (GuestQuotaExceededException e) {
             log.warn("Cupo agotado al confirmar; eliminando objeto huérfano '{}' de storage", finalKey);
             try {
@@ -117,39 +122,12 @@ public class PhotoServiceImpl implements PhotoService {
             throw e;
         }
 
-        String uploader = request.uploaderName() != null && !request.uploaderName().isBlank() ? request.uploaderName().trim() : "Invitado";
-
-        Photo photo = Photo.builder()
-                .event(event)
-                .storageKey(finalKey)
-                .uploaderName(uploader)
-                .isApproved(false) // Requiere aprobación previa por moderación de admin
-                .build();
-
-        Photo savedPhoto = photoRepository.save(photo);
-
-        // Si la foto vino con una dedicatoria/caption opcional, guardarla como el primer comentario
-        if (request.caption() != null && !request.caption().isBlank()) {
-            Comment captionComment = Comment.builder()
-                    .photo(savedPhoto)
-                    .authorName(uploader)
-                    .text(request.caption().trim())
-                    .isApproved(true)
-                    .build();
-            commentRepository.save(captionComment);
-            savedPhoto.getComments().add(captionComment);
-        }
-
-        log.info("Foto confirmada y guardada con ID {} para el evento '{}' (pendiente de aprobación)", savedPhoto.getId(), slug);
-
-        String publicUrl = storageService.generatePublicUrl(savedPhoto.getStorageKey());
-        PhotoResponseDTO response = PhotoResponseDTO.fromEntity(savedPhoto, publicUrl);
+        log.info("Foto confirmada y guardada con ID {} para el evento '{}' (pendiente de aprobación)", response.id(), slug);
         sseBroadcaster.broadcastPhotoPending(event.getId(), response);
         return response;
     }
 
     @Override
-    @Transactional
     public PhotoResponseDTO uploadDirect(String slug, org.springframework.web.multipart.MultipartFile file, String uploaderName, String caption, String guestToken) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileFormatException("El archivo enviado está vacío.");
@@ -180,84 +158,65 @@ public class PhotoServiceImpl implements PhotoService {
 
         String key = String.format("photos/%s/%s%s", slug, UUID.randomUUID(), extension);
 
+        // Todo el trabajo pesado (leer bytes, validar firma, convertir HEIC, subir a R2)
+        // ocurre FUERA de transacción. Recién después se abre la transacción corta para
+        // incrementar el cupo y persistir la foto.
+        byte[] bytes;
         try {
-            byte[] bytes = file.getBytes();
-
-            // Verificación de contenido real (magic bytes) antes de subir a storage:
-            // el Content-Type multipart declarado por el cliente puede mentir.
-            if (!FileSignatureValidator.isValidImageSignature(headerOf(bytes))) {
-                log.warn("Subida directa rechazada: la firma binaria del archivo no corresponde a una imagen válida (Content-Type declarado: '{}')", contentType);
-                throw new InvalidFileContentException(
-                        "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
-                );
-            }
-
-            // Fase 8 - Test 5: convertir HEIC/HEIF a JPEG antes de guardar -- la gran
-            // mayoría de navegadores (todo menos Safari/iOS) no pueden decodificar HEIC
-            // como <img>, la foto quedaría rota para casi todos los invitados.
-            if (isHeicUpload(contentType, originalFilename)) {
-                log.info("Detectada subida directa HEIC/HEIF: iniciando conversión a JPEG antes de guardar");
-                try {
-                    bytes = storageService.convertHeicToJpeg(bytes);
-                } catch (Exception e) {
-                    log.error("Falló la conversión HEIC->JPEG en upload-direct: {}", e.getMessage());
-                    throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
-                }
-                contentType = "image/jpeg";
-                key = String.format("photos/%s/%s.jpg", slug, UUID.randomUUID());
-                log.info("Conversión HEIC->JPEG exitosa en upload-direct, nueva key: '{}'", key);
-            }
-
-            storageService.uploadBytes(key, bytes, contentType);
-
-            // Incremento atómico del cupo del invitado, solo después de que la subida a
-            // storage tuvo éxito -- mismo criterio que en confirmUpload: se cuenta
-            // únicamente lo que realmente terminó guardado. Si el cupo lo rechaza justo
-            // acá (condición de carrera), se elimina el objeto recién subido para no
-            // dejar basura en storage sin un registro Photo que lo referencie.
-            try {
-                guestQuotaService.incrementUsageOrThrow(event, guestToken);
-            } catch (GuestQuotaExceededException e) {
-                log.warn("Cupo agotado tras subir a storage en upload-direct; eliminando objeto huérfano '{}'", key);
-                try {
-                    storageService.deleteFile(key);
-                } catch (Exception cleanupEx) {
-                    log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", key, cleanupEx.getMessage());
-                }
-                throw e;
-            }
-
-            Photo photo = Photo.builder()
-                    .event(event)
-                    .storageKey(key)
-                    .uploaderName(uploaderName)
-                    .isApproved(false)
-                    .createdAt(Instant.now())
-                    .build();
-
-            Photo saved = photoRepository.save(photo);
-
-            if (caption != null && !caption.isBlank()) {
-                Comment captionComment = Comment.builder()
-                        .photo(saved)
-                        .authorName(uploaderName)
-                        .text(caption.trim())
-                        .isApproved(true)
-                        .build();
-                commentRepository.save(captionComment);
-                saved.getComments().add(captionComment);
-            }
-
-            log.info("Foto subida de forma directa y guardada en BD con ID {} para el evento '{}'", saved.getId(), slug);
-            String publicUrl = storageService.generatePublicUrl(saved.getStorageKey());
-            PhotoResponseDTO response = PhotoResponseDTO.fromEntity(saved, publicUrl, Collections.emptyList());
-            sseBroadcaster.broadcastPhotoPending(event.getId(), response);
-            return response;
-
+            bytes = file.getBytes();
         } catch (IOException e) {
             log.error("Error al procesar los bytes de la imagen subida directamente: {}", e.getMessage(), e);
             throw new StorageException("Error al procesar la imagen en el servidor", e);
         }
+
+        // Verificación de contenido real (magic bytes) antes de subir a storage:
+        // el Content-Type multipart declarado por el cliente puede mentir.
+        if (!FileSignatureValidator.isValidImageSignature(headerOf(bytes))) {
+            log.warn("Subida directa rechazada: la firma binaria del archivo no corresponde a una imagen válida (Content-Type declarado: '{}')", contentType);
+            throw new InvalidFileContentException(
+                    "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
+            );
+        }
+
+        // Fase 8 - Test 5: convertir HEIC/HEIF a JPEG antes de guardar -- la gran
+        // mayoría de navegadores (todo menos Safari/iOS) no pueden decodificar HEIC
+        // como <img>, la foto quedaría rota para casi todos los invitados.
+        if (isHeicUpload(contentType, originalFilename)) {
+            log.info("Detectada subida directa HEIC/HEIF: iniciando conversión a JPEG antes de guardar");
+            try {
+                bytes = storageService.convertHeicToJpeg(bytes);
+            } catch (Exception e) {
+                log.error("Falló la conversión HEIC->JPEG en upload-direct: {}", e.getMessage());
+                throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
+            }
+            contentType = "image/jpeg";
+            key = String.format("photos/%s/%s.jpg", slug, UUID.randomUUID());
+            log.info("Conversión HEIC->JPEG exitosa en upload-direct, nueva key: '{}'", key);
+        }
+
+        storageService.uploadBytes(key, bytes, contentType);
+
+        String publicUrl = storageService.generatePublicUrl(key);
+
+        // Transacción corta: incremento atómico del cupo + insert de la foto. Si el cupo
+        // lo rechaza acá (condición de carrera), se elimina el objeto recién subido para
+        // no dejar basura en storage sin un registro Photo que lo referencie.
+        PhotoResponseDTO response;
+        try {
+            response = photoPersistenceService.persistConfirmedPhoto(event, key, uploaderName, caption, guestToken, publicUrl);
+        } catch (GuestQuotaExceededException e) {
+            log.warn("Cupo agotado tras subir a storage en upload-direct; eliminando objeto huérfano '{}'", key);
+            try {
+                storageService.deleteFile(key);
+            } catch (Exception cleanupEx) {
+                log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", key, cleanupEx.getMessage());
+            }
+            throw e;
+        }
+
+        log.info("Foto subida de forma directa y guardada en BD con ID {} para el evento '{}'", response.id(), slug);
+        sseBroadcaster.broadcastPhotoPending(event.getId(), response);
+        return response;
     }
 
     @Override
