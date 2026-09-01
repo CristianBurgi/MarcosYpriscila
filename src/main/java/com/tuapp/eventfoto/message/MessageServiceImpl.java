@@ -32,8 +32,10 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public MessageResponseDTO addMessage(String slug, CreateMessageRequestDTO request, String clientIp) {
-        // 1. Aplicar rate limiting (máx 3 envíos por minuto)
-        rateLimiterService.checkCommentMessageRateLimit(clientIp);
+        // 1. Rate limiting en dos capas: por guestToken (identidad del invitado, 15/min)
+        // + por IP (defensa anti-bot, 100/min). Antes solo corría la capa de IP porque
+        // el DTO no llevaba guestToken y se usaba la sobrecarga deprecada de 1 argumento.
+        rateLimiterService.checkCommentMessageRateLimit(clientIp, request.guestToken());
 
         // 2. Moderación automática de contenido
         if (!contentModerationService.isAllowed(request.text())) {
