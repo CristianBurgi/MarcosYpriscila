@@ -97,7 +97,10 @@ class PublicApiIntegrationTest {
         when(storageService.generatePublicUrl(org.mockito.ArgumentMatchers.any()))
                 .thenReturn("https://r2.test-storage.com/public-photo-url.jpg");
         // Firma JPEG válida (FF D8 FF) para que la verificación de magic bytes en /confirm
-        // (PhotoServiceImpl.validateUploadedFileSignature) pase con un StorageService mockeado.
+        // (PhotoServiceImpl.validateAndConvertIfNeeded) pase con un StorageService mockeado.
+        // OJO: acá el stub tapa la lógica de decisión HEIC -- la cobertura real de ese
+        // camino (JPEG con extensión engañosa, invocación de heif-convert) vive en
+        // HeicConfirmDecisionIntegrationTest, con streamObject() respaldado por bytes reales.
         when(storageService.streamObject(org.mockito.ArgumentMatchers.any()))
                 .thenAnswer(invocation -> new ByteArrayInputStream(
                         new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
