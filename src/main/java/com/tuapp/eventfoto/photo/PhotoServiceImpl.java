@@ -181,7 +181,17 @@ public class PhotoServiceImpl implements PhotoService {
         // Fase 8 - Test 5: convertir HEIC/HEIF a JPEG antes de guardar -- la gran
         // mayoría de navegadores (todo menos Safari/iOS) no pueden decodificar HEIC
         // como <img>, la foto quedaría rota para casi todos los invitados.
-        if (isHeicUpload(contentType, originalFilename)) {
+        //
+        // La decisión se toma sobre los BYTES REALES ya leídos para la validación de
+        // firma (arriba), no sobre la extensión del filename ni el Content-Type
+        // declarado: un iPhone puede mandar un .heic cuyo contenido real ya es JPEG
+        // (HEIC nombrado pero transcodificado), y en ese caso no hay que convertir nada.
+        boolean heicByBytes = FileSignatureValidator.isHeicSignature(headerOf(bytes));
+        // TEMP diagnóstico HEIC (19/09) -- ver comentario equivalente en validateAndConvertIfNeeded.
+        log.info("[HEIC-DECISION][uploadDirect] originalFilename='{}' contentTypeDeclarado='{}' isHeicSignature={} bytes={} primeros12={} -> {}",
+                originalFilename, contentType, heicByBytes, bytes.length, java.util.Arrays.toString(headerOf(bytes)),
+                heicByBytes ? "se convierte con heif-convert" : "ya es imagen navegable (JPEG/PNG/WEBP), se guarda tal cual");
+        if (heicByBytes) {
             log.info("Detectada subida directa HEIC/HEIF: iniciando conversión a JPEG antes de guardar");
             try {
                 bytes = storageService.convertHeicToJpeg(bytes);
@@ -438,11 +448,21 @@ public class PhotoServiceImpl implements PhotoService {
             );
         }
 
-        if (!isHeicKey(key)) {
+        // Decisión sobre el CONTENIDO REAL ya leído (fullBytes), no sobre la extensión
+        // de la key: si el objeto que subió el iPhone se llama .heic pero sus bytes ya
+        // son JPEG/PNG/WEBP válidos, isValidImageSignature() lo aceptó arriba y acá lo
+        // dejamos pasar tal cual -- no se invoca heif-convert sobre algo que no es HEIC.
+        boolean heicByBytes = FileSignatureValidator.isHeicSignature(headerOf(fullBytes));
+        // TEMP diagnóstico HEIC (19/09) -- deja rastro explícito de por qué camino pasó
+        // cada foto. Quitar (o bajar a debug) una vez verificado el flujo con iPhone real.
+        log.info("[HEIC-DECISION][confirmUpload] key='{}' isHeicSignature={} bytesLeidos={} primeros12={} -> {}",
+                key, heicByBytes, fullBytes.length, java.util.Arrays.toString(headerOf(fullBytes)),
+                heicByBytes ? "se convierte con heif-convert" : "ya es imagen navegable (JPEG/PNG/WEBP), se guarda tal cual");
+        if (!heicByBytes) {
             return key;
         }
 
-        log.info("Detectado archivo HEIC/HEIF '{}': iniciando conversión a JPEG antes de confirmar la foto", key);
+        log.info("Detectado contenido HEIC/HEIF real en '{}': iniciando conversión a JPEG antes de confirmar la foto", key);
         byte[] jpegBytes;
         try {
             jpegBytes = storageService.convertHeicToJpeg(fullBytes);
@@ -456,7 +476,7 @@ public class PhotoServiceImpl implements PhotoService {
             throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
         }
 
-        String jpegKey = key.substring(0, key.lastIndexOf('.')) + ".jpg";
+        String jpegKey = siblingJpegKey(key);
         storageService.uploadBytes(jpegKey, jpegBytes, "image/jpeg");
         try {
             storageService.deleteFile(key);
@@ -467,17 +487,17 @@ public class PhotoServiceImpl implements PhotoService {
         return jpegKey;
     }
 
-    private boolean isHeicKey(String key) {
-        if (key == null) return false;
-        String lower = key.toLowerCase();
-        return lower.endsWith(".heic") || lower.endsWith(".heif");
-    }
-
-    private boolean isHeicUpload(String contentType, String originalFilename) {
-        if (contentType != null && (contentType.equalsIgnoreCase("image/heic") || contentType.equalsIgnoreCase("image/heif"))) {
-            return true;
-        }
-        return isHeicKey(originalFilename);
+    /**
+     * Deriva una key .jpg hermana de la key HEIC original, dentro del mismo prefijo del
+     * evento pero con un UUID nuevo. Usar un UUID nuevo (en vez de solo cambiar la
+     * extensión) evita colisionar con la key original cuando el objeto HEIC venía
+     * nombrado {@code .jpg} -- en ese caso {@code base + ".jpg"} sería la misma key y el
+     * posterior deleteFile(original) borraría el objeto recién convertido.
+     */
+    private String siblingJpegKey(String heicKey) {
+        int lastSlash = heicKey.lastIndexOf('/');
+        String prefix = lastSlash >= 0 ? heicKey.substring(0, lastSlash + 1) : "";
+        return prefix + UUID.randomUUID() + ".jpg";
     }
 
     private byte[] headerOf(byte[] bytes) {
