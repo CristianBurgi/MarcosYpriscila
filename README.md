@@ -51,7 +51,7 @@ Los invitados escanean un QR, suben sus fotos desde el celular sin instalar nada
 
 **EventFoto** es una aplicación web progresiva (PWA) construida específicamente para la boda de **Marcos y Priscila**. Permite que los invitados suban fotos desde su celular simplemente escaneando un código QR —sin descargar ninguna app, sin registrarse, sin fricción.
 
-Las fotos entran en un estado **pendiente de moderación** y el organizador (admin) las aprueba desde un panel privado. Las fotos aprobadas aparecen instantáneamente en el **álbum colaborativo** y en la **pantalla del salón** (conectada vía TV/proyector), todo actualizado en tiempo real gracias a Server-Sent Events.
+Las fotos se **publican al instante**: apenas se confirma la subida aparecen en el **álbum colaborativo** y en la **pantalla del salón** (conectada vía TV/proyector), todo actualizado en tiempo real gracias a Server-Sent Events. El organizador modera desde un panel privado borrando lo que no corresponda.
 
 Además del álbum, los invitados pueden:
 - **Comentar** las fotos de otros.
@@ -81,22 +81,21 @@ La aplicación está desplegada en producción en Railway:
 ### Para los Invitados
 - 📷 **Subida de fotos sin fricción** — Escaneás el QR en el salón, abrís el navegador, sacás o elegís la foto y la subís. Sin registro, sin app.
 - 📱 **Soporte para iPhone (HEIC)** — Las fotos en formato HEIC/HEIF se convierten automáticamente a JPEG en el servidor para compatibilidad universal.
-- 🖼️ **Álbum colaborativo** — Galería masonry con todas las fotos aprobadas del evento, paginada y optimizada para conexiones móviles.
+- 🖼️ **Álbum colaborativo** — Galería masonry con todas las fotos del evento, paginada y optimizada para conexiones móviles.
 - 💬 **Comentarios por foto** — Cada foto del álbum admite comentarios de otros invitados (los más recientes primero).
 - 💌 **Libro de Visitas** — Un muro de mensajes de texto dedicado para que los invitados le dejen buenos deseos a los novios.
 - 📲 **PWA instalable** — El menú se puede agregar a la pantalla de inicio del celular como una app nativa.
 
 ### Para el Organizador (Admin)
 - 🔒 **Panel de administración** — Protegido con JWT. Acceso por usuario y contraseña.
-- ✅ **Moderación de fotos** — Las fotos entran en estado *pendiente*. El admin las aprueba una por una, o todas a la vez con el botón "Aprobar Todas".
-- ❌ **Rechazo con borrado inmediato (R2 + BD)** — Al rechazar una foto pendiente, se elimina inmediatamente del bucket Cloudflare R2 y de PostgreSQL, disparando la notificación SSE `PHOTO_REJECTED`.
-- 📦 **Descarga del Álbum (ZIP streaming & Selección)** — En la pestaña *Fotos Guardadas*, el admin puede empaquetar y descargar el álbum completo o una selección personalizada de fotos aprobadas en un archivo ZIP por streaming directo (eficiente en memoria RAM). También admite descargas individuales presignadas (HTTP 302).
-- 🗑️ **Borrado definitivo** — Elimina cualquier foto aprobada de R2 y de la base de datos en un solo clic.
+- ✅ **Publicación automática** — Las fotos se publican apenas se confirma la subida, sin paso de aprobación (Fase 9.0).
+- 🗑️ **Borrado como moderación (R2 + BD)** — El único control de moderación de fotos: elimina la foto primero de Cloudflare R2 y después de PostgreSQL, y emite `PHOTO_DELETED` por SSE para que el álbum y la pantalla la saquen al instante.
+- 📦 **Descarga del Álbum (ZIP streaming & Selección)** — En la pestaña *Fotos*, el admin puede empaquetar y descargar el álbum completo o una selección personalizada en un archivo ZIP por streaming directo (eficiente en memoria RAM). También admite descargas individuales presignadas (HTTP 302).
 - 💬 **Moderación de comentarios** — Panel dedicado con miniatura de la foto, nombre del autor y texto, con botón de borrado directo.
 - 📨 **Moderación del Libro de Visitas** — Listado de mensajes con nombre de remitente y texto, con botón de borrado.
 - 📺 **Control de subidas** — El admin puede cerrar/abrir las subidas de fotos desde el panel. Cuando están cerradas, los invitados ven un mensaje informativo.
-- 🔄 **Tiempo real** — Las fotos aprobadas aparecen instantáneamente en la pantalla del salón y en el álbum de todos los invitados sin recargar la página.
-- 📊 **Código QR dinámico** — El QR se genera en el servidor con la URL del evento; se puede descargar desde el panel de admin.
+- 🔄 **Tiempo real** — Las fotos nuevas aparecen instantáneamente en la pantalla del salón y en el álbum de todos los invitados sin recargar la página.
+- 📊 **Código QR dinámico** — El QR se genera en el servidor apuntando a `APP_BASE_URL`; se puede descargar desde el panel de admin.
 
 ---
 
@@ -133,11 +132,11 @@ flowchart TD
     C -- "2. PUT directo del archivo" --> K
     C -- "3. Confirma subida" --> G
     G --> J
-    G -- "Notifica PHOTO_UPLOADED" --> H
+    G -- "Notifica PHOTO_PUBLISHED" --> H
     H -..->|SSE live| D
     H -..->|SSE live| F
-    I -- "Aprueba/Rechaza/Borra" --> G
-    G -- "Notifica PHOTO_APPROVED" --> H
+    I -- "Borra" --> G
+    G -- "Notifica PHOTO_DELETED" --> H
     F -- "Consume SSE persistente" --> H
 
     style Invitado fill:#1a1a2e,stroke:#e94560,color:#fff
@@ -166,8 +165,8 @@ Navegador del Invitado                    Backend Spring Boot              Cloud
         |                                        |                               |
         | --- POST /photos/confirm ------------> |                               |
         |     { storageKey, uploaderName, ... }  |                               |
-        |                                        | Guarda Photo(isApproved=false)|
-        |                                        | Emite SSE PHOTO_UPLOADED      |
+        |                                        | Guarda Photo (publicada)      |
+        |                                        | Emite SSE PHOTO_PUBLISHED     |
         | <-- 201 Created (PhotoResponseDTO) ----|                               |
 ```
 
@@ -184,13 +183,15 @@ Cada navegador conectado abre una conexión HTTP persistente al endpoint `/api/v
 
 | Evento | Cuándo se emite |
 |---|---|
-| `PHOTO_UPLOADED` | Cuando un invitado sube una foto (estado pendiente) |
-| `PHOTO_APPROVED` | Cuando el admin aprueba una foto |
-| `PHOTO_DELETED` | Cuando el admin borra una foto |
+| `PHOTO_PUBLISHED` | Cuando se confirma la subida de una foto (`/confirm` o `/upload-direct`); la foto ya está publicada |
+| `PHOTO_DELETED` | Cuando el admin borra una foto. Payload: `{ photoId }` |
 | `MESSAGE_CREATED` | Cuando un invitado envía un mensaje al Libro de Visitas |
+| `MESSAGE_DELETED` / `COMMENT_DELETED` | Cuando el admin borra un mensaje o un comentario |
 | `heartbeat` | Cada 25 segundos para mantener la conexión viva |
 
-El `SseBroadcaster` mantiene un `ConcurrentHashMap<UUID, List<SseEmitter>>` de emisores por `eventId`. Cuando se emite un evento, itera sobre los emisores del evento correspondiente y envía el payload en JSON.
+El `SseBroadcaster` mantiene un `ConcurrentHashMap<UUID, List<SseEmitter>>` de emisores por `eventId`. Cuando se emite un evento, itera sobre los emisores del evento correspondiente y envía el payload en JSON (`{ eventType, payload, timestamp }`).
+
+**Desconexiones:** un invitado que cierra el álbum o un celular que pierde señal es una desconexión normal. El emisor que falla al escribir se remueve y el envío sigue con el resto; tanto en `SseBroadcaster` como en el async dispatch que Spring dispara después (`GlobalExceptionHandler`) se loguea en `debug`, sin llegar a Sentry.
 
 ---
 
@@ -236,7 +237,7 @@ MarcosYpriscila/
     │   ├── java/com/tuapp/eventfoto/
     │   │   ├── EventFotoApplication.java
     │   │   ├── event/                  # Eventos (entidad, repositorio, servicio, controlador)
-    │   │   ├── photo/                  # Fotos: upload-url, confirm, approve, delete
+    │   │   ├── photo/                  # Fotos: upload-url, confirm, upload-direct, delete
     │   │   │   └── dto/               # UploadUrlRequestDTO, ConfirmUploadRequestDTO, PhotoResponseDTO
     │   │   ├── comment/               # Comentarios sobre fotos
     │   │   ├── message/               # Libro de Visitas (mensajes al homenajeado)
@@ -297,7 +298,6 @@ erDiagram
         string publicUrl
         string uploaderName
         string caption
-        boolean isApproved
         string clientIp
         timestamp createdAt
     }
@@ -331,6 +331,8 @@ erDiagram
 | `V2__create_photo.sql` | Tabla `photo` con FK a `event`, índices en `eventId` e `isApproved` |
 | `V3__create_comment.sql` | Tabla `comment` con FK a `photo`, índices en `photoId` |
 | `V4__create_message.sql` | Tabla `message` con FK a `event`, índices en `eventId` |
+| `V5__create_guest_quota.sql` | Tabla `guest_quotas`: cupo de fotos por invitado y evento |
+| `V6__remove_photo_approval.sql` | Fase 9.0: publica las fotos pendientes y elimina `photos.is_approved` (publicación automática) |
 
 ---
 
@@ -347,7 +349,7 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | `POST` | `/api/v1/events/{slug}/photos/upload-url` | Genera presigned URL para subida directa a R2 | `{ filename, contentType, fileSize }` |
 | `POST` | `/api/v1/events/{slug}/photos/confirm` | Confirma que la subida a R2 fue exitosa | `{ storageKey, uploaderName, caption }` |
 | `POST` | `/api/v1/events/{slug}/photos/upload-direct` | Subida multipart directa al servidor (fallback) | `multipart/form-data` |
-| `GET` | `/api/v1/events/{slug}/photos` | Lista fotos aprobadas (paginado) | `?page=0&size=20` |
+| `GET` | `/api/v1/events/{slug}/photos` | Lista las fotos del evento (paginado) | `?page=0&size=20` |
 | `GET` | `/api/v1/events/{slug}/photos/{photoId}/comments` | Comentarios de una foto (más recientes primero) | — |
 | `POST` | `/api/v1/events/{slug}/photos/{photoId}/comments` | Agrega un comentario a una foto | `{ authorName, text }` |
 | `GET` | `/api/v1/events/{slug}/messages` | Lista mensajes del Libro de Visitas (paginado) | `?page=0&size=100` |
@@ -359,10 +361,8 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | Método | Ruta | Descripción |
 |---|---|---|
 | `POST` | `/api/v1/admin/auth/login` | Login del organizador → devuelve JWT |
-| `GET` | `/api/v1/admin/photos/pending` | Lista fotos pendientes de aprobación |
-| `PATCH` | `/api/v1/admin/photos/{photoId}/approve` | Aprueba una foto |
-| `POST` | `/api/v1/admin/photos/approve-all` | Aprueba todas las fotos pendientes |
-| `DELETE` / `PATCH` | `/api/v1/admin/photos/{photoId}/reject` | Rechaza y elimina una foto de R2 y de la base de datos |
+| `GET` | `/api/v1/admin/photos` | Lista las fotos del evento (paginado) |
+| `DELETE` | `/api/v1/admin/photos/{photoId}` | Elimina una foto de R2 y de la base de datos y emite `PHOTO_DELETED` |
 | `GET` | `/api/v1/admin/photos/{photoId}/download` | Genera presigned URL de lectura y redirige (HTTP 302) |
 | `GET` | `/api/v1/admin/photos/download-zip` | Genera y transmite en ZIP streaming el álbum completo o selección (`?photoIds=...`) |
 | `GET` | `/api/v1/admin/comments/all` | Lista todos los comentarios de fotos |
@@ -383,18 +383,19 @@ Todos los errores tienen el mismo formato JSON consistente:
 }
 ```
 
+**Errores de subida (Fase 9.0):** un archivo que supera los 30 MB devuelve `413` con el mensaje *"La foto es demasiado pesada, probá con otra"*; un multipart malformado o cortado (típico con mala señal) devuelve `400` con *"Hubo un problema con la subida, intentá de nuevo"*. `upload.html` muestra ese `message` tal cual. `server.tomcat.max-swallow-size` está en 64 MB para que el 413 llegue al navegador en lugar de un corte de conexión.
+
 **Excepciones tipadas disponibles:** `ResourceNotFoundException` (404), `RateLimitExceededException` (429), `ContentModerationException` (400), `InvalidFileFormatException` (400), `MaxUploadLimitReachedException` (429), `EventClosedException` (403), `UnauthorizedAccessException` (401), `StorageException` (500).
 
 ---
 
 ## 🖥️ Panel de Administración
 
-El panel `/admin/dashboard` es una página Thymeleaf renderizada server-side, accesible solo con JWT válido. Tiene **4 pestañas**:
+El panel `/admin/dashboard` es una página Thymeleaf renderizada server-side, accesible solo con JWT válido. Tiene **3 pestañas**:
 
-1. **📷 Fotos Pendientes** — Previsualización de cada foto pendiente con botones de aprobar/rechazar. Botón "Aprobar Todas" para procesar en bloque.
-2. **🖼️ Álbum Aprobado** — Galería de fotos aprobadas con botón de borrado individual.
-3. **📨 Libro de Visitas** — Listado de mensajes con nombre de autor, texto y botón de borrado.
-4. **💬 Comentarios en Fotos** — Listado de comentarios con miniatura de la foto correspondiente, nombre del autor, texto del comentario y botón de borrado.
+1. **🖼️ Fotos** — Galería de las fotos del evento (se agregan en vivo por SSE), con borrado individual, selección para ZIP y descarga del álbum completo.
+2. **📨 Libro de Visitas** — Listado de mensajes con nombre de autor, texto y botón de borrado.
+3. **💬 Comentarios en Fotos** — Listado de comentarios con miniatura de la foto correspondiente, nombre del autor, texto del comentario y botón de borrado.
 
 El login genera un **JWT de 8 horas** almacenado en el navegador del admin. La sesión expira automáticamente pasadas las 8 horas.
 
@@ -414,7 +415,7 @@ El archivo tiene **43 palabras bloqueadas** (una por línea) y se puede editar s
 
 Si el texto contiene alguna palabra bloqueada, el servidor devuelve un error `400 Bad Request` con un mensaje de contenido inapropiado.
 
-Las **fotos** no pasan por este filtro automático — ingresan en estado `isApproved = false` y el admin las aprueba manualmente.
+Las **fotos** no pasan por este filtro automático — se publican al confirmarse la subida y el admin modera borrando.
 
 ---
 
@@ -462,7 +463,7 @@ La puerta de entrada. Monograma *"M & P"* en caligrafía cursiva (Alex Brush). C
 Permite elegir la fuente de la foto (cámara, galería o archivo). Implementa el flujo de tres pasos (upload-url → PUT → confirm) con barra de progreso y mensajes de estado. Si el admin cerró las subidas, muestra un aviso informativo en lugar del formulario.
 
 ### `album.html` — Álbum Colaborativo
-Galería masonry de fotos aprobadas. Al hacer clic en una foto se abre un modal con:
+Galería masonry de las fotos del evento. Al hacer clic en una foto se abre un modal con:
 - La foto ampliada (descargable).
 - El nombre del autor y la fecha.
 - La lista de comentarios (más reciente primero) con scroll propio.
@@ -480,7 +481,7 @@ Formulario para dejar un mensaje con nombre y texto. Lista de mensajes con el no
 
 `screen.html` es una vista a pantalla completa diseñada para una **TV o proyector del salón**. Características:
 
-- **Carrusel automático de fotos** — Transición suave entre fotos aprobadas, con la duración configurable.
+- **Carrusel automático de fotos** — Transición suave entre las fotos del evento, con la duración configurable.
 - **Zócalo deslizante de mensajes** — Una banda inferior que muestra en loop los mensajes del Libro de Visitas (tipo ticker de noticias).
 - **Tarjeta QR flotante** — Verticalmente centrada en el lado derecho de la pantalla con la leyenda *"Escaneá el QR y subí tu foto"*.
 - **Actualización automática** — Sin recargar la página. Cuando el admin aprueba una foto, aparece en la pantalla del salón en segundos gracias a la conexión SSE.
@@ -600,7 +601,7 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `ADMIN_PASSWORD` | Contraseña del organizador | ✅ |
 | `JWT_SECRET` | Secreto para firmar tokens JWT (mínimo 32 caracteres) | ✅ |
 | `JWT_EXPIRATION_MS` | Duración del JWT en ms (por defecto 8 horas = `28800000`) | Opcional |
-| `APP_BASE_URL` | URL pública de la app (usada para generar el QR) | ✅ |
+| `APP_BASE_URL` | URL pública de la app, sin barra final. **Única fuente** de toda URL absoluta (QR, links del panel). Con `STORAGE_MODE=r2` la app no arranca si apunta a `localhost` | ✅ |
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
 | `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
 | `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |
@@ -701,11 +702,14 @@ mvn test
 
 | Suite | Tests | Qué verifica |
 |---|---|---|
-| `AdminSecurityTest` | 17 | Acceso protegido a rutas admin, JWT, aprobación/rechazo de fotos (R2 + BD), descargas 302 y ZIP streaming |
+| `AdminSecurityTest` | 17 | Acceso protegido a rutas admin, JWT, borrado de fotos (R2 + BD), ausencia de endpoints de aprobación, descargas 302 y ZIP streaming |
 | `PublicApiIntegrationTest` | 12 | Flujo completo de subida (upload-url → confirm), consulta de fotos, comentarios, mensajes |
 | `ContentModerationServiceTest` | 6 | Detección de palabras bloqueadas, normalización de acentos, case-insensitive, textos limpios |
 | `QrCodeTest` | 2 | Generación del PNG de QR con URL correcta y dimensiones esperadas |
-| `RealtimeIntegrationTest` | 2 | Suscripción SSE, emisión de eventos `PHOTO_APPROVED` y `MESSAGE_CREATED` |
+| `RealtimeIntegrationTest` | 2 | Suscripción SSE, aislamiento de eventos por `eventId` |
+| `SseBroadcasterTest` / `PhotoDeletedSseIntegrationTest` | 4 | Un emisor que tira `IOException` se remueve sin cortar el envío al resto; borrar una foto emite `PHOTO_DELETED` |
+| `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 30 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
+| `GlobalExceptionHandlerSentryNoiseTest` | 6 | Desconexiones de clientes, recursos inexistentes y errores 4xx de Spring no llegan a Sentry; un error real sí |
 | `StorageServiceTest` | 6 | Generación de presigned URLs de subida/descarga, borrado en R2, rechazo de tipos no permitidos |
 
 Los tests de integración usan **H2 en memoria** (no necesitan PostgreSQL ni R2 reales). Los tests de storage usan mocks para evitar conexiones externas.
@@ -757,7 +761,7 @@ El script simula **simultáneamente**:
 | **Fase 0** | ✅ Completado | Setup inicial del proyecto Spring Boot + estructura de paquetes |
 | **Fase 1** | ✅ Completado | Modelo de datos: entidades JPA + migraciones Flyway V1–V4 |
 | **Fase 2** | ✅ Completado | Integración Cloudflare R2 (presigned URLs) + conversión HEIC→JPEG |
-| **Fase 3** | ✅ Completado | API REST pública: upload-url, confirm, fotos aprobadas, comentarios, mensajes |
+| **Fase 3** | ✅ Completado | API REST pública: upload-url, confirm, fotos, comentarios, mensajes |
 | **Fase 4** | ✅ Completado | Tiempo real: SseBroadcaster + Server-Sent Events |
 | **Fase 5** | ✅ Completado | Frontend de invitados: menu, upload, album, messages (HTML/CSS/JS vanilla, PWA) |
 | **Fase 5b** | ✅ Completado | Panel de administración: login JWT, dashboard con 4 tabs, moderación de fotos/comentarios/mensajes |
@@ -768,7 +772,8 @@ El script simula **simultáneamente**:
 | **Fase 7** | ✅ Completado | Despliegue en Railway con Dockerfile multi-stage |
 | **Fase 7b** | ✅ Completado | Diseño final: tipografía Playfair Display/Alex Brush + iconografía Font Awesome 6 |
 | **Fase 8** | ✅ Completado | Prueba de carga previa al evento: script `load-test.js` + ajuste de rate limits |
-| **Fase 9** | 🔜 Pendiente | Evolución a SaaS multi-tenant: panel de creación de eventos, múltiples organizadores |
+| **Fase 9.0** | 🚧 En curso | Estabilización post-evento: publicación automática, SSE resistente a desconexiones, errores de subida claros, `APP_BASE_URL` |
+| **Fase 9.x** | 🔜 Pendiente | Evolución a SaaS multi-tenant: panel de creación de eventos, múltiples organizadores |
 
 ---
 
@@ -787,6 +792,25 @@ Para las pruebas, el bucket de R2 puede tener CORS configurado con `*`. **Antes 
   "AllowedHeaders": ["Content-Type"]
 }]
 ```
+
+### Mudanza de dominio a `eventfoto.com.ar` (pendiente, no aplicado)
+Toda URL absoluta que genera la app (QR, link del panel) sale de `APP_BASE_URL`; no hay dominios escritos en el código. El día de la mudanza:
+
+1. **CORS de R2** (Cloudflare → R2 → bucket → Settings → CORS policy): **agregar** `https://eventfoto.com.ar` a `AllowedOrigins` **conservando** el dominio de Railway, para que las subidas sigan funcionando desde ambos mientras dura la transición:
+   ```json
+   [{
+     "AllowedOrigins": [
+       "https://marcosypriscila-production.up.railway.app",
+       "https://eventfoto.com.ar"
+     ],
+     "AllowedMethods": ["PUT"],
+     "AllowedHeaders": ["Content-Type"]
+   }]
+   ```
+2. **Railway → Variables**: cambiar `APP_BASE_URL` a `https://eventfoto.com.ar` (sin barra final) y redeployar. Desde ese deploy, el QR y el link del panel apuntan al dominio nuevo.
+3. Verificar: descargar el QR desde el panel, escanearlo y confirmar que abre `https://eventfoto.com.ar/menu.html?slug=...`; hacer una subida de prueba desde el dominio nuevo.
+
+> Los QR ya impresos siguen apuntando al dominio de Railway: no lo des de baja mientras haya eventos activos con QR viejos.
 
 ### Seguridad
 El `SecurityConfig` actualmente termina con `.anyRequest().permitAll()` para facilitar el desarrollo. Para producción, considerar endurecer a `.anyRequest().authenticated()` con las excepciones necesarias para las rutas públicas.
