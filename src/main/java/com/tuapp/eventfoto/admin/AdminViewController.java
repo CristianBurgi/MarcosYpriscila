@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.admin;
 
 import com.tuapp.eventfoto.comment.CommentService;
+import com.tuapp.eventfoto.common.config.AppUrls;
 import com.tuapp.eventfoto.comment.dto.CommentResponseDTO;
 import com.tuapp.eventfoto.event.EventService;
 import com.tuapp.eventfoto.event.dto.EventResponseDTO;
@@ -27,6 +28,7 @@ public class AdminViewController {
     private final MessageService messageService;
     private final CommentService commentService;
     private final EventService eventService;
+    private final AppUrls appUrls;
 
     @GetMapping("/login")
     public String loginPage() {
@@ -40,21 +42,18 @@ public class AdminViewController {
 
         EventResponseDTO event = eventService.getEventBySlug(slug);
         long totalPhotos = photoService.countTotalPhotos(slug);
-        long pendingCount = photoService.countPendingPhotos(slug);
         long totalMessages = messageService.countTotalMessages(slug);
 
-        List<PhotoResponseDTO> pendingPhotos = photoService.getPendingPhotos(slug, PageRequest.of(0, 100)).getContent();
-        List<PhotoResponseDTO> approvedPhotos = photoService.getApprovedPhotos(slug, PageRequest.of(0, 100)).getContent();
+        List<PhotoResponseDTO> photos = photoService.getPhotos(slug, PageRequest.of(0, 100)).getContent();
         List<MessageResponseDTO> messages = messageService.getMessages(slug, PageRequest.of(0, 100)).getContent();
         List<CommentResponseDTO> photoComments = commentService.getEventComments(slug);
 
         model.addAttribute("event", event);
         model.addAttribute("slug", slug);
         model.addAttribute("totalPhotos", totalPhotos);
-        model.addAttribute("pendingCount", pendingCount);
         model.addAttribute("totalMessages", totalMessages);
-        model.addAttribute("pendingPhotos", pendingPhotos);
-        model.addAttribute("approvedPhotos", approvedPhotos);
+        model.addAttribute("photos", photos);
+        model.addAttribute("guestMenuUrl", appUrls.guestMenuUrl(slug));
         model.addAttribute("messages", messages);
         model.addAttribute("photoComments", photoComments);
 

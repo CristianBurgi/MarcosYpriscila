@@ -11,8 +11,8 @@ import java.util.UUID;
  * Lleva la cuenta de cuántas fotos subió cada invitado anónimo (identificado por
  * un token generado en el frontend y persistido en localStorage) en un evento.
  *
- * El contador `photosUploaded` es monotónico: solo sube, nunca baja. Rechazar o
- * borrar una foto no le devuelve el cupo al invitado (ver GuestQuotaService).
+ * El contador `photosUploaded` es monotónico: solo sube, nunca baja. Borrar
+ * una foto no le devuelve el cupo al invitado (ver GuestQuotaService).
  */
 @Entity
 @Table(name = "guest_quotas", indexes = {

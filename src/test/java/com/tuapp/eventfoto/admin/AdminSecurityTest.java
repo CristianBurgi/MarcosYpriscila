@@ -82,7 +82,7 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Devolver 401 Unauthorized al consultar API admin sin token JWT")
     void shouldReturn401ForAdminApiWithoutJwt() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/photos/pending"))
+        mockMvc.perform(get("/api/v1/admin/photos"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -118,45 +118,40 @@ class AdminSecurityTest {
                         .cookie(new Cookie(JwtAuthenticationFilter.COOKIE_NAME, adminJwtToken)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/dashboard"))
-                .andExpect(model().attributeExists("pendingCount", "totalPhotos", "totalMessages"));
+                .andExpect(model().attributeExists("photos", "totalPhotos", "totalMessages", "guestMenuUrl"))
+                .andExpect(model().attributeDoesNotExist("pendingCount", "pendingPhotos"));
     }
 
     @Test
-    @DisplayName("Aprobar una foto individual mediante API Admin")
-    void shouldApproveSinglePhoto() throws Exception {
-        Photo pendingPhoto = photoRepository.saveAndFlush(Photo.builder()
+    @DisplayName("Listar las fotos publicadas del evento mediante API Admin (sin paso de aprobación)")
+    void shouldListPublishedPhotos() throws Exception {
+        Photo photo = photoRepository.saveAndFlush(Photo.builder()
                 .event(event)
                 .storageKey("photos/marcos-y-priscila/test.jpg")
                 .uploaderName("María")
-                .isApproved(false)
                 .build());
 
-        assertFalse(pendingPhoto.isApproved());
-
-        mockMvc.perform(patch("/api/v1/admin/photos/" + pendingPhoto.getId() + "/approve")
+        mockMvc.perform(get("/api/v1/admin/photos?slug=" + event.getSlug())
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isApproved").value(true));
-
-        Photo updatedPhoto = photoRepository.findById(pendingPhoto.getId()).orElseThrow();
-        assertTrue(updatedPhoto.isApproved());
+                .andExpect(jsonPath("$.content[0].id").value(photo.getId().toString()))
+                .andExpect(jsonPath("$.content[0].isApproved").doesNotExist());
     }
 
     @Test
-    @DisplayName("Rechazar y eliminar una foto individual mediante API Admin")
-    void shouldRejectSinglePhoto() throws Exception {
-        Photo pendingPhoto = photoRepository.saveAndFlush(Photo.builder()
+    @DisplayName("Eliminar una foto individual mediante API Admin (único control de moderación)")
+    void shouldDeleteSinglePhoto() throws Exception {
+        Photo photo = photoRepository.saveAndFlush(Photo.builder()
                 .event(event)
                 .storageKey("photos/marcos-y-priscila/bad.jpg")
                 .uploaderName("Spam")
-                .isApproved(false)
                 .build());
 
-        mockMvc.perform(delete("/api/v1/admin/photos/" + pendingPhoto.getId())
+        mockMvc.perform(delete("/api/v1/admin/photos/" + photo.getId())
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNoContent());
 
-        assertFalse(photoRepository.existsById(pendingPhoto.getId()));
+        assertFalse(photoRepository.existsById(photo.getId()));
     }
 
     @Test
@@ -170,20 +165,19 @@ class AdminSecurityTest {
     }
 
     @Test
-    @DisplayName("Aprobar masivamente todas las fotos pendientes del evento")
-    void shouldApproveAllPendingPhotos() throws Exception {
-        photoRepository.save(Photo.builder().event(event).storageKey("p1.jpg").isApproved(false).build());
-        photoRepository.save(Photo.builder().event(event).storageKey("p2.jpg").isApproved(false).build());
-        photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p3.jpg").isApproved(false).build());
+    @DisplayName("Los endpoints de aprobación manual ya no existen (Fase 9.0)")
+    void shouldNotExposeApprovalEndpoints() throws Exception {
+        Photo photo = photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p1.jpg").build());
 
-        assertEquals(3, photoRepository.countByEventIdAndIsApprovedFalse(event.getId()));
-
+        mockMvc.perform(patch("/api/v1/admin/photos/" + photo.getId() + "/approve")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().is4xxClientError());
         mockMvc.perform(post("/api/v1/admin/photos/approve-all?slug=" + event.getSlug())
                         .header("Authorization", "Bearer " + adminJwtToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3));
-
-        assertEquals(0, photoRepository.countByEventIdAndIsApprovedFalse(event.getId()));
+                .andExpect(status().is4xxClientError());
+        mockMvc.perform(get("/api/v1/admin/photos/pending")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -201,25 +195,24 @@ class AdminSecurityTest {
     }
 
     @Test
-    @DisplayName("Redirigir HTTP 302 para descarga individual de foto aprobada")
+    @DisplayName("Redirigir HTTP 302 para descarga individual de foto")
     void shouldRedirectForSinglePhotoDownload() throws Exception {
-        Photo approvedPhoto = photoRepository.saveAndFlush(Photo.builder()
+        Photo photo = photoRepository.saveAndFlush(Photo.builder()
                 .event(event)
-                .storageKey("photos/marcos-y-priscila/approved.jpg")
+                .storageKey("photos/marcos-y-priscila/photo.jpg")
                 .uploaderName("Carlos")
-                .isApproved(true)
                 .build());
 
-        mockMvc.perform(get("/api/v1/admin/photos/" + approvedPhoto.getId() + "/download")
+        mockMvc.perform(get("/api/v1/admin/photos/" + photo.getId() + "/download")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().is3xxRedirection());
     }
 
     @Test
-    @DisplayName("Generar descarga ZIP de fotos aprobadas mediante streaming")
-    void shouldStreamApprovedPhotosZip() throws Exception {
-        photoRepository.save(Photo.builder().event(event).storageKey("p1.jpg").isApproved(true).build());
-        photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p2.jpg").isApproved(true).build());
+    @DisplayName("Generar descarga ZIP de fotos mediante streaming")
+    void shouldStreamPhotosZip() throws Exception {
+        photoRepository.save(Photo.builder().event(event).storageKey("p1.jpg").build());
+        photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p2.jpg").build());
 
         mockMvc.perform(get("/api/v1/admin/photos/download-zip?slug=" + event.getSlug())
                         .header("Authorization", "Bearer " + adminJwtToken))

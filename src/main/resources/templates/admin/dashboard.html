@@ -151,12 +151,12 @@
             gap: 8px;
         }
 
-        .btn-approve-all {
+        .btn-primary-action {
             background: linear-gradient(135deg, #10b981, #059669);
             color: #fff;
         }
 
-        .btn-approve-all:hover {
+        .btn-primary-action:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 16px -4px rgba(16, 185, 129, 0.4);
         }
@@ -260,30 +260,7 @@
             margin-bottom: 8px;
         }
 
-        .card-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 12px;
-        }
-
-        .btn-approve {
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid rgba(34, 197, 94, 0.4);
-            color: #86efac;
-            padding: 10px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s ease;
-        }
-
-        .btn-approve:hover {
-            background: rgba(34, 197, 94, 0.4);
-        }
-
-        .btn-reject {
+        .btn-danger {
             background: rgba(239, 68, 68, 0.2);
             border: 1px solid rgba(239, 68, 68, 0.4);
             color: #fca5a5;
@@ -295,7 +272,7 @@
             transition: all 0.2s ease;
         }
 
-        .btn-reject:hover {
+        .btn-danger:hover {
             background: rgba(239, 68, 68, 0.4);
         }
 
@@ -455,12 +432,8 @@
     <!-- Tarjetas de Métricas del Evento -->
     <div class="metrics-grid">
         <div class="metric-card">
-            <div class="title">Fotos Pendientes</div>
-            <div class="value" id="metricPendingCount" th:text="${pendingCount}">0</div>
-        </div>
-        <div class="metric-card">
             <div class="title">Fotos Totales</div>
-            <div class="value" th:text="${totalPhotos}">0</div>
+            <div class="value" id="metricTotalCount" th:text="${totalPhotos}">0</div>
         </div>
         <div class="metric-card">
             <div class="title">Mensajes Totales</div>
@@ -474,11 +447,8 @@
 
     <!-- Navegación por Pestañas -->
     <div class="tabs-header">
-        <button class="tab-btn active" id="tabBtnPending" onclick="switchTab('pending')">
-            <i class="fa-solid fa-hourglass-half" style="color: #f59e0b; margin-right: 6px;"></i> Fotos Pendientes (<span id="tabPendingBadge" th:text="${pendingCount}">0</span>)
-        </button>
-        <button class="tab-btn" id="tabBtnApproved" onclick="switchTab('approved')">
-            <i class="fa-solid fa-images" style="color: #3b82f6; margin-right: 6px;"></i> Fotos Guardadas (<span id="tabApprovedBadge" th:text="${approvedPhotos != null ? approvedPhotos.size() : 0}">0</span>)
+        <button class="tab-btn active" id="tabBtnPhotos" onclick="switchTab('photos')">
+            <i class="fa-solid fa-images" style="color: #3b82f6; margin-right: 6px;"></i> Fotos (<span id="tabPhotosBadge" th:text="${totalPhotos}">0</span>)
         </button>
         <button class="tab-btn" id="tabBtnMessages" onclick="switchTab('messages')">
             <i class="fa-solid fa-book-open-reader" style="color: #a855f7; margin-right: 6px;"></i> Libro de Visitas (<span id="tabMessagesBadge" th:text="${messages != null ? messages.size() : 0}">0</span>)
@@ -488,57 +458,14 @@
         </button>
     </div>
 
-    <!-- Pestaña 1: Fotos Pendientes -->
-    <div id="tabContentPending">
+    <!-- Pestaña 1: Fotos del álbum (se publican solas; el borrado es el único control) -->
+    <div id="tabContentPhotos">
         <div class="section-header">
-            <h2 class="section-title">Fotografías Pendientes de Aprobación</h2>
+            <h2 class="section-title">Fotografías del Álbum</h2>
             <div class="actions-group">
                 <button class="btn btn-toggle-event" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar Subidas' : 'Reabrir Subidas'">
                     Cerrar Subidas
                 </button>
-                <button class="btn btn-approve-all" id="btnApproveAll">
-                    ✓ Aprobar Todas
-                </button>
-            </div>
-        </div>
-
-        <div id="photosGrid" class="photos-grid" th:if="${!pendingPhotos.isEmpty()}">
-            <div class="photo-card" th:each="photo : ${pendingPhotos}" th:id="'photo-card-' + ${photo.id}">
-                <div class="photo-img-wrapper">
-                    <img th:src="${photo.url}" alt="Fotografía subida por invitado" loading="lazy">
-                </div>
-                <div class="photo-info">
-                    <div>
-                        <div class="uploader-name" th:text="${photo.uploaderName}">Invitado</div>
-                        <div th:if="${photo.comments != null and !photo.comments.isEmpty()}" style="margin-top: 8px; background: rgba(15, 23, 42, 0.6); padding: 8px 10px; border-radius: 8px;">
-                            <div th:each="comment : ${photo.comments}" th:id="'comment-item-' + ${comment.id}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;">
-                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
-                                    <strong th:text="${comment.authorName} + ':'">Invitado:</strong>
-                                    <span th:text="'&quot;' + ${comment.text} + '&quot;'">"Mensaje"</span>
-                                </div>
-                                <button type="button" class="action-delete-comment" th:data-id="${comment.id}" style="background: transparent; border: none; color: #fca5a5; cursor: pointer; font-size: 0.85rem; padding: 2px 4px;" title="Eliminar comentario">🗑️</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-approve action-approve-photo" th:data-id="${photo.id}">Aprobar</button>
-                        <button class="btn-reject action-reject-photo" th:data-id="${photo.id}">Rechazar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="emptyState" class="empty-state" th:style="${pendingPhotos.isEmpty()} ? 'display:block;' : 'display:none;'">
-            <h3>¡Todo al día! 🎉</h3>
-            <p>No hay fotografías pendientes de moderación en este momento.</p>
-        </div>
-    </div>
-
-    <!-- Pestaña 2: Fotos Aprobadas y Guardadas en la BD -->
-    <div id="tabContentApproved" style="display: none;">
-        <div class="section-header">
-            <h2 class="section-title">Fotografías Guardadas en el Álbum / Base de Datos</h2>
-            <div class="actions-group">
                 <button class="btn btn-download-selected" id="btnDownloadSelectedZip">
                     📥 Descargar Seleccionadas (ZIP)
                 </button>
@@ -548,13 +475,14 @@
             </div>
         </div>
 
-        <div id="approvedPhotosGrid" class="photos-grid" th:if="${approvedPhotos != null and !approvedPhotos.isEmpty()}">
-            <div class="photo-card" th:each="photo : ${approvedPhotos}" th:id="'photo-card-' + ${photo.id}">
+        <!-- La grilla existe siempre (aunque esté vacía) para que PHOTO_PUBLISHED pueda insertar tarjetas en vivo. -->
+        <div id="photosGrid" class="photos-grid">
+            <div class="photo-card" th:each="photo : ${photos}" th:id="'photo-card-' + ${photo.id}">
                 <div class="photo-img-wrapper" style="position: relative;">
                     <label style="position: absolute; top: 10px; left: 10px; z-index: 10; cursor: pointer; background: rgba(15, 23, 42, 0.85); border-radius: 8px; padding: 6px 10px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" class="approved-photo-checkbox" th:value="${photo.id}"> Seleccionar
+                        <input type="checkbox" class="photo-select-checkbox" th:value="${photo.id}"> Seleccionar
                     </label>
-                    <img th:src="${photo.url}" alt="Fotografía guardada" loading="lazy">
+                    <img th:src="${photo.url}" alt="Fotografía del álbum" loading="lazy">
                 </div>
                 <div class="photo-info">
                     <div>
@@ -570,7 +498,7 @@
                         </div>
                     </div>
                     <div style="margin-top: 12px;">
-                        <button class="btn-reject action-delete-photo" th:data-id="${photo.id}" style="width: 100%;">
+                        <button class="btn-danger action-delete-photo" th:data-id="${photo.id}" style="width: 100%;">
                             🗑️ Eliminar Definitivamente
                         </button>
                     </div>
@@ -578,9 +506,9 @@
             </div>
         </div>
 
-        <div id="approvedEmptyState" class="empty-state" th:style="${approvedPhotos == null or approvedPhotos.isEmpty()} ? 'display:block;' : 'display:none;'">
-            <h3>No hay fotografías aprobadas</h3>
-            <p>Aún no hay fotografías aprobadas guardadas en la base de datos.</p>
+        <div id="photosEmptyState" class="empty-state" th:style="${photos == null or photos.isEmpty()} ? 'display:block;' : 'display:none;'">
+            <h3>Todavía no hay fotos 📷</h3>
+            <p>Las fotos que suban los invitados aparecen acá al instante.</p>
         </div>
     </div>
 
@@ -597,7 +525,7 @@
                     <div style="font-size: 0.95rem; color: #cbd5e1; font-style: italic; margin-top: 8px; line-height: 1.4;" th:text="'&quot;' + ${msg.text} + '&quot;'">"¡Muchas felicidades!"</div>
                 </div>
                 <div style="margin-top: 16px;">
-                    <button class="btn-reject action-delete-message" th:data-id="${msg.id}" style="width: 100%;">
+                    <button class="btn-danger action-delete-message" th:data-id="${msg.id}" style="width: 100%;">
                         🗑️ Eliminar Mensaje
                     </button>
                 </div>
@@ -625,7 +553,7 @@
                         <div style="font-size: 0.9rem; color: #cbd5e1; font-style: italic; margin-top: 4px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" th:text="'&quot;' + ${cmt.text} + '&quot;'">"Genial foto"</div>
                     </div>
                 </div>
-                <button class="btn-reject action-delete-comment" th:data-id="${cmt.id}" style="flex-shrink: 0; padding: 8px 12px;" title="Eliminar Comentario">
+                <button class="btn-danger action-delete-comment" th:data-id="${cmt.id}" style="flex-shrink: 0; padding: 8px 12px;" title="Eliminar Comentario">
                     🗑️
                 </button>
             </div>
@@ -706,12 +634,12 @@
                     <img th:src="@{'/api/v1/events/' + ${slug} + '/qr?size=350'}" alt="Código QR Boda" style="width: 240px; height: 240px; display: block; margin: 0 auto;">
                 </div>
                 <div style="font-family: monospace; font-size: 0.82rem; color: #a855f7; word-break: break-all; margin-bottom: 20px; background: rgba(168, 85, 247, 0.1); padding: 8px 12px; border-radius: 8px;">
-                    https://marcosypriscila-production.up.railway.app/menu.html?slug=marcos-y-priscila
+                    <span th:text="${guestMenuUrl}">(APP_BASE_URL)/menu.html?slug=...</span>
                 </div>
             </div>
             <div class="modal-actions" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
                 <button type="button" class="btn btn-cancel" onclick="closeQrModal()">Cerrar</button>
-                <a th:href="@{'/api/v1/events/' + ${slug} + '/qr?size=800&download=true'}" class="btn btn-approve-all" style="text-decoration: none; padding: 10px 16px;">
+                <a th:href="@{'/api/v1/events/' + ${slug} + '/qr?size=800&download=true'}" class="btn btn-primary-action" style="text-decoration: none; padding: 10px 16px;">
                     ⬇️ Descargar PNG (Alta Res)
                 </a>
             </div>
@@ -727,11 +655,6 @@
     let targetCommentIdToDelete = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-        const btnApproveAll = document.getElementById('btnApproveAll');
-        if (btnApproveAll) {
-            btnApproveAll.addEventListener('click', approveAll);
-        }
-
         const btnDownloadFullZip = document.getElementById('btnDownloadFullZip');
         if (btnDownloadFullZip) {
             btnDownloadFullZip.addEventListener('click', downloadFullZip);
@@ -740,7 +663,7 @@
         const btnDownloadSelectedZip = document.getElementById('btnDownloadSelectedZip');
         if (btnDownloadSelectedZip) {
             btnDownloadSelectedZip.addEventListener('click', () => {
-                const checkedBoxes = document.querySelectorAll('.approved-photo-checkbox:checked');
+                const checkedBoxes = document.querySelectorAll('.photo-select-checkbox:checked');
                 const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
                 downloadSelectedPhotos(selectedIds);
             });
@@ -768,16 +691,10 @@
 
         // Delegación de eventos para botones de tarjetas e ítems individuales
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('action-approve-photo')) {
-                const photoId = e.target.getAttribute('data-id');
-                if (photoId) approvePhoto(photoId);
-            } else if (e.target.classList.contains('action-download-single')) {
+            if (e.target.classList.contains('action-download-single')) {
                 const photoId = e.target.getAttribute('data-id');
                 if (photoId) downloadSinglePhoto(photoId);
-            } else if (e.target.classList.contains('action-reject-photo') || e.target.classList.contains('action-delete-photo')) {
-                const photoId = e.target.getAttribute('data-id');
-                if (photoId) openDeleteModal(photoId);
-            } else if (e.target.classList.contains('action-delete-message')) {
+            } else if (e.target.classList.contains('action-delete-photo')) {
                 const photoId = e.target.getAttribute('data-id');
                 if (photoId) openDeleteModal(photoId);
             } else if (e.target.classList.contains('action-delete-message')) {
@@ -907,47 +824,35 @@
         if (!slug) return;
         const eventSource = new EventSource(`/api/v1/events/${encodeURIComponent(slug)}/stream`);
 
-        eventSource.addEventListener('PHOTO_PENDING', (e) => {
+        eventSource.addEventListener('PHOTO_PUBLISHED', (e) => {
             try {
                 const payload = JSON.parse(e.data);
-                const photo = payload.data || payload;
+                const photo = payload.payload || payload.data || payload;
                 if (photo && photo.id) {
-                    addPendingPhotoCard(photo);
+                    addPhotoCard(photo);
                 }
             } catch (err) {
-                console.error('Error procesando foto pendiente vía SSE:', err);
+                console.error('Error procesando foto publicada vía SSE:', err);
             }
         });
 
-        eventSource.addEventListener('PHOTO_REJECTED', (e) => {
+        eventSource.addEventListener('PHOTO_DELETED', (e) => {
             try {
                 const payload = JSON.parse(e.data);
-                const data = payload.data || payload;
+                const data = payload.payload || payload.data || payload;
                 const photoId = data.photoId || data.id;
                 if (photoId) {
                     removePhotoCard(photoId);
                 }
             } catch (err) {
-                console.error('Error procesando foto rechazada vía SSE:', err);
-            }
-        });
-
-        eventSource.addEventListener('PHOTO_APPROVED', (e) => {
-            try {
-                const payload = JSON.parse(e.data);
-                const photo = payload.data || payload;
-                if (photo && photo.id) {
-                    removePhotoCard(photo.id);
-                }
-            } catch (err) {
-                console.error('Error procesando foto aprobada vía SSE:', err);
+                console.error('Error procesando foto eliminada vía SSE:', err);
             }
         });
 
         eventSource.addEventListener('MESSAGE_CREATED', (e) => {
             try {
                 const payload = JSON.parse(e.data);
-                const msg = payload.data || payload;
+                const msg = payload.payload || payload.data || payload;
                 if (msg && msg.id) addMessageCard(msg);
             } catch (err) {
                 console.error('Error procesando nuevo mensaje vía SSE:', err);
@@ -957,7 +862,7 @@
         eventSource.addEventListener('MESSAGE_DELETED', (e) => {
             try {
                 const payload = JSON.parse(e.data);
-                const data = payload.data || payload;
+                const data = payload.payload || payload.data || payload;
                 if (data && data.id) removeMessageCard(data.id);
             } catch (err) {
                 console.error('Error procesando borrado de mensaje vía SSE:', err);
@@ -967,7 +872,7 @@
         eventSource.addEventListener('COMMENT_DELETED', (e) => {
             try {
                 const payload = JSON.parse(e.data);
-                const data = payload.data || payload;
+                const data = payload.payload || payload.data || payload;
                 if (data && data.id) removeCommentItem(data.id);
             } catch (err) {
                 console.error('Error procesando borrado de comentario vía SSE:', err);
@@ -1003,7 +908,7 @@
                 <div style="font-size: 0.95rem; color: #cbd5e1; font-style: italic; margin-top: 8px; line-height: 1.4;">"${escapeHtml(msg.text)}"</div>
             </div>
             <div style="margin-top: 16px;">
-                <button class="btn-reject action-delete-message" data-id="${msg.id}" style="width: 100%;">
+                <button class="btn-danger action-delete-message" data-id="${msg.id}" style="width: 100%;">
                     🗑️ Eliminar Mensaje
                 </button>
             </div>
@@ -1056,132 +961,71 @@
     }
 
     function switchTab(tabName) {
-        const pendingTab = document.getElementById('tabContentPending');
-        const approvedTab = document.getElementById('tabContentApproved');
+        const photosTab = document.getElementById('tabContentPhotos');
         const messagesTab = document.getElementById('tabContentMessages');
         const commentsTab = document.getElementById('tabContentComments');
 
-        const btnPending = document.getElementById('tabBtnPending');
-        const btnApproved = document.getElementById('tabBtnApproved');
+        const btnPhotos = document.getElementById('tabBtnPhotos');
         const btnMessages = document.getElementById('tabBtnMessages');
         const btnComments = document.getElementById('tabBtnComments');
 
-        if (pendingTab) pendingTab.style.display = tabName === 'pending' ? 'block' : 'none';
-        if (approvedTab) approvedTab.style.display = tabName === 'approved' ? 'block' : 'none';
+        if (photosTab) photosTab.style.display = tabName === 'photos' ? 'block' : 'none';
         if (messagesTab) messagesTab.style.display = tabName === 'messages' ? 'block' : 'none';
         if (commentsTab) commentsTab.style.display = tabName === 'comments' ? 'block' : 'none';
 
-        if (btnPending) btnPending.classList.toggle('active', tabName === 'pending');
-        if (btnApproved) btnApproved.classList.toggle('active', tabName === 'approved');
+        if (btnPhotos) btnPhotos.classList.toggle('active', tabName === 'photos');
         if (btnMessages) btnMessages.classList.toggle('active', tabName === 'messages');
         if (btnComments) btnComments.classList.toggle('active', tabName === 'comments');
     }
 
-    function addPendingPhotoCard(photo) {
+    function addPhotoCard(photo) {
         if (document.getElementById(`photo-card-${photo.id}`)) {
             return;
         }
 
-        const emptyState = document.getElementById('emptyState');
-        if (emptyState) emptyState.style.display = 'none';
-
-        const pendingElem = document.getElementById('metricPendingCount');
-        if (pendingElem) {
-            let current = parseInt(pendingElem.innerText) || 0;
-            pendingElem.innerText = current + 1;
-        }
-        const totalElem = document.getElementById('metricTotalCount');
-        if (totalElem) {
-            let currentTotal = parseInt(totalElem.innerText) || 0;
-            totalElem.innerText = currentTotal + 1;
-        }
-
         const photosGrid = document.getElementById('photosGrid');
         if (!photosGrid) return;
+
+        const emptyState = document.getElementById('photosEmptyState');
+        if (emptyState) emptyState.style.display = 'none';
 
         const card = document.createElement('div');
         card.className = 'photo-card';
         card.id = `photo-card-${photo.id}`;
         card.style.animation = 'fadeIn 0.5s ease-out';
 
-        const captionText = (photo.comments && photo.comments.length > 0 && photo.comments[0].text) 
-            ? photo.comments[0].text 
+        const captionText = (photo.comments && photo.comments.length > 0 && photo.comments[0].text)
+            ? photo.comments[0].text
             : '';
-        const captionHtml = captionText 
-            ? `<div style="font-size: 0.9rem; color: #cbd5e1; font-style: italic; margin-bottom: 8px;">"${escapeHtml(captionText)}"</div>` 
+        const captionHtml = captionText
+            ? `<div style="font-size: 0.9rem; color: #cbd5e1; font-style: italic; margin-top: 8px;">"${escapeHtml(captionText)}"</div>`
             : '';
 
         card.innerHTML = `
-            <div class="photo-img-wrapper">
-                <img src="${escapeHtml(photo.url)}" alt="Foto por ${escapeHtml(photo.uploaderName)}" onerror="this.src='https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80'">
+            <div class="photo-img-wrapper" style="position: relative;">
+                <label style="position: absolute; top: 10px; left: 10px; z-index: 10; cursor: pointer; background: rgba(15, 23, 42, 0.85); border-radius: 8px; padding: 6px 10px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" class="photo-select-checkbox" value="${escapeHtml(photo.id)}"> Seleccionar
+                </label>
+                <img src="${escapeHtml(photo.url)}" alt="Foto por ${escapeHtml(photo.uploaderName)}">
             </div>
             <div class="photo-info">
                 <div>
                     <div class="uploader-name">📸 ${escapeHtml(photo.uploaderName || 'Invitado')}</div>
                     ${captionHtml}
                 </div>
-                <div class="card-actions">
-                    <button class="btn-approve action-approve-photo" data-id="${photo.id}">✓ Aprobar</button>
-                    <button class="btn-reject action-reject-photo" data-id="${photo.id}">✕ Rechazar</button>
+                <div style="margin-top: 12px;">
+                    <button class="btn-danger action-delete-photo" data-id="${escapeHtml(photo.id)}" style="width: 100%;">🗑️ Eliminar Definitivamente</button>
                 </div>
             </div>
         `;
 
         photosGrid.insertBefore(card, photosGrid.firstChild);
+        adjustPhotoCounters(+1);
     }
 
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    async function approvePhoto(photoId) {
-        try {
-            const res = await fetch(`/api/v1/admin/photos/${photoId}/approve`, { method: 'PATCH' });
-            if (res.ok) {
-                removePhotoCard(photoId);
-            } else {
-                const errText = await res.text().catch(() => '');
-                alert('No se pudo aprobar la fotografía (' + res.status + '): ' + errText);
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Error de comunicación con el servidor.');
-        }
-    }
-
-    async function rejectPhoto(photoId) {
-        if (!confirm('¿Estás seguro de que deseas rechazar y eliminar esta fotografía?')) return;
-
-        try {
-            const res = await fetch(`/api/v1/admin/photos/${photoId}`, { method: 'DELETE' });
-            if (res.ok) {
-                removePhotoCard(photoId);
-            } else {
-                const errText = await res.text().catch(() => '');
-                alert('No se pudo eliminar la fotografía (' + res.status + '): ' + errText);
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Error de comunicación con el servidor.');
-        }
-    }
-
-    async function approveAll() {
-        if (!confirm('¿Deseas aprobar todas las fotografías pendientes de una sola vez?')) return;
-
-        try {
-            const res = await fetch(`/api/v1/admin/photos/approve-all?slug=${encodeURIComponent(slug)}`, { method: 'POST' });
-            if (res.ok) {
-                window.location.reload();
-            } else {
-                const errText = await res.text().catch(() => '');
-                alert('Ocurrió un error al aprobar las fotos (' + res.status + '): ' + errText);
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Error de comunicación con el servidor.');
-        }
     }
 
     async function toggleEventStatus() {
@@ -1202,38 +1046,27 @@
 
     function removePhotoCard(photoId) {
         const card = document.getElementById(`photo-card-${photoId}`);
-        if (card) {
-            card.remove();
-        }
+        // El borrado propio llega dos veces (respuesta del DELETE + evento SSE): solo se
+        // descuenta la primera, cuando la tarjeta todavía existía.
+        if (!card) return;
+        card.remove();
+        adjustPhotoCounters(-1);
 
-        // Si la foto estaba en la grilla de pendientes, decrementamos contador pendientes
         const photosGrid = document.getElementById('photosGrid');
         if (photosGrid && photosGrid.children.length === 0) {
-            const emptyState = document.getElementById('emptyState');
+            const emptyState = document.getElementById('photosEmptyState');
             if (emptyState) emptyState.style.display = 'block';
         }
+    }
 
-        const approvedPhotosGrid = document.getElementById('approvedPhotosGrid');
-        if (approvedPhotosGrid && approvedPhotosGrid.children.length === 0) {
-            const approvedEmptyState = document.getElementById('approvedEmptyState');
-            if (approvedEmptyState) approvedEmptyState.style.display = 'block';
-        }
-
-        const pendingElem = document.getElementById('metricPendingCount');
-        const pendingBadge = document.getElementById('tabPendingBadge');
-        if (pendingElem) {
-            let current = parseInt(pendingElem.innerText) || 0;
-            let updated = Math.max(0, current - 1);
-            pendingElem.innerText = updated;
-            if (pendingBadge) pendingBadge.innerText = updated;
-        }
-
-        const approvedBadge = document.getElementById('tabApprovedBadge');
-        if (approvedBadge) {
-            let currentApproved = parseInt(approvedBadge.innerText) || 0;
-            let updatedApproved = Math.max(0, currentApproved - 1);
-            approvedBadge.innerText = updatedApproved;
-        }
+    function adjustPhotoCounters(delta) {
+        ['metricTotalCount', 'tabPhotosBadge'].forEach((id) => {
+            const elem = document.getElementById(id);
+            if (elem) {
+                const current = parseInt(elem.innerText) || 0;
+                elem.innerText = Math.max(0, current + delta);
+            }
+        });
     }
 
     function downloadFullZip() {

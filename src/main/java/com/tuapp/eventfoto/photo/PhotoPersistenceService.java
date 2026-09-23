@@ -50,7 +50,6 @@ public class PhotoPersistenceService {
                 .event(event)
                 .storageKey(storageKey)
                 .uploaderName(uploader)
-                .isApproved(false) // Requiere aprobación previa por moderación de admin
                 .build();
         Photo savedPhoto = photoRepository.save(photo);
 
@@ -65,7 +64,7 @@ public class PhotoPersistenceService {
             savedPhoto.getComments().add(captionComment);
         }
 
-        log.info("Foto persistida con ID {} para el evento ID {} (pendiente de aprobación)",
+        log.info("Foto persistida y publicada con ID {} para el evento ID {}",
                 savedPhoto.getId(), event.getId());
 
         return PhotoResponseDTO.fromEntity(savedPhoto, publicUrl, savedPhoto.getComments());

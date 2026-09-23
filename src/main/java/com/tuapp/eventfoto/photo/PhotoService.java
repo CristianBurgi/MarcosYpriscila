@@ -21,21 +21,11 @@ public interface PhotoService {
 
     PhotoResponseDTO uploadDirect(String slug, MultipartFile file, String uploaderName, String caption, String guestToken);
 
-    Page<PhotoResponseDTO> getApprovedPhotos(String slug, Pageable pageable);
-
-    Page<PhotoResponseDTO> getPendingPhotos(String slug, Pageable pageable);
-
-    PhotoResponseDTO approvePhoto(UUID photoId);
-
-    void rejectPhoto(UUID photoId);
+    Page<PhotoResponseDTO> getPhotos(String slug, Pageable pageable);
 
     void deletePhoto(UUID photoId);
 
-    List<PhotoResponseDTO> approveAllPendingPhotos(String slug);
-
     long countTotalPhotos(String slug);
-
-    long countPendingPhotos(String slug);
 
     String generateDownloadUrl(UUID photoId);
 

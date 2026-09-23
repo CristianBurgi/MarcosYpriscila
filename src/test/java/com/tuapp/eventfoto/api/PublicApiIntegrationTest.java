@@ -22,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -141,32 +142,59 @@ class PublicApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/events/{slug}/photos/confirm - Debe registrar foto con isApproved=false")
-    void shouldConfirmUploadAndCreateUnapprovedPhoto() throws Exception {
-        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/test.jpg", "Invitado Feliz", "¡Felicidades!", "guest-token-confirm-test");
-
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.isApproved", is(false)))
-                .andExpect(jsonPath("$.uploaderName", is("Invitado Feliz")));
+    @DisplayName("GET /favicon.ico - Se sirve sin autenticación (antes: 131 NoResourceFoundException en Sentry)")
+    void shouldServeFavicon() throws Exception {
+        mockMvc.perform(get("/favicon.ico"))
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("PATCH /api/v1/admin/photos/{id}/approve - Debe aprobar la foto para mostrarla en la galería")
-    void shouldApprovePhoto() throws Exception {
-        Photo photo = photoRepository.save(Photo.builder()
-                .event(testEvent)
-                .storageKey("photos/sample.jpg")
-                .uploaderName("Caro")
-                .isApproved(false)
-                .build());
-
-        mockMvc.perform(patch("/api/v1/admin/photos/" + photo.getId() + "/approve")
-                        .header("Authorization", "Bearer " + adminJwtToken))
+    @DisplayName("E2E presigned: upload-url -> /confirm -> la foto queda publicada en la galería sin acción del organizador")
+    void shouldPublishConfirmedPhotoWithoutAdminAction() throws Exception {
+        String guestToken = "guest-token-confirm-test";
+        UploadUrlRequestDTO urlRequest = new UploadUrlRequestDTO("image/jpeg", "boda.jpg", guestToken);
+        String urlResponse = mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/upload-url")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(urlRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isApproved", is(true)));
+                .andReturn().getResponse().getContentAsString();
+        String key = objectMapper.readTree(urlResponse).get("key").asText();
+
+        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key, "Invitado Feliz", "¡Felicidades!", guestToken);
+        String confirmResponse = mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.uploaderName", is("Invitado Feliz")))
+                .andExpect(jsonPath("$.isApproved").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        String photoId = objectMapper.readTree(confirmResponse).get("id").asText();
+
+        // Sin ninguna llamada a /api/v1/admin/**: la galería pública ya la muestra.
+        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/photos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id", is(photoId)))
+                .andExpect(jsonPath("$.totalElements", is(1)));
+    }
+
+    @Test
+    @DisplayName("E2E upload-direct: la foto subida por el servidor queda publicada en la galería sin acción del organizador")
+    void shouldPublishDirectUploadWithoutAdminAction() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "boda.jpg", "image/jpeg",
+                new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0x10, 'J', 'F', 'I', 'F', 0, 1, 1});
+
+        String response = mockMvc.perform(multipart("/api/v1/events/marcos-y-priscila/photos/upload-direct")
+                        .file(file)
+                        .param("uploaderName", "Caro")
+                        .param("guestToken", "guest-token-direct-test"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String photoId = objectMapper.readTree(response).get("id").asText();
+
+        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/photos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id", is(photoId)))
+                .andExpect(jsonPath("$.content[0].uploaderName", is("Caro")));
     }
 
     @Test
@@ -175,7 +203,6 @@ class PublicApiIntegrationTest {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
                 .storageKey("photos/sample.jpg")
-                .isApproved(true)
                 .build());
 
         CreateCommentRequestDTO request = new CreateCommentRequestDTO("Tía Marta", "¡Qué hermosa foto!");
@@ -194,7 +221,6 @@ class PublicApiIntegrationTest {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
                 .storageKey("photos/sample.jpg")
-                .isApproved(true)
                 .build());
 
         CreateCommentRequestDTO request = new CreateCommentRequestDTO("", "");
@@ -225,14 +251,12 @@ class PublicApiIntegrationTest {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
                 .storageKey("photos/sample.jpg")
-                .isApproved(true)
                 .build());
 
         com.tuapp.eventfoto.comment.Comment comment = commentRepository.save(com.tuapp.eventfoto.comment.Comment.builder()
                 .photo(photo)
                 .authorName("Inapropiado")
                 .text("Texto no permitido")
-                .isApproved(true)
                 .build());
 
         mockMvc.perform(delete("/api/v1/admin/comments/" + comment.getId())
@@ -259,7 +283,6 @@ class PublicApiIntegrationTest {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
                 .storageKey("photos/sample.jpg")
-                .isApproved(true)
                 .build());
 
         CreateCommentRequestDTO request = new CreateCommentRequestDTO("Troll", "Sos una mierda");
@@ -355,7 +378,6 @@ class PublicApiIntegrationTest {
                 .event(testEvent)
                 .authorName("Spammer")
                 .text("Mensaje indeseado")
-                .isApproved(true)
                 .build());
 
         mockMvc.perform(delete("/api/v1/admin/messages/" + message.getId())

@@ -26,7 +26,14 @@ public class SseBroadcaster {
      * Suscribe un cliente al flujo Server-Sent Events (SSE) para un evento específico.
      */
     public SseEmitter subscribe(UUID eventId) {
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        return register(eventId, new SseEmitter(SSE_TIMEOUT_MS));
+    }
+
+    /**
+     * Registra un emitter ya creado en la lista activa del evento. Package-private para
+     * poder testear el manejo de desconexiones con emitters simulados.
+     */
+    SseEmitter register(UUID eventId, SseEmitter emitter) {
         List<SseEmitter> emitters = eventEmitters.computeIfAbsent(eventId, k -> new CopyOnWriteArrayList<>());
         emitters.add(emitter);
 
@@ -38,13 +45,13 @@ public class SseBroadcaster {
             if (emitters.isEmpty()) {
                 eventEmitters.remove(eventId);
             }
-            log.info("Conexión SSE cerrada/removida para evento ID: {}. Suscriptores restantes: {}", eventId, emitters.size());
+            log.debug("Conexión SSE cerrada/removida para evento ID: {}. Suscriptores restantes: {}", eventId, emitters.size());
         };
 
         emitter.onCompletion(cleanup);
         emitter.onTimeout(cleanup);
         emitter.onError(e -> {
-            log.warn("Error en canal SSE para evento ID {}: {}", eventId, e.getMessage());
+            log.debug("Canal SSE cerrado con error para evento ID {}: {}", eventId, e.getMessage());
             cleanup.run();
         });
 
@@ -54,36 +61,29 @@ public class SseBroadcaster {
                     .name("INIT")
                     .data("Conexión exitosa a la transmisión en vivo de la boda"));
         } catch (IOException e) {
-            log.warn("Fallo al enviar mensaje INIT de SSE: {}", e.getMessage());
-            emitter.completeWithError(e);
+            log.debug("Cliente SSE desconectado antes del mensaje INIT: {}", e.getMessage());
+            emitters.remove(emitter);
         }
 
         return emitter;
     }
 
     /**
-     * Transmite la notificación de una fotografía aprobada a todos los suscriptores del evento.
+     * Transmite una fotografía recién publicada (la publicación es automática al confirmar
+     * la subida) a todos los suscriptores del evento: álbum, pantalla del salón y panel.
      */
-    public void broadcastPhotoApproved(UUID eventId, PhotoResponseDTO photo) {
-        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_APPROVED", photo);
-        broadcast(eventId, "PHOTO_APPROVED", notification);
+    public void broadcastPhotoPublished(UUID eventId, PhotoResponseDTO photo) {
+        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_PUBLISHED", photo);
+        broadcast(eventId, "PHOTO_PUBLISHED", notification);
     }
 
     /**
-     * Transmite la notificación de una fotografía pendiente de aprobación al panel de administración.
+     * Transmite la eliminación de una fotografía para que el álbum y la pantalla la saquen al instante.
      */
-    public void broadcastPhotoPending(UUID eventId, PhotoResponseDTO photo) {
-        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_PENDING", photo);
-        broadcast(eventId, "PHOTO_PENDING", notification);
-    }
-
-    /**
-     * Transmite la notificación de una fotografía rechazada y eliminada.
-     */
-    public void broadcastPhotoRejected(UUID eventId, UUID photoId) {
+    public void broadcastPhotoDeleted(UUID eventId, UUID photoId) {
         Map<String, Object> data = Map.of("photoId", photoId);
-        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_REJECTED", data);
-        broadcast(eventId, "PHOTO_REJECTED", notification);
+        SseNotificationEvent notification = SseNotificationEvent.of("PHOTO_DELETED", data);
+        broadcast(eventId, "PHOTO_DELETED", notification);
     }
 
     /**
@@ -121,14 +121,7 @@ public class SseBroadcaster {
         log.info("Emitiendo evento SSE '{}' a {} clientes para evento ID: {}", eventName, emitters.size(), eventId);
 
         for (SseEmitter emitter : emitters) {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name(eventName)
-                        .data(data));
-            } catch (Exception e) {
-                log.warn("Fallo la emisión SSE a un cliente, removiendo emisor zombie: {}", e.getMessage());
-                emitters.remove(emitter);
-            }
+            safeSend(emitters, emitter, SseEmitter.event().name(eventName).data(data));
         }
     }
 
@@ -144,13 +137,32 @@ public class SseBroadcaster {
 
         eventEmitters.forEach((eventId, emitters) -> {
             for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send(SseEmitter.event().comment("ping"));
-                } catch (Exception e) {
-                    emitters.remove(emitter);
-                }
+                safeSend(emitters, emitter, SseEmitter.event().comment("ping"));
             }
         });
+    }
+
+    /**
+     * Escribe a UN emitter sin que su falla afecte al resto: se remueve de la lista activa
+     * y se sigue. Nunca relanza.
+     *
+     * Fase 9.0: en la boda del 19/09 Sentry registró 217 eventos "IOException: Broken pipe"
+     * desde acá. Un invitado que cierra el álbum o un celular que pierde señal es una
+     * desconexión NORMAL, no un error: se loguea en debug. Ojo: ese ruido no venía de
+     * este catch (ya existía) sino del async error dispatch que Spring dispara al fallar
+     * la escritura -- eso se silencia en GlobalExceptionHandler#handleClientDisconnected.
+     */
+    private void safeSend(List<SseEmitter> emitters, SseEmitter emitter, SseEmitter.SseEventBuilder event) {
+        try {
+            emitter.send(event);
+        } catch (IOException e) {
+            log.debug("Cliente SSE desconectado, removiendo emisor: {}", e.getMessage());
+            emitters.remove(emitter);
+        } catch (Exception e) {
+            // Ej.: IllegalStateException si el emitter ya estaba completado.
+            log.warn("Fallo inesperado al emitir SSE a un cliente, removiendo emisor: {}", e.toString());
+            emitters.remove(emitter);
+        }
     }
 
     public int getActiveSubscribersCount(UUID eventId) {

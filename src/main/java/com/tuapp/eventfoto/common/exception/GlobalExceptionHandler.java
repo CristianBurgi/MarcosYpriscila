@@ -1,15 +1,24 @@
 package com.tuapp.eventfoto.common.exception;
 
 import io.sentry.Sentry;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.util.DisconnectedClientHelper;
 
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -152,9 +161,95 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
+    // --- Fase 9.0: errores de subida con mensaje para el invitado (no un 500 técnico) ---
+
+    public static final String UPLOAD_TOO_LARGE_MESSAGE = "La foto es demasiado pesada, probá con otra";
+    public static final String UPLOAD_FAILED_MESSAGE = "Hubo un problema con la subida, intentá de nuevo";
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        log.info("Subida rechazada por tamaño en {}: {}", request.getRequestURI(), ex.getMessage());
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                "Payload Too Large - Upload Size Exceeded",
+                UPLOAD_TOO_LARGE_MESSAGE,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
+    }
+
+    /**
+     * Multipart malformado o cortado a mitad de camino (típico con mala señal en el salón).
+     * Es un problema del lado del cliente/red, no un bug del servidor: 400 sin Sentry.
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMultipartException(
+            MultipartException ex, HttpServletRequest request) {
+        log.info("Subida multipart inválida o interrumpida en {}: {}", request.getRequestURI(), ex.getMessage());
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request - Malformed Upload",
+                UPLOAD_FAILED_MESSAGE,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
+     * Recursos estáticos inexistentes (favicon de navegadores viejos, bots escaneando rutas):
+     * un 404 normal, no un error a reportar.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        log.debug("Recurso estático inexistente: {}", request.getRequestURI());
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.NOT_FOUND.value(),
+                "Not Found",
+                "El recurso solicitado no existe.",
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    /**
+     * Cliente desconectado (SSE de un celular que perdió señal o cerró la pestaña).
+     *
+     * Fase 9.0: cuando SseBroadcaster falla al escribir, Spring hace un async error dispatch
+     * con esa misma IOException, que caía en handleGenericException -> Sentry ("Broken
+     * pipe", 217 eventos en la boda). No hay a quién responder: se loguea en debug y se
+     * devuelve sin body.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientDisconnected(AsyncRequestNotUsableException ex, HttpServletRequest request) {
+        log.debug("Cliente desconectado en {}: {}", request.getRequestURI(), ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex, HttpServletRequest request) {
+        if (isClientDisconnect(ex, request)) {
+            // Mismo caso que handleClientDisconnected, cuando la excepción llega sin envolver.
+            // Se devuelve null (sin body): intentar escribir un JSON sobre la conexión muerta
+            // solo produce otra IOException que Tomcat loguea como ERROR.
+            log.debug("Cliente desconectado en {}: {}", request.getRequestURI(), ex.getMessage());
+            return null;
+        }
+        if (ex instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
+            // Excepciones 4xx propias de Spring MVC (método no soportado, parámetro faltante,
+            // content-type inválido): son errores del cliente, no bugs. Se respeta su status
+            // en lugar de convertirlas en un 500 que además llegaba a Sentry.
+            HttpStatusCode status = errorResponse.getStatusCode();
+            log.info("Request inválida en {}: {}", request.getRequestURI(), ex.getMessage());
+            ErrorResponseDTO error = ErrorResponseDTO.of(
+                    status.value(),
+                    "Client Error",
+                    errorResponse.getBody().getDetail() != null ? errorResponse.getBody().getDetail() : "Solicitud inválida.",
+                    request.getRequestURI()
+            );
+            return ResponseEntity.status(status).body(error);
+        }
         log.error("Excepción interna no capturada en {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         Sentry.captureException(ex);
         ErrorResponseDTO error = ErrorResponseDTO.of(
@@ -164,5 +259,18 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    /**
+     * Verificado reproduciendo el corte en local (Fase 9.0): al fallar la escritura del
+     * SSE llega la IOException CRUDA (no AsyncRequestNotUsableException) vía async
+     * dispatch. DisconnectedClientHelper la reconoce solo por el texto del mensaje en
+     * inglés ("Broken pipe"), que depende del sistema operativo (en Windows sale
+     * localizado). Por eso, además, cualquier IOException durante un dispatch ASYNC
+     * -- escribiendo un stream -- se trata como cliente desconectado.
+     */
+    private static boolean isClientDisconnect(Exception ex, HttpServletRequest request) {
+        return DisconnectedClientHelper.isClientDisconnectedException(ex)
+                || (ex instanceof IOException && request.getDispatcherType() == DispatcherType.ASYNC);
     }
 }

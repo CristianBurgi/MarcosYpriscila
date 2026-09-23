@@ -11,19 +11,11 @@ import java.util.UUID;
 @Repository
 public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
-    Page<Photo> findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
-
-    Page<Photo> findByEventIdAndIsApprovedFalseOrderByCreatedAtAsc(UUID eventId, Pageable pageable);
-
-    List<Photo> findByEventIdAndIsApprovedFalse(UUID eventId);
-
-    List<Photo> findByEventIdAndIsApprovedTrue(UUID eventId);
-
-    List<Photo> findByIdInAndIsApprovedTrue(List<UUID> ids);
-
     Page<Photo> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
 
-    long countByEventId(UUID eventId);
+    List<Photo> findByEventId(UUID eventId);
 
-    long countByEventIdAndIsApprovedFalse(UUID eventId);
+    List<Photo> findByEventIdAndIdIn(UUID eventId, List<UUID> ids);
+
+    long countByEventId(UUID eventId);
 }

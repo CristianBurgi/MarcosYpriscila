@@ -25,68 +25,28 @@ public class AdminPhotoController {
     private final PhotoService photoService;
 
     /**
-     * GET /api/v1/admin/photos/pending?slug=marcos-y-priscila
-     * Devuelve la lista paginada de fotografías pendientes de moderación.
+     * GET /api/v1/admin/photos?slug=marcos-y-priscila
+     * Devuelve la lista paginada de fotografías publicadas del evento.
      */
-    @GetMapping("/pending")
-    public ResponseEntity<Page<PhotoResponseDTO>> getPendingPhotos(
+    @GetMapping
+    public ResponseEntity<Page<PhotoResponseDTO>> getPhotos(
             @RequestParam(defaultValue = "marcos-y-priscila") String slug,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PhotoResponseDTO> pending = photoService.getPendingPhotos(slug, PageRequest.of(page, size));
-        return ResponseEntity.ok(pending);
-    }
-
-    /**
-     * GET /api/v1/admin/photos/approved?slug=marcos-y-priscila
-     * Devuelve la lista paginada de fotografías aprobadas y visibles en el álbum.
-     */
-    @GetMapping("/approved")
-    public ResponseEntity<Page<PhotoResponseDTO>> getApprovedPhotos(
-            @RequestParam(defaultValue = "marcos-y-priscila") String slug,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<PhotoResponseDTO> approved = photoService.getApprovedPhotos(slug, PageRequest.of(page, size));
-        return ResponseEntity.ok(approved);
-    }
-
-    /**
-     * PATCH /api/v1/admin/photos/{photoId}/approve
-     * Aprueba una fotografía individual para que aparezca en el álbum público y dispara el evento SSE.
-     */
-    @PatchMapping("/{photoId}/approve")
-    public ResponseEntity<PhotoResponseDTO> approvePhoto(@PathVariable String photoId) {
-        UUID uuid = parseUUID(photoId);
-        PhotoResponseDTO approvedPhoto = photoService.approvePhoto(uuid);
-        return ResponseEntity.ok(approvedPhoto);
+        Page<PhotoResponseDTO> photos = photoService.getPhotos(slug, PageRequest.of(page, size));
+        return ResponseEntity.ok(photos);
     }
 
     /**
      * DELETE /api/v1/admin/photos/{photoId}
-     * PATCH /api/v1/admin/photos/{photoId}/reject
-     * Rechaza y elimina una fotografía de R2 y de la base de datos.
+     * Único control de moderación: elimina la fotografía de R2 y de la base de datos,
+     * y notifica PHOTO_DELETED por SSE.
      */
     @DeleteMapping("/{photoId}")
-    public ResponseEntity<Void> rejectPhoto(@PathVariable String photoId) {
+    public ResponseEntity<Void> deletePhoto(@PathVariable String photoId) {
         UUID uuid = parseUUID(photoId);
-        photoService.rejectPhoto(uuid);
+        photoService.deletePhoto(uuid);
         return ResponseEntity.noContent().build();
-    }
-
-    @PatchMapping("/{photoId}/reject")
-    public ResponseEntity<Void> rejectPhotoPatch(@PathVariable String photoId) {
-        return rejectPhoto(photoId);
-    }
-
-    /**
-     * POST /api/v1/admin/photos/approve-all?slug=marcos-y-priscila
-     * Aprueba masivamente todas las fotografías pendientes del evento.
-     */
-    @PostMapping("/approve-all")
-    public ResponseEntity<List<PhotoResponseDTO>> approveAllPhotos(
-            @RequestParam(defaultValue = "marcos-y-priscila") String slug) {
-        List<PhotoResponseDTO> approvedPhotos = photoService.approveAllPendingPhotos(slug);
-        return ResponseEntity.ok(approvedPhotos);
     }
 
     /**
@@ -104,7 +64,7 @@ public class AdminPhotoController {
 
     /**
      * GET /api/v1/admin/photos/download-zip?slug=marcos-y-priscila&photoIds=uuid1,uuid2
-     * Transmite en tiempo real (streaming) un archivo ZIP con las fotografías aprobadas.
+     * Transmite en tiempo real (streaming) un archivo ZIP con las fotografías del evento.
      */
     @GetMapping({"/download-zip", "/events/{slug}/download-zip"})
     public void downloadPhotosZip(

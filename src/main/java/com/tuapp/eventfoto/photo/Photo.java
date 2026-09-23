@@ -12,8 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "photos", indexes = {
-    @Index(name = "idx_photos_event_id", columnList = "event_id"),
-    @Index(name = "idx_photos_approved", columnList = "is_approved")
+    @Index(name = "idx_photos_event_id", columnList = "event_id")
 })
 @Getter
 @Setter
@@ -35,10 +34,6 @@ public class Photo {
 
     @Column(name = "uploader_name", length = 150)
     private String uploaderName;
-
-    @Builder.Default
-    @Column(name = "is_approved", nullable = false)
-    private boolean isApproved = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

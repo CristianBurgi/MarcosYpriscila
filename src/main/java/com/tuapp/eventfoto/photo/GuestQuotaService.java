@@ -15,9 +15,9 @@ import java.util.UUID;
  * Centraliza el límite de fotos por invitado (MAX_PHOTOS_PER_GUEST, único lugar
  * del código con ese valor) y toda la lógica de lectura/incremento del cupo.
  *
- * El contador es monotónico: solo sube. Rechazar o borrar una foto en admin NO
- * le devuelve el cupo al invitado, a propósito (ver PhotoServiceImpl.rejectPhoto/
- * deletePhoto, que no tocan GuestQuota).
+ * El contador es monotónico: solo sube. Borrar una foto en admin NO le devuelve
+ * el cupo al invitado, a propósito (ver PhotoServiceImpl.deletePhoto, que no toca
+ * GuestQuota).
  */
 @Slf4j
 @Service
