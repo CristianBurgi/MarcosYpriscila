@@ -191,7 +191,7 @@ Cada navegador conectado abre una conexión HTTP persistente al endpoint `/api/v
 
 El `SseBroadcaster` mantiene un `ConcurrentHashMap<UUID, List<SseEmitter>>` de emisores por `eventId`. Cuando se emite un evento, itera sobre los emisores del evento correspondiente y envía el payload en JSON (`{ eventType, payload, timestamp }`).
 
-**Desconexiones:** un invitado que cierra el álbum o un celular que pierde señal es una desconexión normal. El emisor que falla al escribir se remueve y el envío sigue con el resto; tanto en `SseBroadcaster` como en el async dispatch que Spring dispara después (`GlobalExceptionHandler`) se loguea en `debug`, sin llegar a Sentry.
+**Desconexiones:** un invitado que cierra el álbum o un celular que pierde señal es una desconexión normal. El emisor que falla al escribir se remueve y el envío sigue con el resto; tanto en `SseBroadcaster` como en el async dispatch que Spring dispara después (`GlobalExceptionHandler`) se loguea en `debug`, sin llegar a Sentry. Solo se considera desconexión una falla **escribiendo la respuesta** (`ClientAbortException`, o `IOException` durante el dispatch asíncrono del SSE); una falla leyendo de R2 o de la base sigue llegando a Sentry aunque su mensaje diga "Connection reset".
 
 ---
 
@@ -709,7 +709,8 @@ mvn test
 | `RealtimeIntegrationTest` | 2 | Suscripción SSE, aislamiento de eventos por `eventId` |
 | `SseBroadcasterTest` / `PhotoDeletedSseIntegrationTest` | 4 | Un emisor que tira `IOException` se remueve sin cortar el envío al resto; borrar una foto emite `PHOTO_DELETED` |
 | `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 30 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
-| `GlobalExceptionHandlerSentryNoiseTest` | 6 | Desconexiones de clientes, recursos inexistentes y errores 4xx de Spring no llegan a Sentry; un error real sí |
+| `GlobalExceptionHandlerSentryNoiseTest` | 10 | Desconexiones de clientes (escritura de la respuesta), recursos inexistentes y errores 4xx de Spring no llegan a Sentry; fallas de R2/BD con mensajes tipo "Connection reset" sí |
+| `ZipStreamingFailureTest` | 3 | ZIP: un fallo LEYENDO de R2 va a Sentry y el resto del álbum se descarga; un corte del cliente (escritura) no va a Sentry |
 | `StorageServiceTest` | 6 | Generación de presigned URLs de subida/descarga, borrado en R2, rechazo de tipos no permitidos |
 
 Los tests de integración usan **H2 en memoria** (no necesitan PostgreSQL ni R2 reales). Los tests de storage usan mocks para evitar conexiones externas.

@@ -17,6 +17,7 @@ import com.tuapp.eventfoto.photo.dto.UploadUrlResponseDTO;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
 import com.tuapp.eventfoto.storage.FileSignatureValidator;
 import com.tuapp.eventfoto.storage.StorageService;
+import io.sentry.Sentry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -303,26 +304,75 @@ public class PhotoServiceImpl implements PhotoService {
 
         Set<String> usedEntryNames = new HashSet<>();
 
+        int failedPhotos = 0;
         try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
             for (Photo photo : photosToZip) {
                 String entryName = buildZipEntryName(photo, usedEntryNames);
-                ZipEntry zipEntry = new ZipEntry(entryName);
-                zos.putNextEntry(zipEntry);
-
-                try (InputStream is = storageService.streamObject(photo.getStorageKey())) {
-                    is.transferTo(zos);
-                } catch (Exception e) {
-                    log.error("Error al transmitir la foto ID {} ('{}') al archivo ZIP: {}", photo.getId(), photo.getStorageKey(), e.getMessage());
+                zos.putNextEntry(new ZipEntry(entryName));
+                if (!copyPhotoIntoZip(photo, zos)) {
+                    failedPhotos++;
                 }
-
                 zos.closeEntry();
             }
             zos.finish();
-            log.info("ZIP streaming completado exitosamente con {} fotografías para el evento '{}'", photosToZip.size(), slug);
+            log.info("ZIP streaming completado con {} fotografías ({} con error de lectura en storage) para el evento '{}'",
+                    photosToZip.size(), failedPhotos, slug);
         } catch (IOException e) {
-            log.error("Error de E/S al generar la transmisión del archivo ZIP: {}", e.getMessage(), e);
-            throw new StorageException("Error al generar la descarga del archivo ZIP", e);
+            // Todas las lecturas de storage se manejan dentro de copyPhotoIntoZip(): una
+            // IOException acá solo puede venir de ESCRIBIR al cliente (canceló la descarga,
+            // perdió señal). No hay a quién responder ni es un bug: no va a Sentry.
+            log.info("Descarga ZIP del evento '{}' interrumpida por el cliente: {}", slug, e.getMessage());
         }
+    }
+
+    /**
+     * Copia una foto de storage al ZIP separando las dos puntas del stream:
+     * - Falla LEYENDO de storage (R2 caído, conexión reseteada por R2, objeto faltante):
+     *   error real -> Sentry, y se sigue con la próxima foto para no perder el resto del
+     *   álbum. La entrada de esa foto queda vacía o incompleta.
+     * - Falla ESCRIBIENDO al ZIP (el cliente cortó): se propaga la IOException para
+     *   abortar la descarga completa.
+     *
+     * Antes (is.transferTo(zos) dentro de un catch Exception) las dos fallas se mezclaban
+     * y solo se hacía log.error, que NO llega a Sentry (no hay integración con logback).
+     *
+     * @return false si hubo una falla de lectura en storage.
+     */
+    private boolean copyPhotoIntoZip(Photo photo, ZipOutputStream zos) throws IOException {
+        InputStream is;
+        try {
+            is = storageService.streamObject(photo.getStorageKey());
+        } catch (Exception e) {
+            reportZipStorageFailure(photo, e);
+            return false;
+        }
+        try {
+            byte[] buffer = new byte[8192];
+            while (true) {
+                int read;
+                try {
+                    read = is.read(buffer);
+                } catch (IOException e) {
+                    reportZipStorageFailure(photo, e);
+                    return false;
+                }
+                if (read == -1) {
+                    return true;
+                }
+                zos.write(buffer, 0, read); // IOException acá = cliente: se propaga
+            }
+        } finally {
+            try {
+                is.close();
+            } catch (IOException e) {
+                log.debug("No se pudo cerrar el stream de storage de la foto {}: {}", photo.getId(), e.getMessage());
+            }
+        }
+    }
+
+    private void reportZipStorageFailure(Photo photo, Exception e) {
+        log.error("Error leyendo de storage la foto ID {} ('{}') para el ZIP: {}", photo.getId(), photo.getStorageKey(), e.getMessage(), e);
+        Sentry.captureException(e);
     }
 
     private String buildZipEntryName(Photo photo, Set<String> usedNames) {

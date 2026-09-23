@@ -3,6 +3,7 @@ package com.tuapp.eventfoto.common.exception;
 import io.sentry.Sentry;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.catalina.connector.ClientAbortException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -16,7 +17,6 @@ import org.springframework.web.context.request.async.AsyncRequestNotUsableExcept
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.springframework.web.util.DisconnectedClientHelper;
 
 import java.io.IOException;
 import java.util.stream.Collectors;
@@ -262,15 +262,25 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Verificado reproduciendo el corte en local (Fase 9.0): al fallar la escritura del
-     * SSE llega la IOException CRUDA (no AsyncRequestNotUsableException) vía async
-     * dispatch. DisconnectedClientHelper la reconoce solo por el texto del mensaje en
-     * inglés ("Broken pipe"), que depende del sistema operativo (en Windows sale
-     * localizado). Por eso, además, cualquier IOException durante un dispatch ASYNC
-     * -- escribiendo un stream -- se trata como cliente desconectado.
+     * Solo cuenta como "cliente desconectado" una falla ESCRIBIENDO LA RESPUESTA al
+     * cliente. Una falla leyendo de R2 o de la base es un error real y tiene que llegar
+     * a Sentry, aunque su mensaje diga "Connection reset" o sea un EOFException.
+     *
+     * - ClientAbortException: Tomcat la lanza únicamente al escribir en la respuesta de
+     *   un cliente que cortó (ej. cancela la descarga del ZIP).
+     * - IOException durante un dispatch ASYNC: el único uso asíncrono de la app es el SSE
+     *   (SseEmitter); ese dispatch lo dispara Spring cuando falla la escritura del stream.
+     *   Verificado reproduciendo el corte en local (Fase 9.0): llega la IOException CRUDA,
+     *   con un mensaje que depende del sistema operativo (en Windows sale localizado).
+     *   Si algún día se agrega un endpoint asíncrono que lea de R2 (Callable/DeferredResult),
+     *   este criterio hay que revisarlo.
+     *
+     * NO se usa DisconnectedClientHelper.isClientDisconnectedException(): decide por el
+     * texto del mensaje ("connection reset", "broken pipe") o por tipo (EOFException) de
+     * CUALQUIER excepción, sin distinguir si la falla fue del lado del cliente o de R2/BD.
      */
     private static boolean isClientDisconnect(Exception ex, HttpServletRequest request) {
-        return DisconnectedClientHelper.isClientDisconnectedException(ex)
+        return ex instanceof ClientAbortException
                 || (ex instanceof IOException && request.getDispatcherType() == DispatcherType.ASYNC);
     }
 }
