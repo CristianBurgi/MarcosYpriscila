@@ -535,6 +535,12 @@ cp .env.example .env
 # Editá .env con tus credenciales reales
 ```
 
+> **La contraseña de la base de datos (`DB_PASSWORD`) vive solo en `.env`**, que está
+> ignorado por git (ver [`.gitignore`](.gitignore)). El archivo versionado
+> `application.yml` usa el default `${DB_PASSWORD:postgres_local_dev_password}`, un
+> placeholder no funcional — nunca escribas la contraseña real ahí. `spring-dotenv`
+> carga automáticamente `.env` al arrancar y sobreescribe ese default.
+
 ### 3. Levantar PostgreSQL con Docker (opcional)
 
 ```bash
