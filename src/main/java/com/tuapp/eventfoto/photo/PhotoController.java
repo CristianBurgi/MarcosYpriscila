@@ -39,7 +39,7 @@ public class PhotoController {
 
     /**
      * POST /api/v1/events/{slug}/photos/confirm
-     * Confirma que la subida a R2 finalizó y registra la foto en la base de datos (isApproved=false por defecto).
+     * Confirma que la subida a R2 finalizó y registra la foto en la base de datos, publicada al instante.
      */
     @PostMapping("/confirm")
     public ResponseEntity<PhotoResponseDTO> confirmUpload(
@@ -68,16 +68,16 @@ public class PhotoController {
 
     /**
      * GET /api/v1/events/{slug}/photos?page=0&size=20
-     * Devuelve las fotos aprobadas del evento para la galería pública (paginado).
+     * Devuelve las fotos del evento para la galería pública (paginado).
      */
     @GetMapping
-    public ResponseEntity<Page<PhotoResponseDTO>> getApprovedPhotos(
+    public ResponseEntity<Page<PhotoResponseDTO>> getPhotos(
             @PathVariable String slug,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<PhotoResponseDTO> photos = photoService.getApprovedPhotos(slug, pageable);
+        Page<PhotoResponseDTO> photos = photoService.getPhotos(slug, pageable);
         return ResponseEntity.ok(photos);
     }
 

@@ -145,7 +145,7 @@ class HeicConfirmDecisionIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.isApproved", is(false)))
+                .andExpect(jsonPath("$.isApproved").doesNotExist()) // Fase 9.0: ya no existe la aprobación manual
                 .andExpect(jsonPath("$.uploaderName", is("emi")))
                 .andExpect(jsonPath("$.storageKey", is(key))); // key intacta => no hubo conversión
 

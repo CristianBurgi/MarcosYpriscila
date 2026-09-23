@@ -103,11 +103,10 @@ class RealtimeIntegrationTest {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(event1)
                 .storageKey("photos/sample.jpg")
-                .isApproved(false)
                 .build());
 
-        // Al aprobar la foto en event1, emite solo a event1
-        photoService.approvePhoto(photo.getId());
+        // Al borrar la foto en event1, emite PHOTO_DELETED solo a event1
+        photoService.deletePhoto(photo.getId());
 
         // Al crear un mensaje en event2, emite solo a event2
         messageService.addMessage("cumple-prueba", new CreateMessageRequestDTO("Invitado", "¡Feliz cumple!"), "127.0.0.1");

@@ -57,7 +57,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas de vistas y recursos estáticos
                 .requestMatchers(
-                    "/", "/index.html", "/album.html", "/pantalla.html", "/screen.html", "/upload.html", "/menu.html", "/messages.html",
+                    "/", "/index.html", "/album.html", "/screen.html", "/favicon.ico", "/upload.html", "/menu.html", "/messages.html",
                     "/css/**", "/js/**", "/images/**", "/uploads/**"
                 ).permitAll()
 

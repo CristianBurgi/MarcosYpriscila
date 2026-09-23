@@ -381,7 +381,7 @@
 
     <div class="slideshow-stage" id="stage">
         <div class="empty-state" id="empty-message">
-            Esperando las primeras fotos aprobadas del evento...
+            Esperando las primeras fotos del evento...
         </div>
     </div>
 
@@ -412,13 +412,13 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchApprovedPhotos();
+            fetchPhotos();
             fetchTickerMessages();
             setupSSE();
         });
 
         // 1. Cargar fotos iniciales con sus comentarios
-        async function fetchApprovedPhotos() {
+        async function fetchPhotos() {
             try {
                 const res = await fetch(`/api/v1/events/${SLUG}/photos?page=0&size=100`);
                 const data = await res.json();
@@ -544,8 +544,8 @@
             }
         }
 
-        // 5. Nueva foto aprobada en vivo
-        function handleNewApprovedPhoto(photoPayload) {
+        // 5. Nueva foto publicada en vivo
+        function handleNewPhoto(photoPayload) {
             if (!photoPayload || !photoPayload.id) return;
 
             // Evitar fotos duplicadas si la ID ya existe
@@ -589,9 +589,9 @@
             if (!!window.EventSource) {
                 const eventSource = new EventSource(`/api/v1/events/${SLUG}/stream`);
 
-                eventSource.addEventListener('PHOTO_APPROVED', (e) => {
+                eventSource.addEventListener('PHOTO_PUBLISHED', (e) => {
                     const payload = extractPayload(e.data);
-                    handleNewApprovedPhoto(payload);
+                    handleNewPhoto(payload);
                 });
 
                 eventSource.addEventListener('MESSAGE_CREATED', (e) => {

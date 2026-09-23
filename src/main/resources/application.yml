@@ -38,7 +38,9 @@ spring:
       max-request-size: 30MB
 
 app:
-  base-url: ${APP_BASE_URL:https://marcosypriscila-production.up.railway.app}
+  # Única fuente de URLs absolutas (QR, links del panel). En producción se setea en
+  # Railway; con STORAGE_MODE=r2 la app no arranca si queda apuntando a localhost.
+  base-url: ${APP_BASE_URL:http://localhost:8080}
   storage:    
     mode: ${STORAGE_MODE:local} # 'local' para desarrollo local en disco, 'r2' para producción en Railway
 
@@ -76,4 +78,9 @@ sentry:
 
 server:
   port: ${PORT:8080}
+  tomcat:
+    # Fase 9.0: cuando una subida supera los 30MB, Tomcat descarta ("swallow") el resto
+    # del body para poder entregar la respuesta 413 con el mensaje para el invitado. Con
+    # el default (2MB) cierra la conexión y el navegador ve un error de red genérico.
+    max-swallow-size: 64MB
 

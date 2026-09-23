@@ -30,7 +30,6 @@ import com.tuapp.eventfoto.common.exception.StorageException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -122,8 +121,8 @@ public class PhotoServiceImpl implements PhotoService {
             throw e;
         }
 
-        log.info("Foto confirmada y guardada con ID {} para el evento '{}' (pendiente de aprobación)", response.id(), slug);
-        sseBroadcaster.broadcastPhotoPending(event.getId(), response);
+        log.info("Foto confirmada y publicada con ID {} para el evento '{}'", response.id(), slug);
+        sseBroadcaster.broadcastPhotoPublished(event.getId(), response);
         return response;
     }
 
@@ -187,8 +186,8 @@ public class PhotoServiceImpl implements PhotoService {
         // declarado: un iPhone puede mandar un .heic cuyo contenido real ya es JPEG
         // (HEIC nombrado pero transcodificado), y en ese caso no hay que convertir nada.
         boolean heicByBytes = FileSignatureValidator.isHeicSignature(headerOf(bytes));
-        // TEMP diagnóstico HEIC (19/09) -- ver comentario equivalente en validateAndConvertIfNeeded.
-        log.info("[HEIC-DECISION][uploadDirect] originalFilename='{}' contentTypeDeclarado='{}' isHeicSignature={} bytes={} primeros12={} -> {}",
+        // Diagnóstico HEIC (19/09) en nivel debug -- ver comentario equivalente en validateAndConvertIfNeeded.
+        log.debug("[HEIC-DECISION][uploadDirect] originalFilename='{}' contentTypeDeclarado='{}' isHeicSignature={} bytes={} primeros12={} -> {}",
                 originalFilename, contentType, heicByBytes, bytes.length, java.util.Arrays.toString(headerOf(bytes)),
                 heicByBytes ? "se convierte con heif-convert" : "ya es imagen navegable (JPEG/PNG/WEBP), se guarda tal cual");
         if (heicByBytes) {
@@ -224,55 +223,30 @@ public class PhotoServiceImpl implements PhotoService {
             throw e;
         }
 
-        log.info("Foto subida de forma directa y guardada en BD con ID {} para el evento '{}'", response.id(), slug);
-        sseBroadcaster.broadcastPhotoPending(event.getId(), response);
+        log.info("Foto subida de forma directa y publicada con ID {} para el evento '{}'", response.id(), slug);
+        sseBroadcaster.broadcastPhotoPublished(event.getId(), response);
         return response;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PhotoResponseDTO> getApprovedPhotos(String slug, Pageable pageable) {
+    public Page<PhotoResponseDTO> getPhotos(String slug, Pageable pageable) {
         Event event = eventService.getEventEntityBySlug(slug);
-        return photoRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(event.getId(), pageable)
+        return photoRepository.findByEventIdOrderByCreatedAtDesc(event.getId(), pageable)
                 .map(photo -> {
                     List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
                     return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
                 });
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Page<PhotoResponseDTO> getPendingPhotos(String slug, Pageable pageable) {
-        Event event = eventService.getEventEntityBySlug(slug);
-        return photoRepository.findByEventIdAndIsApprovedFalseOrderByCreatedAtAsc(event.getId(), pageable)
-                .map(photo -> {
-                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
-                    return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
-                });
-    }
-
+    /**
+     * Único control de moderación de fotos: elimina primero el objeto de storage y
+     * después el registro en BD, y notifica PHOTO_DELETED por SSE para que el álbum y
+     * la pantalla del salón la saquen al instante.
+     */
     @Override
     @Transactional
-    public PhotoResponseDTO approvePhoto(UUID photoId) {
-        Photo photo = photoRepository.findById(photoId)
-                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
-
-        photo.setApproved(true);
-        Photo approvedPhoto = photoRepository.save(photo);
-        log.info("Fotografía con ID {} aprobada por administración", photoId);
-
-        List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photoId);
-
-        String publicUrl = storageService.generatePublicUrl(approvedPhoto.getStorageKey());
-        PhotoResponseDTO response = PhotoResponseDTO.fromEntity(approvedPhoto, publicUrl, comments);
-        sseBroadcaster.broadcastPhotoApproved(photo.getEvent().getId(), response);
-
-        return response;
-    }
-
-    @Override
-    @Transactional
-    public void rejectPhoto(UUID photoId) {
+    public void deletePhoto(UUID photoId) {
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
@@ -289,39 +263,10 @@ public class PhotoServiceImpl implements PhotoService {
 
         // 2. Eliminar registro en BD (los comentarios asociados se eliminan en cascada)
         photoRepository.delete(photo);
-        log.info("Fotografía con ID {} rechazada y eliminada de R2/Storage y BD por administración", photoId);
+        log.info("Fotografía con ID {} eliminada de R2/Storage y BD por administración", photoId);
 
         // 3. Notificar en tiempo real vía SSE
-        sseBroadcaster.broadcastPhotoRejected(eventId, photoId);
-    }
-
-    @Override
-    @Transactional
-    public void deletePhoto(UUID photoId) {
-        rejectPhoto(photoId);
-    }
-
-    @Override
-    @Transactional
-    public List<PhotoResponseDTO> approveAllPendingPhotos(String slug) {
-        Event event = eventService.getEventEntityBySlug(slug);
-        List<Photo> pendingPhotos = photoRepository.findByEventIdAndIsApprovedFalse(event.getId());
-
-        List<PhotoResponseDTO> approvedDTOs = new ArrayList<>();
-        for (Photo photo : pendingPhotos) {
-            photo.setApproved(true);
-            Photo saved = photoRepository.save(photo);
-            List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(saved.getId());
-            String publicUrl = storageService.generatePublicUrl(saved.getStorageKey());
-            PhotoResponseDTO response = PhotoResponseDTO.fromEntity(saved, publicUrl, comments);
-            
-            // Emitir evento SSE por cada foto aprobada en masa
-            sseBroadcaster.broadcastPhotoApproved(event.getId(), response);
-            approvedDTOs.add(response);
-        }
-
-        log.info("Se aprobaron en masa {} fotografías pendientes para el evento '{}'", approvedDTOs.size(), slug);
-        return approvedDTOs;
+        sseBroadcaster.broadcastPhotoDeleted(eventId, photoId);
     }
 
     @Override
@@ -333,20 +278,9 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     @Transactional(readOnly = true)
-    public long countPendingPhotos(String slug) {
-        Event event = eventService.getEventEntityBySlug(slug);
-        return photoRepository.countByEventIdAndIsApprovedFalse(event.getId());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public String generateDownloadUrl(UUID photoId) {
         Photo photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
-
-        if (!photo.isApproved()) {
-            throw new ResourceNotFoundException("La fotografía especificada no está aprobada para su descarga.");
-        }
 
         return storageService.generateDownloadUrl(photo.getStorageKey());
     }
@@ -358,13 +292,13 @@ public class PhotoServiceImpl implements PhotoService {
 
         List<Photo> photosToZip;
         if (photoIds != null && !photoIds.isEmpty()) {
-            photosToZip = photoRepository.findByIdInAndIsApprovedTrue(photoIds);
+            photosToZip = photoRepository.findByEventIdAndIdIn(event.getId(), photoIds);
         } else {
-            photosToZip = photoRepository.findByEventIdAndIsApprovedTrue(event.getId());
+            photosToZip = photoRepository.findByEventId(event.getId());
         }
 
         if (photosToZip.isEmpty()) {
-            log.info("No se encontraron fotografías aprobadas para empaquetar en el archivo ZIP del evento '{}'", slug);
+            log.info("No se encontraron fotografías para empaquetar en el archivo ZIP del evento '{}'", slug);
         }
 
         Set<String> usedEntryNames = new HashSet<>();
@@ -384,7 +318,7 @@ public class PhotoServiceImpl implements PhotoService {
                 zos.closeEntry();
             }
             zos.finish();
-            log.info("ZIP streaming completado exitosamente con {} fotografías aprobadas para el evento '{}'", photosToZip.size(), slug);
+            log.info("ZIP streaming completado exitosamente con {} fotografías para el evento '{}'", photosToZip.size(), slug);
         } catch (IOException e) {
             log.error("Error de E/S al generar la transmisión del archivo ZIP: {}", e.getMessage(), e);
             throw new StorageException("Error al generar la descarga del archivo ZIP", e);
@@ -453,9 +387,9 @@ public class PhotoServiceImpl implements PhotoService {
         // son JPEG/PNG/WEBP válidos, isValidImageSignature() lo aceptó arriba y acá lo
         // dejamos pasar tal cual -- no se invoca heif-convert sobre algo que no es HEIC.
         boolean heicByBytes = FileSignatureValidator.isHeicSignature(headerOf(fullBytes));
-        // TEMP diagnóstico HEIC (19/09) -- deja rastro explícito de por qué camino pasó
-        // cada foto. Quitar (o bajar a debug) una vez verificado el flujo con iPhone real.
-        log.info("[HEIC-DECISION][confirmUpload] key='{}' isHeicSignature={} bytesLeidos={} primeros12={} -> {}",
+        // Diagnóstico HEIC (19/09) -- deja rastro explícito de por qué camino pasó cada
+        // foto. En debug desde la Fase 9.0: activarlo con logging.level.com.tuapp.eventfoto.photo=DEBUG.
+        log.debug("[HEIC-DECISION][confirmUpload] key='{}' isHeicSignature={} bytesLeidos={} primeros12={} -> {}",
                 key, heicByBytes, fullBytes.length, java.util.Arrays.toString(headerOf(fullBytes)),
                 heicByBytes ? "se convierte con heif-convert" : "ya es imagen navegable (JPEG/PNG/WEBP), se guarda tal cual");
         if (!heicByBytes) {

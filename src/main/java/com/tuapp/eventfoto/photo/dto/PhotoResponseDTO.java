@@ -15,7 +15,6 @@ public record PhotoResponseDTO(
     String storageKey,
     String url,
     String uploaderName,
-    boolean isApproved,
     Instant createdAt,
     int commentCount,
     List<CommentResponseDTO> comments
@@ -42,7 +41,6 @@ public record PhotoResponseDTO(
             photo.getStorageKey(),
             publicUrl != null ? publicUrl : photo.getStorageKey(),
             photo.getUploaderName(),
-            photo.isApproved(),
             photo.getCreatedAt(),
             commentDtos.size(),
             commentDtos

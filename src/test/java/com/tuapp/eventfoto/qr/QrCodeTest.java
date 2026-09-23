@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@TestPropertySource(properties = "app.base-url=https://eventfoto.example.com.ar/")
 class QrCodeTest {
 
     @Autowired
@@ -62,5 +64,25 @@ class QrCodeTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_PNG))
                 .andExpect(header().string("Content-Disposition", "inline; filename=\"qr-marcos-y-priscila.png\""));
+    }
+
+    @Test
+    @DisplayName("El QR apunta a APP_BASE_URL aunque la request llegue con otro host (X-Forwarded-Host)")
+    void qrTargetComesOnlyFromAppBaseUrl() throws Exception {
+        EventResponseDTO eventDto = new EventResponseDTO(UUID.randomUUID(), "Boda", "marcos-y-priscila", Instant.now(), null, true, Instant.now());
+        when(eventService.getEventBySlug(anyString())).thenReturn(eventDto);
+
+        byte[] png = mockMvc.perform(get("/api/v1/events/marcos-y-priscila/qr")
+                        .header("X-Forwarded-Host", "otro-host.up.railway.app")
+                        .header("X-Forwarded-Proto", "https"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+
+        java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(png));
+        com.google.zxing.Result decoded = new com.google.zxing.MultiFormatReader().decode(
+                new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
+                        new com.google.zxing.client.j2se.BufferedImageLuminanceSource(image))));
+
+        assertEquals("https://eventfoto.example.com.ar/menu.html?slug=marcos-y-priscila", decoded.getText());
     }
 }
