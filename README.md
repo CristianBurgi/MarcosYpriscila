@@ -470,7 +470,7 @@ Galería masonry de las fotos del evento. Al hacer clic en una foto se abre un m
 - El formulario para comentar **en la parte superior** de la lista (fijo, no desaparece al scrollear).
 - El formulario de comentario no tiene botón de borrado — esa acción es exclusiva del admin.
 
-Se conecta al endpoint SSE para actualizar la galería en tiempo real cuando se aprueba una nueva foto.
+Se actualiza por **polling** cada 30 s (no SSE: lo abren decenas de celulares con mala señal y no vale una conexión persistente por invitado): las fotos nuevas aparecen arriba y las que borra el organizador desaparecen. Con la pestaña oculta no consulta; al volver a verla se refresca al instante. "Cargar más" pagina según lo ya cargado y descarta duplicados.
 
 ### `messages.html` — Libro de Visitas
 Formulario para dejar un mensaje con nombre y texto. Lista de mensajes con el nombre del invitado, su mensaje y la hora de envío. Los mensajes nuevos llegan en tiempo real.
@@ -481,10 +481,13 @@ Formulario para dejar un mensaje con nombre y texto. Lista de mensajes con el no
 
 `screen.html` es una vista a pantalla completa diseñada para una **TV o proyector del salón**. Características:
 
-- **Carrusel automático de fotos** — Transición suave entre las fotos del evento, con la duración configurable.
+- **Rotación justa** (Fase 9.0) — Las fotos nuevas entran a una cola en orden de llegada y tienen prioridad absoluta (20 fotos después del vals se ven todas, en orden). Sin nuevas pendientes, se muestra la que hace más tiempo no aparece. Una foto nueva no interrumpe la actual ni reinicia la vuelta. 7 s por foto (`?slideMs=` para pruebas).
+- **Nunca una foto rota** — Una foto se muestra recién cuando terminó de descargar. Si falla (wifi del salón), se saltea y se reintenta con espera creciente (5 s, 15 s, 45 s, 2 min); una foto nueva que falla conserva su prioridad. No hay imagen por defecto.
+- **Memoria acotada** — Solo la foto actual, la saliente (fundido) y las 3 próximas están cargadas, sin importar cuántas fotos tenga el álbum. Pensado para el navegador de un smart TV.
 - **Zócalo deslizante de mensajes** — Una banda inferior que muestra en loop los mensajes del Libro de Visitas (tipo ticker de noticias).
 - **Tarjeta QR flotante** — Verticalmente centrada en el lado derecho de la pantalla con la leyenda *"Escaneá el QR y subí tu foto"*.
-- **Actualización automática** — Sin recargar la página. Cuando el admin aprueba una foto, aparece en la pantalla del salón en segundos gracias a la conexión SSE.
+- **Actualización automática** — Sin recargar la página: `PHOTO_PUBLISHED` encola la foto nueva y `PHOTO_DELETED` la saca al instante (si está en pantalla, pasa a la siguiente).
+- **Resync tras cortes** (Test 11) — Al reconectar el SSE y cada 4 minutos se piden todas las fotos: las que llegaron durante el corte entran a la cola de nuevas, las borradas salen y se actualizan los datos, sin reiniciar la vuelta. Durante un corte la pantalla sigue rotando con las fotos que el navegador ya tiene en caché.
 
 ---
 
