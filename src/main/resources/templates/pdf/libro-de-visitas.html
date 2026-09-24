@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="'Libro de visitas — ' + ${eventName}">Libro de visitas</title>
+    <style>
+        /* Paleta de la app: vino y dorado sobre papel crema (ver static/css/elegant-theme.css). */
+        @page {
+            size: A4;
+            margin: 26mm 24mm 24mm 24mm;
+            background-color: #fbf7f0;
+            @bottom-center {
+                content: "— " counter(page) " —";
+                font-family: 'Cormorant Garamond', 'Noto Serif';
+                font-size: 10pt;
+                color: #b08a4a;
+            }
+        }
+        /* Sin número de página en la portada. */
+        @page :first {
+            @bottom-center { content: none; }
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Cormorant Garamond', 'Noto Serif', 'Noto Emoji';
+            color: #2b1a16;
+            font-size: 13pt;
+        }
+
+        /* ---------- Portada ---------- */
+        /* Área útil de la página: 162 x 247 mm (A4 menos márgenes). La portada entra
+           completa: 235 mm + 2 x 3 mm de padding + bordes. */
+        .cover {
+            page-break-after: always;
+            height: 235mm;
+            border: 1.2pt solid #c9a15a;
+            padding: 3mm;
+        }
+        .cover-inner {
+            height: 228mm;
+            border: 0.5pt solid #e6cfa0;
+            text-align: center;
+        }
+        .cover-kicker {
+            margin-top: 72mm;
+            font-size: 11pt;
+            letter-spacing: 5pt;
+            color: #b08a4a;
+        }
+        .ornament {
+            margin: 7mm auto;
+            width: 46mm;
+            border-top: 0.6pt solid #c9a15a;
+        }
+        .cover-title {
+            font-family: 'Playfair Display', 'Noto Serif';
+            font-style: italic;
+            font-size: 32pt;
+            line-height: 1.25;
+            color: #3a0f14;
+            padding: 0 16mm;
+        }
+        .cover-date {
+            font-size: 15pt;
+            color: #5a1a20;
+        }
+        .cover-count {
+            margin-top: 62mm;
+            font-style: italic;
+            font-size: 12pt;
+            color: #8a6a3a;
+        }
+
+        /* ---------- Mensajes ---------- */
+        .section-title {
+            font-family: 'Playfair Display', 'Noto Serif';
+            font-style: italic;
+            font-size: 20pt;
+            color: #3a0f14;
+            text-align: center;
+            margin: 0 0 2mm 0;
+        }
+        .section-ornament {
+            margin: 0 auto 10mm auto;
+            width: 30mm;
+            border-top: 0.6pt solid #c9a15a;
+        }
+        .entry {
+            page-break-inside: avoid;
+            margin: 0 0 9mm 0;
+        }
+        .entry-text {
+            font-size: 13.5pt;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            /* Un mensaje largo sin espacios no puede desbordar la página. */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+        .entry-author {
+            margin-top: 2.5mm;
+            font-family: 'Playfair Display', 'Noto Serif', 'Noto Emoji';
+            font-weight: 600;
+            font-size: 11.5pt;
+            color: #3a0f14;
+            word-wrap: break-word;
+        }
+        .entry-when {
+            font-style: italic;
+            font-size: 10pt;
+            color: #8a6a3a;
+        }
+        .entry-separator {
+            margin: 7mm auto 0 auto;
+            width: 12mm;
+            border-top: 0.6pt solid #e6cfa0;
+        }
+        .empty {
+            text-align: center;
+            font-style: italic;
+            color: #8a6a3a;
+            margin-top: 40mm;
+        }
+        .closing {
+            margin-top: 12mm;
+            text-align: center;
+            font-style: italic;
+            font-size: 11pt;
+            color: #8a6a3a;
+        }
+        /* Adornos con CSS, no con caracteres: un símbolo sin glifo en las fuentes se
+           dibuja como "#". */
+        .closing-rule {
+            margin: 3mm auto 0 auto;
+            width: 20mm;
+            border-top: 0.6pt solid #c9a15a;
+        }
+    </style>
+</head>
+<body>
+
+<div class="cover">
+    <div class="cover-inner">
+        <div class="cover-kicker">LIBRO DE VISITAS</div>
+        <div class="ornament"></div>
+        <div class="cover-title" th:text="${eventName}">Boda de Marcos y Priscila</div>
+        <div class="ornament"></div>
+        <div class="cover-date" th:text="${eventDate}">19 de septiembre de 2026</div>
+        <div class="cover-count" th:text="${#lists.size(entries) == 1 ? 'Un mensaje de sus invitados' : #lists.size(entries) + ' mensajes de sus invitados'}">16 mensajes de sus invitados</div>
+    </div>
+</div>
+
+<div class="section-title">Mensajes para ustedes</div>
+<div class="section-ornament"></div>
+
+<div class="empty" th:if="${#lists.isEmpty(entries)}">Todavía no hay mensajes en el libro de visitas.</div>
+
+<div class="entry" th:each="entry, it : ${entries}">
+    <div class="entry-text" th:text="${entry.text}">¡Que sean muy felices!</div>
+    <div class="entry-author" th:text="'— ' + ${entry.author}">— Tía Marta</div>
+    <div class="entry-when" th:text="${entry.when}">19 de septiembre de 2026 · 22:41</div>
+    <div class="entry-separator" th:unless="${it.last}"></div>
+</div>
+
+<div th:unless="${#lists.isEmpty(entries)}">
+    <div class="closing">Con cariño, de todos sus invitados</div>
+    <div class="closing-rule"></div>
+</div>
+
+</body>
+</html>
