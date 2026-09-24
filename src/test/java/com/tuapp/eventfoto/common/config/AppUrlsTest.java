@@ -33,4 +33,17 @@ class AppUrlsTest {
                 .hasMessageContaining("localhost");
         assertThat(new AppUrls("http://localhost:8080", "local").baseUrl()).isEqualTo("http://localhost:8080");
     }
+
+    @Test
+    @DisplayName("Rechaza valores de ejemplo (el placeholder que tenía Railway el 24/09), en cualquier modo")
+    void rejectsPlaceholderValues() {
+        assertThatThrownBy(() -> new AppUrls("https://tu-boda-produccion.up.railway.app", "r2"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tu-boda");
+        assertThatThrownBy(() -> new AppUrls("https://tu-boda-produccion.up.railway.app", "local"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> new AppUrls("https://app.example.com", "r2")).isInstanceOf(IllegalStateException.class);
+        assertThat(new AppUrls("https://marcosypriscila-production.up.railway.app", "r2").baseUrl())
+                .isEqualTo("https://marcosypriscila-production.up.railway.app");
+    }
 }

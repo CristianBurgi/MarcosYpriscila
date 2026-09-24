@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.util.List;
 
 /**
  * Única fuente de toda URL absoluta que genera la app (QR, links del panel, etc.).
@@ -14,12 +15,16 @@ import java.net.URI;
  * el día de la mudanza a eventfoto.com.ar alcanza con cambiar APP_BASE_URL en Railway
  * (ver README, "Mudanza de dominio").
  *
- * Falla el arranque si el valor no es una URL http(s) absoluta, o si en producción
- * (app.storage.mode=r2) apunta a localhost: un QR impreso con localhost es inservible.
+ * Falla el arranque si el valor no es una URL http(s) absoluta, si parece un valor de
+ * ejemplo (tu-boda, example, placeholder...), o si en producción (app.storage.mode=r2)
+ * apunta a localhost: un QR impreso con cualquiera de esos es inservible.
  */
 @Slf4j
 @Component
 public class AppUrls {
+
+    /** Fragmentos de host que delatan un valor de ejemplo copiado de la documentación. */
+    static final List<String> PLACEHOLDER_HOST_MARKERS = List.of("tu-boda", "tu-dominio", "tudominio", "example", "placeholder");
 
     private final String baseUrl;
 
@@ -48,6 +53,16 @@ public class AppUrls {
         if (uri.getHost() == null || scheme == null
                 || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
             throw new IllegalStateException("APP_BASE_URL debe ser una URL http(s) absoluta: '" + value + "'");
+        }
+
+        String host = uri.getHost().toLowerCase();
+        for (String marker : PLACEHOLDER_HOST_MARKERS) {
+            if (host.contains(marker)) {
+                // Fase 9.0 (A2): Railway tenía APP_BASE_URL=https://tu-boda-produccion.up.railway.app
+                // y el QR del panel apuntaba a un dominio inexistente.
+                throw new IllegalStateException("APP_BASE_URL parece un valor de ejemplo ('" + value + "', contiene '"
+                        + marker + "'). Seteá el dominio público real de la app.");
+            }
         }
 
         boolean isLocalhost = uri.getHost().equalsIgnoreCase("localhost") || uri.getHost().startsWith("127.");

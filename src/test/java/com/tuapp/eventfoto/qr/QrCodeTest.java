@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@TestPropertySource(properties = "app.base-url=https://eventfoto.example.com.ar/")
+@TestPropertySource(properties = "app.base-url=https://qr-test.eventfoto.com.ar/")
 class QrCodeTest {
 
     @Autowired
@@ -83,6 +83,6 @@ class QrCodeTest {
                 new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
                         new com.google.zxing.client.j2se.BufferedImageLuminanceSource(image))));
 
-        assertEquals("https://eventfoto.example.com.ar/menu.html?slug=marcos-y-priscila", decoded.getText());
+        assertEquals("https://qr-test.eventfoto.com.ar/menu.html?slug=marcos-y-priscila", decoded.getText());
     }
 }

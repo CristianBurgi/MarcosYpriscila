@@ -608,6 +608,8 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 
 > Ver [`.env.example`](.env.example) para la plantilla completa.
 
+> **Producción no arranca con valores de ejemplo.** Con `STORAGE_MODE=r2`, la app se niega a arrancar si `ADMIN_PASSWORD`, `JWT_SECRET`, `DB_PASSWORD`, `R2_ACCESS_KEY` o `R2_SECRET_KEY` coinciden con algún valor de ejemplo publicado en el repo (defaults de `application.yml`, `.env.example`, `application-test.yml`, `docker-compose.yml`), si están vacías, o si `JWT_SECRET` tiene menos de 32 caracteres. Lo mismo si `APP_BASE_URL` parece un ejemplo (`tu-boda`, `example`, `placeholder`...). El error nombra la variable, nunca el valor. En modo `local` no se valida.
+
 ---
 
 ## 🐳 Docker y Despliegue en Railway
