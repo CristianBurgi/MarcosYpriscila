@@ -23,6 +23,8 @@
         <jjwt.version>0.12.5</jjwt.version>
         <zxing.version>3.5.3</zxing.version>
         <sentry.version>8.16.0</sentry.version>
+        <openhtmltopdf.version>1.1.86</openhtmltopdf.version>
+        <jsoup.version>1.23.2</jsoup.version>
     </properties>
 
     <dependencies>
@@ -130,6 +132,21 @@
             <groupId>com.google.zxing</groupId>
             <artifactId>javase</artifactId>
             <version>${zxing.version}</version>
+        </dependency>
+
+        <!-- PDF (Fase 9.0 - Bloque D): plantilla Thymeleaf -> HTML -> PDF.
+             Fork mantenido de openhtmltopdf (el original com.openhtmltopdf quedó en 2021).
+             Usa PDFBox 3: sin navegador ni binarios nativos en el contenedor. -->
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
+        </dependency>
+        <!-- Parser HTML5 tolerante: la salida de Thymeleaf (modo HTML) no es XML estricto. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>${jsoup.version}</version>
         </dependency>
 
         <!-- Utilities -->

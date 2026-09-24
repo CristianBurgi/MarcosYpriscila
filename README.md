@@ -93,6 +93,7 @@ La aplicación está desplegada en producción en Railway:
 - 📦 **Descarga del Álbum (ZIP streaming & Selección)** — En la pestaña *Fotos*, el admin puede empaquetar y descargar el álbum completo o una selección personalizada en un archivo ZIP por streaming directo (eficiente en memoria RAM). También admite descargas individuales presignadas (HTTP 302).
 - 💬 **Moderación de comentarios** — Panel dedicado con miniatura de la foto, nombre del autor y texto, con botón de borrado directo.
 - 📨 **Moderación del Libro de Visitas** — Listado de mensajes con nombre de remitente y texto, con botón de borrado.
+- 📖 **Libro de visitas en PDF** — Botón "Descargar libro de visitas" en la pestaña del libro: un PDF de recuerdo para la pareja con portada y todos los mensajes publicados en orden cronológico. También va en la raíz del ZIP del álbum completo.
 - 📺 **Control de subidas** — El admin puede cerrar/abrir las subidas de fotos desde el panel. Cuando están cerradas, los invitados ven un mensaje informativo.
 - 🔄 **Tiempo real** — Las fotos nuevas aparecen instantáneamente en la pantalla del salón y en el álbum de todos los invitados sin recargar la página.
 - 📊 **Código QR dinámico** — El QR se genera en el servidor apuntando a `APP_BASE_URL`; se puede descargar desde el panel de admin.
@@ -364,7 +365,8 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | `GET` | `/api/v1/admin/photos` | Lista las fotos del evento (paginado) |
 | `DELETE` | `/api/v1/admin/photos/{photoId}` | Elimina una foto de R2 y de la base de datos y emite `PHOTO_DELETED` |
 | `GET` | `/api/v1/admin/photos/{photoId}/download` | Genera presigned URL de lectura y redirige (HTTP 302) |
-| `GET` | `/api/v1/admin/photos/download-zip` | Genera y transmite en ZIP streaming el álbum completo o selección (`?photoIds=...`) |
+| `GET` | `/api/v1/admin/photos/download-zip` | Genera y transmite en ZIP streaming el álbum completo o selección (`?photoIds=...`). El álbum completo incluye `libro-de-visitas.pdf` en la raíz |
+| `GET` | `/api/v1/admin/events/{slug}/libro-de-visitas.pdf` | Descarga el libro de visitas en PDF |
 | `GET` | `/api/v1/admin/comments/all` | Lista todos los comentarios de fotos |
 | `DELETE` | `/api/v1/admin/comments/{commentId}` | Borra un comentario |
 | `GET` | `/api/v1/admin/messages/all` | Lista todos los mensajes del Libro de Visitas |
@@ -398,6 +400,17 @@ El panel `/admin/dashboard` es una página Thymeleaf renderizada server-side, ac
 3. **💬 Comentarios en Fotos** — Listado de comentarios con miniatura de la foto correspondiente, nombre del autor, texto del comentario y botón de borrado.
 
 El login genera un **JWT de 8 horas** almacenado en el navegador del admin. La sesión expira automáticamente pasadas las 8 horas.
+
+---
+
+## 📖 Libro de Visitas en PDF
+
+`PdfRenderService` (paquete `pdf`) es un servicio genérico: plantilla Thymeleaf de `templates/pdf/` → HTML → PDF con [openhtmltopdf](https://github.com/openhtmltopdf/openhtmltopdf) (fork mantenido, PDFBox 3; sin navegador ni binarios nativos). Se va a reusar para imprimir tarjetas QR.
+
+- **Fuentes embebidas** (OFL, ver `resources/pdf/fonts/README.md`): Playfair Display y Cormorant Garamond (la estética de la app), más Noto Serif y **Noto Emoji monocromática** como respaldo carácter por carácter. PDFBox no dibuja emojis a color: salen en trazo negro.
+- **Nunca un cuadradito:** `PdfTextSanitizer` quita del texto de usuarios todo carácter que ninguna fuente puede dibujar, los tonos de piel (en monocromo son un recuadro gris) y los unidores de secuencias compuestas (👨‍👩‍👧 se ve como las tres caras). Las banderas salen como letras en recuadro (AR). openhtmltopdf dibuja `#` cuando falta un glifo: los adornos de la plantilla son CSS, no caracteres.
+- **Contenido:** solo mensajes publicados (los rechazados por el filtro nunca se guardan; los borrados por el organizador desaparecen), en orden cronológico, con autor ("Anónimo" si está vacío) y fecha/hora de Argentina.
+- **ZIP del álbum completo:** el PDF se genera antes de empezar a escribir el ZIP; si falla, el ZIP de fotos sale igual y el error va a Sentry.
 
 ---
 
@@ -715,7 +728,8 @@ mvn test
 | `SseBroadcasterTest` / `PhotoDeletedSseIntegrationTest` | 4 | Un emisor que tira `IOException` se remueve sin cortar el envío al resto; borrar una foto emite `PHOTO_DELETED` |
 | `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 30 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
 | `GlobalExceptionHandlerSentryNoiseTest` | 10 | Desconexiones de clientes (escritura de la respuesta), recursos inexistentes y errores 4xx de Spring no llegan a Sentry; fallas de R2/BD con mensajes tipo "Connection reset" sí |
-| `ZipStreamingFailureTest` | 3 | ZIP: un fallo LEYENDO de R2 va a Sentry y el resto del álbum se descarga; un corte del cliente (escritura) no va a Sentry |
+| `GuestbookPdfIntegrationTest` / `GuestbookEndpointsTest` | 5 | PDF real con emojis simples y compuestos, acentos, ñ, 1000 caracteres, palabra sin espacios y sin autor (texto extraído con PDFBox, ningún glifo fuera de la página); descarga solo admin; ZIP completo con el PDF en la raíz |
+| `ZipStreamingFailureTest` | 4 | ZIP: un fallo LEYENDO de R2 va a Sentry y el resto del álbum se descarga; un corte del cliente (escritura) no va a Sentry |
 | `StorageServiceTest` | 6 | Generación de presigned URLs de subida/descarga, borrado en R2, rechazo de tipos no permitidos |
 
 Los tests de integración usan **H2 en memoria** (no necesitan PostgreSQL ni R2 reales). Los tests de storage usan mocks para evitar conexiones externas.

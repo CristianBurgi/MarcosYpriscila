@@ -10,6 +10,7 @@ import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
+import com.tuapp.eventfoto.message.GuestbookPdfService;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
@@ -52,6 +53,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final RateLimiterService rateLimiterService;
     private final GuestQuotaService guestQuotaService;
     private final PhotoPersistenceService photoPersistenceService;
+    private final GuestbookPdfService guestbookPdfService;
 
     @Override
     public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken) {
@@ -304,8 +306,27 @@ public class PhotoServiceImpl implements PhotoService {
 
         Set<String> usedEntryNames = new HashSet<>();
 
+        // Álbum completo (sin selección): el libro de visitas va en la raíz del ZIP. Se genera
+        // ANTES de empezar a escribir: si falla, el ZIP de fotos sale igual y el error va a
+        // Sentry -- un problema con el PDF no puede impedir que la pareja baje sus fotos.
+        byte[] guestbookPdf = null;
+        if (photoIds == null || photoIds.isEmpty()) {
+            try {
+                guestbookPdf = guestbookPdfService.generate(slug);
+            } catch (Exception e) {
+                log.error("No se pudo generar el libro de visitas para el ZIP del evento '{}': {}", slug, e.getMessage(), e);
+                Sentry.captureException(e);
+            }
+        }
+
         int failedPhotos = 0;
         try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
+            if (guestbookPdf != null) {
+                usedEntryNames.add(GuestbookPdfService.FILENAME);
+                zos.putNextEntry(new ZipEntry(GuestbookPdfService.FILENAME));
+                zos.write(guestbookPdf);
+                zos.closeEntry();
+            }
             for (Photo photo : photosToZip) {
                 String entryName = buildZipEntryName(photo, usedEntryNames);
                 zos.putNextEntry(new ZipEntry(entryName));

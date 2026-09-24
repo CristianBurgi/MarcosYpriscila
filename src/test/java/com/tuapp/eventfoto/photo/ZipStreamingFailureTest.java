@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
+import com.tuapp.eventfoto.message.GuestbookPdfService;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
 import com.tuapp.eventfoto.storage.StorageService;
 import io.sentry.Sentry;
@@ -41,6 +42,7 @@ class ZipStreamingFailureTest {
     private PhotoRepository photoRepository;
     private EventService eventService;
     private StorageService storageService;
+    private GuestbookPdfService guestbookPdfService;
     private PhotoServiceImpl photoService;
     private Event event;
     private Photo brokenInR2;
@@ -51,9 +53,10 @@ class ZipStreamingFailureTest {
         photoRepository = mock(PhotoRepository.class);
         eventService = mock(EventService.class);
         storageService = mock(StorageService.class);
+        guestbookPdfService = mock(GuestbookPdfService.class);
         photoService = new PhotoServiceImpl(photoRepository, mock(CommentRepository.class), eventService, storageService,
                 mock(SseBroadcaster.class), mock(RateLimiterService.class), mock(GuestQuotaService.class),
-                mock(PhotoPersistenceService.class));
+                mock(PhotoPersistenceService.class), guestbookPdfService);
 
         event = Event.builder().id(UUID.randomUUID()).slug("marcos-y-priscila").build();
         brokenInR2 = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/marcos-y-priscila/rota.jpg").uploaderName("Ana").build();
@@ -131,6 +134,27 @@ class ZipStreamingFailureTest {
         }
         // Abortó en la primera foto: nunca pidió la segunda a R2.
         verify(storageService, never()).streamObject(healthy.getStorageKey());
+    }
+
+    @Test
+    @DisplayName("Si falla la generación del libro de visitas, el ZIP de fotos sale igual (sin el PDF) y el error va a Sentry")
+    void guestbookFailureDoesNotBlockThePhotos() throws IOException {
+        when(storageService.streamObject(brokenInR2.getStorageKey())).thenAnswer(inv -> new ByteArrayInputStream(PHOTO_OK_BYTES));
+        IllegalStateException pdfFailure = new IllegalStateException("fuente corrupta");
+        when(guestbookPdfService.generate("marcos-y-priscila")).thenThrow(pdfFailure);
+        ByteArrayOutputStream client = new ByteArrayOutputStream();
+
+        try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {
+            assertThatCode(() -> photoService.streamPhotosZip("marcos-y-priscila", null, client)).doesNotThrowAnyException();
+            sentry.verify(() -> Sentry.captureException(pdfFailure));
+        }
+
+        List<String> entries = new ArrayList<>();
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(client.toByteArray()))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) entries.add(entry.getName());
+        }
+        assertThat(entries).hasSize(2).doesNotContain(GuestbookPdfService.FILENAME);
     }
 
     /** Devuelve algunos bytes y después falla, como una conexión a R2 que se corta a mitad. */

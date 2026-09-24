@@ -68,12 +68,14 @@ public class AdminPhotoController {
      */
     @GetMapping({"/download-zip", "/events/{slug}/download-zip"})
     public void downloadPhotosZip(
-            @PathVariable(required = false) String slugPath,
-            @RequestParam(defaultValue = "marcos-y-priscila") String slug,
+            // Antes el parámetro se llamaba slugPath y nunca se enlazaba con {slug}: la ruta
+            // /events/{slug}/download-zip siempre descargaba el evento por defecto.
+            @PathVariable(name = "slug", required = false) String slugPath,
+            @RequestParam(name = "slug", defaultValue = "marcos-y-priscila") String slugParam,
             @RequestParam(required = false) List<String> photoIds,
             HttpServletResponse response) throws IOException {
 
-        String effectiveSlug = (slugPath != null && !slugPath.isBlank()) ? slugPath : slug;
+        String effectiveSlug = (slugPath != null && !slugPath.isBlank()) ? slugPath : slugParam;
 
         List<UUID> parsedUuids = Collections.emptyList();
         if (photoIds != null && !photoIds.isEmpty()) {
