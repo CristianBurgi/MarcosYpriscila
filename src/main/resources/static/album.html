@@ -280,8 +280,16 @@
 
     <script>
         const SLUG = 'marcos-y-priscila';
-        let currentPage = 0;
+        const PAGE_SIZE = 12;
         let activePhotoId = null;
+
+        // Fase 9.0 (Bloque B): el álbum se actualiza por polling, no por SSE. Lo abren
+        // decenas de celulares con mala señal: una conexión persistente por invitado no
+        // vale la pena para una galería. Cada POLL_MS se piden las fotos más recientes:
+        // las nuevas se agregan arriba y las borradas por el organizador desaparecen.
+        // Con la pestaña oculta no se consulta; al volver a verla se refresca en el acto.
+        const POLL_MS = Number(new URLSearchParams(location.search).get('pollMs')) || 30000;
+        const MAX_POLL_SIZE = 200;
 
         // Misma identidad de invitado que usa upload.html para las fotos: así el rate
         // limiting por guestToken (15 comentarios/min) es por invitado y no compartido.
@@ -300,8 +308,14 @@
             loadGalleryPage(0);
 
             document.getElementById('btn-load-more').addEventListener('click', () => {
-                loadGalleryPage(currentPage + 1);
+                // Página según lo ya cargado (no un contador): las fotos agregadas o
+                // borradas por el polling corren el paginado del servidor. Los duplicados
+                // se descartan al agregar.
+                loadGalleryPage(Math.floor(loadedCards().length / PAGE_SIZE));
             });
+
+            setInterval(() => { if (!document.hidden) pollGallery(); }, POLL_MS);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) pollGallery(); });
 
             document.getElementById('btn-close-modal').addEventListener('click', () => {
                 document.getElementById('photo-modal').close();
@@ -310,10 +324,41 @@
             setupCommentForm();
         });
 
+        function loadedCards() {
+            return Array.from(document.querySelectorAll('#gallery-container .gallery-card'));
+        }
+
+        function createGalleryCard(photo) {
+            let imageUrl = photo.url || photo.storageKey;
+            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+                imageUrl = '/' + imageUrl;
+            }
+
+            const card = document.createElement('div');
+            card.className = 'gallery-card';
+            card.dataset.photoId = photo.id;
+            card.dataset.createdAt = photo.createdAt;
+            card.innerHTML = `
+                <div class="gallery-img-wrapper">
+                    <img src="${escapeHtml(imageUrl)}" alt="Foto de la boda" onerror="handleImageError(this)">
+                </div>
+                <div class="gallery-card-footer">
+                    <span class="badge-uploader"><i class="fa-solid fa-camera" style="font-size: 0.8rem;"></i> ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
+                    <span class="comments-count" id="count-${photo.id}"><i class="fa-solid fa-comments" style="font-size: 0.8rem;"></i> ${photo.commentCount || 0}</span>
+                </div>
+            `;
+            card.addEventListener('click', () => openPhotoModal(photo));
+            return card;
+        }
+
+        function showEmptyGallery(container) {
+            container.innerHTML = '<p class="gallery-empty" style="grid-column: 1 / -1; text-align: center; color: var(--cream-muted);"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
+        }
+
         // 1. Cargar página de la galería
         async function loadGalleryPage(page) {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=12`);
+                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=${PAGE_SIZE}`);
                 const data = await res.json();
                 const container = document.getElementById('gallery-container');
                 const btnMore = document.getElementById('btn-load-more');
@@ -321,44 +366,64 @@
                 if (page === 0) container.innerHTML = '';
 
                 if (!data.content || data.content.length === 0) {
-                    if (page === 0) {
-                        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--cream-muted);"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
-                    }
+                    if (page === 0) showEmptyGallery(container);
                     btnMore.style.display = 'none';
                     return;
                 }
 
-                data.content.forEach(photo => {
-                    let imageUrl = photo.url || photo.storageKey;
-                    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
-                        imageUrl = '/' + imageUrl;
-                    }
+                const present = new Set(loadedCards().map(c => c.dataset.photoId));
+                data.content
+                    .filter(photo => !present.has(photo.id))
+                    .forEach(photo => container.appendChild(createGalleryCard(photo)));
 
-                    const card = document.createElement('div');
-                    card.className = 'gallery-card';
-                    card.dataset.photoId = photo.id;
-                    card.innerHTML = `
-                        <div class="gallery-img-wrapper">
-                            <img src="${escapeHtml(imageUrl)}" alt="Foto de la boda" onerror="handleImageError(this)">
-                        </div>
-                        <div class="gallery-card-footer">
-                            <span class="badge-uploader"><i class="fa-solid fa-camera" style="font-size: 0.8rem;"></i> ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
-                            <span class="comments-count" id="count-${photo.id}"><i class="fa-solid fa-comments" style="font-size: 0.8rem;"></i> ${photo.commentCount || 0}</span>
-                        </div>
-                    `;
-                    card.addEventListener('click', () => openPhotoModal(photo));
-                    container.appendChild(card);
-                });
-
-                currentPage = page;
-                if (data.last) {
-                    btnMore.style.display = 'none';
-                } else {
-                    btnMore.style.display = 'block';
-                }
+                btnMore.style.display = data.last ? 'none' : 'block';
 
             } catch (err) {
                 console.error('Error al cargar la galería:', err);
+            }
+        }
+
+        // 1b. Polling: sincroniza lo ya cargado con el servidor (altas arriba, bajas afuera).
+        async function pollGallery() {
+            const cards = loadedCards();
+            const size = Math.min(cards.length + PAGE_SIZE, MAX_POLL_SIZE);
+            let data;
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=0&size=${size}`, { cache: 'no-store' });
+                if (!res.ok) return;
+                data = await res.json();
+            } catch (err) {
+                return; // sin señal: se reintenta en el próximo ciclo sin tocar nada
+            }
+            const serverPhotos = data.content || [];
+            const serverIds = new Set(serverPhotos.map(p => p.id));
+            const oldestCovered = serverPhotos.length ? new Date(serverPhotos[serverPhotos.length - 1].createdAt) : null;
+
+            // Bajas: una tarjeta que no vino en la respuesta fue borrada, siempre que la
+            // respuesta cubra su fecha (o sea la última página).
+            cards.forEach(card => {
+                const covered = data.last || (oldestCovered && new Date(card.dataset.createdAt) >= oldestCovered);
+                if (!serverIds.has(card.dataset.photoId) && covered) {
+                    if (activePhotoId === card.dataset.photoId) document.getElementById('photo-modal').close();
+                    card.remove();
+                }
+            });
+
+            // Altas: las que no están y son más nuevas que la más nueva cargada van arriba.
+            const container = document.getElementById('gallery-container');
+            const remaining = loadedCards();
+            const present = new Set(remaining.map(c => c.dataset.photoId));
+            const newestLoaded = remaining.length ? new Date(remaining[0].dataset.createdAt) : null;
+            const additions = serverPhotos.filter(p => !present.has(p.id)
+                && (newestLoaded === null || new Date(p.createdAt) > newestLoaded));
+            if (additions.length > 0) {
+                container.querySelectorAll('.gallery-empty').forEach(e => e.remove());
+                // El servidor las devuelve de más nueva a más vieja: se insertan al revés.
+                additions.slice().reverse().forEach(p => container.insertBefore(createGalleryCard(p), container.firstChild));
+            }
+
+            if (loadedCards().length === 0 && !container.querySelector('.gallery-empty')) {
+                showEmptyGallery(container);
             }
         }
 

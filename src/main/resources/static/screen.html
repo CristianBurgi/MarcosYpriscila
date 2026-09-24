@@ -400,9 +400,38 @@
 
     <script>
         const SLUG = 'marcos-y-priscila';
-        let photos = [];
-        let currentIndex = 0;
-        let slideshowInterval = null;
+
+        // ─── Fase 9.0 (Bloque B): rotación justa, precarga limitada y resync ───────────
+        //
+        // Antes: cada foto nueva reiniciaba la vuelta desde la más reciente (las primeras
+        // fotos de la noche casi no se veían), se pedían las fotos una sola vez al cargar
+        // (sin resync tras un corte: el fix del Test 11 había quedado solo en pantalla.html)
+        // y una imagen que fallaba al descargar mostraba una foto de stock para siempre.
+        //
+        // Ahora:
+        // - Cola FIFO de fotos nuevas con prioridad absoluta. Sin nuevas, se muestra la
+        //   foto con lastShownAt más antiguo. Nunca se reinicia la vuelta.
+        // - Una foto se muestra recién cuando terminó de cargar. Si falla, se reintenta con
+        //   espera creciente; una foto NUEVA que falla conserva su lugar en la cola de nuevas.
+        // - Solo se mantienen en memoria la foto actual y las próximas PRELOAD_AHEAD.
+        // - Resync al reconectar el SSE y cada RESYNC_MS: agrega las que faltan como nuevas,
+        //   saca las borradas y actualiza datos, sin tocar lastShownAt.
+        const params = new URLSearchParams(location.search);
+        const SLIDE_MS = Number(params.get('slideMs')) || 7000;        // duración de cada foto
+        const RESYNC_MS = Number(params.get('resyncMs')) || 4 * 60 * 1000;
+        const PRELOAD_AHEAD = 3;                                         // además de la actual
+        const MAX_WAIT_FOR_LOAD_MS = 5000;  // cuánto se estira la foto actual esperando a la próxima nueva
+        const RETRY_BACKOFF_MS = [5000, 15000, 45000, 120000];
+        const PAGE_SIZE = 100;
+
+        const entries = new Map();   // id -> { photo, lastShownAt, failures, retryAt }
+        let newQueue = [];           // ids de fotos nuevas no vistas, en orden de llegada
+        const preloads = new Map();  // id -> { img, status: 'loading' | 'loaded' }
+        let currentId = null;
+        let slideTimer = null;
+        let waitingSince = null;
+        let commentRotationInterval = null;
+        let sseWasDisconnected = false;
 
         let tickerQueue = [];
         const MAX_TICKER_MESSAGES = 50;
@@ -412,44 +441,134 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchPhotos();
+            resyncPhotos({ initial: true });
             fetchTickerMessages();
             setupSSE();
+            // Red de seguridad (Test 11): por si un corte no dispara un 'error' limpio del EventSource.
+            setInterval(() => resyncPhotos({ initial: false }), RESYNC_MS);
         });
 
-        // 1. Cargar fotos iniciales con sus comentarios
-        async function fetchPhotos() {
-            try {
-                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=0&size=100`);
-                const data = await res.json();
-                
-                if (data.content && data.content.length > 0) {
-                    photos = data.content;
-                    startSlideshow();
+        function photoUrl(photo) {
+            let url = photo.url || photo.storageKey || '';
+            if (url && !url.startsWith('http') && !url.startsWith('/')) url = '/' + url;
+            return url;
+        }
+
+        function isReady(entry, now) {
+            return entry.retryAt <= now;
+        }
+
+        // Orden de lo que viene: nuevas (FIFO) primero, después las viejas por lastShownAt
+        // ascendente (a igualdad, la más reciente primero). Excluye la foto en pantalla.
+        function upcomingIds() {
+            const now = Date.now();
+            const queued = new Set(newQueue);
+            const fresh = newQueue.filter(id => id !== currentId && isReady(entries.get(id), now));
+            const old = [...entries.entries()]
+                .filter(([id, e]) => id !== currentId && !queued.has(id) && isReady(e, now))
+                .sort(([, a], [, b]) => (a.lastShownAt - b.lastShownAt)
+                    || (new Date(b.photo.createdAt) - new Date(a.photo.createdAt)))
+                .map(([id]) => id);
+            return fresh.concat(old);
+        }
+
+        // Mantiene precargadas solo las próximas PRELOAD_AHEAD y libera el resto.
+        function refillPreloads() {
+            const wanted = new Set(upcomingIds().slice(0, PRELOAD_AHEAD));
+            for (const [id, p] of preloads) {
+                if (!wanted.has(id)) {
+                    p.img.onload = p.img.onerror = null;
+                    p.img.src = '';
+                    preloads.delete(id);
                 }
-            } catch (err) {
-                console.error('Error al cargar fotos para la pantalla del salón:', err);
             }
+            wanted.forEach(id => { if (!preloads.has(id)) startPreload(id); });
         }
 
-        // 2. Iniciar el carrusel
-        function startSlideshow() {
-            if (photos.length === 0) return;
+        function startPreload(id) {
+            const entry = entries.get(id);
+            if (!entry) return;
+            const img = new Image();
+            img.className = 'slide-img';
+            img.alt = 'Foto de la boda';
+            img.decoding = 'async';
+            const record = { img, status: 'loading' };
+            preloads.set(id, record);
 
-            const emptyMsg = document.getElementById('empty-message');
-            if (emptyMsg) emptyMsg.style.display = 'none';
-
-            showNextPhoto();
-
-            if (slideshowInterval) clearInterval(slideshowInterval);
-            slideshowInterval = setInterval(showNextPhoto, 7000);
+            img.onload = () => {
+                record.status = 'loaded';
+                entry.failures = 0;
+                // Si la pantalla estaba esperando justo esta foto, avanzar ya.
+                if (waitingSince !== null || currentId === null) advance();
+            };
+            img.onerror = () => {
+                // Una foto que no descarga (wifi del salón, límite de r2.dev) NO se muestra
+                // rota: se saca de la precarga y se reintenta más tarde con espera creciente.
+                // Si era nueva, sigue en newQueue: conserva su prioridad sobre las viejas.
+                preloads.delete(id);
+                entry.failures += 1;
+                entry.retryAt = Date.now() + RETRY_BACKOFF_MS[Math.min(entry.failures, RETRY_BACKOFF_MS.length) - 1];
+                console.warn(`Foto ${id} no cargó (intento ${entry.failures}); se reintenta en ${Math.round((entry.retryAt - Date.now()) / 1000)} s.`);
+                setTimeout(() => { refillPreloads(); if (currentId === null) advance(); }, entry.retryAt - Date.now() + 50);
+                refillPreloads();
+                if (waitingSince !== null) advance();
+            };
+            const url = photoUrl(entry.photo);
+            // Tras una falla, parámetro anti-caché para no reusar una respuesta fallida.
+            img.src = entry.failures > 0 ? `${url}${url.includes('?') ? '&' : '?'}retry=${entry.failures}-${Date.now()}` : url;
         }
 
-        let commentRotationInterval = null;
+        function scheduleAdvance(ms) {
+            clearTimeout(slideTimer);
+            slideTimer = setTimeout(advance, ms);
+        }
 
-        // 3. Mostrar foto con comentarios rotativos (máx 2 a la vez)
-        function showNextPhoto() {
-            if (photos.length === 0) return;
+        // Pasa a la próxima foto. La primera candidata tiene que estar cargada: si es una
+        // foto nueva que todavía está bajando, se estira la actual hasta MAX_WAIT_FOR_LOAD_MS
+        // para respetar el orden de llegada; pasado ese tiempo se muestra la primera lista.
+        function advance() {
+            clearTimeout(slideTimer);
+            refillPreloads();
+            const upcoming = upcomingIds();
+
+            if (upcoming.length === 0) {
+                waitingSince = null;
+                if (currentId === null) showEmptyState();
+                return; // se reintenta desde onload/onerror/resync o al llegar otra foto
+            }
+
+            const head = upcoming[0];
+            const headPreload = preloads.get(head);
+            let chosen = null;
+            if (headPreload && headPreload.status === 'loaded') {
+                chosen = head;
+            } else {
+                if (waitingSince === null) waitingSince = Date.now();
+                const waited = Date.now() - waitingSince;
+                if (waited < MAX_WAIT_FOR_LOAD_MS && currentId !== null) {
+                    scheduleAdvance(500);
+                    return;
+                }
+                chosen = upcoming.slice(0, PRELOAD_AHEAD).find(id => preloads.get(id)?.status === 'loaded') || null;
+                if (!chosen) {
+                    // Ninguna lista todavía: se queda la actual (o el mensaje de espera).
+                    scheduleAdvance(500);
+                    return;
+                }
+            }
+
+            waitingSince = null;
+            showPhoto(chosen);
+            scheduleAdvance(SLIDE_MS);
+        }
+
+        function showPhoto(id) {
+            const entry = entries.get(id);
+            const record = preloads.get(id);
+            preloads.delete(id); // el <img> pasa al DOM; al quitar el cuadro se libera
+            newQueue = newQueue.filter(q => q !== id);
+            entry.lastShownAt = Date.now();
+            currentId = id;
 
             if (commentRotationInterval) {
                 clearInterval(commentRotationInterval);
@@ -457,42 +576,118 @@
             }
 
             const stage = document.getElementById('stage');
-            const photo = photos[currentIndex];
-            let imageUrl = photo.url || photo.storageKey;
+            const emptyMsg = document.getElementById('empty-message');
+            if (emptyMsg) emptyMsg.style.display = 'none';
 
-            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
-                imageUrl = '/' + imageUrl;
-            }
-
-            const uploader = photo.uploaderName || 'Invitado';
-
-            // Capturar todas las tarjetas existentes antes de agregar la nueva
+            // Tope duro de cuadros en el DOM: solo se conserva el saliente para el fundido.
+            // Antes la limpieza vivía dentro de requestAnimationFrame: si el navegador deja
+            // de pintar (ventana tapada, protector de pantalla de la TV) los rAF se pausan y
+            // los cuadros se acumulaban con su imagen decodificada (reproducido: 14 cuadros
+            // en 10 s sin pintar).
             const existingFrames = Array.from(stage.querySelectorAll('.photo-card-frame'));
-
+            existingFrames.slice(0, -1).forEach(f => f.remove());
+            const outgoing = existingFrames.at(-1);
             const newFrame = document.createElement('div');
             newFrame.className = 'photo-card-frame';
-
-            newFrame.innerHTML = `
-                <img class="slide-img" src="${imageUrl}" alt="Foto de la boda" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1519741497674-611481863552?w=1600&auto=format&fit=crop';">
-                <div class="photo-credit-bar">📸 Subida por ${escapeHtml(uploader)}</div>
-            `;
-
-            renderPhotoComments(photo, newFrame);
-
+            newFrame.dataset.photoId = id;
+            newFrame.appendChild(record.img);
+            const credit = document.createElement('div');
+            credit.className = 'photo-credit-bar';
+            credit.textContent = `📸 Subida por ${entry.photo.uploaderName || 'Invitado'}`;
+            newFrame.appendChild(credit);
+            renderPhotoComments(entry.photo, newFrame);
             stage.appendChild(newFrame);
 
-            // Transición suave: activar la nueva y remover progresivamente las anteriores
+            if (outgoing) setTimeout(() => outgoing.remove(), 1000); // fuera del rAF a propósito
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     newFrame.classList.add('active');
-                    existingFrames.forEach(f => {
-                        f.classList.remove('active');
-                        setTimeout(() => f.remove(), 1000);
-                    });
+                    if (outgoing) outgoing.classList.remove('active');
                 });
             });
 
-            currentIndex = (currentIndex + 1) % photos.length;
+            refillPreloads();
+        }
+
+        function showEmptyState() {
+            const emptyMsg = document.getElementById('empty-message');
+            if (emptyMsg) emptyMsg.style.display = '';
+        }
+
+        // Alta de una foto. Las nuevas van al final de la cola de nuevas; no interrumpen
+        // la foto en pantalla ni reinician nada.
+        function addPhoto(photo, { asNew }) {
+            if (!photo || !photo.id) return;
+            const existing = entries.get(photo.id);
+            if (existing) {
+                existing.photo = { ...existing.photo, ...photo }; // actualiza datos, conserva lastShownAt
+                return;
+            }
+            entries.set(photo.id, { photo, lastShownAt: 0, failures: 0, retryAt: 0 });
+            if (asNew) newQueue.push(photo.id);
+        }
+
+        function removePhoto(id) {
+            if (!entries.has(id)) return;
+            entries.delete(id);
+            newQueue = newQueue.filter(q => q !== id);
+            const p = preloads.get(id);
+            if (p) { p.img.onload = p.img.onerror = null; p.img.src = ''; preloads.delete(id); }
+
+            if (currentId === id) {
+                // Borrada mientras estaba en pantalla: sale ya.
+                currentId = null;
+                const stage = document.getElementById('stage');
+                stage.querySelectorAll(`.photo-card-frame[data-photo-id="${CSS.escape(id)}"]`).forEach(f => {
+                    f.classList.remove('active');
+                    setTimeout(() => f.remove(), 600);
+                });
+                if (entries.size === 0) showEmptyState();
+                advance();
+            } else {
+                refillPreloads();
+            }
+        }
+
+        function handlePublishedPhoto(photo) {
+            const wasEmpty = entries.size === 0;
+            addPhoto(photo, { asNew: true });
+            refillPreloads();
+            if (wasEmpty || currentId === null) advance();
+        }
+
+        // Resync completo (todas las páginas). Si falla a mitad, no se toca nada: una red
+        // cortada no puede vaciar la pantalla.
+        async function resyncPhotos({ initial }) {
+            let serverPhotos = [];
+            try {
+                for (let page = 0; ; page++) {
+                    const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=${PAGE_SIZE}`, { cache: 'no-store' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    serverPhotos = serverPhotos.concat(data.content || []);
+                    if (data.last !== false) break;
+                }
+            } catch (err) {
+                console.warn('Resync de fotos fallido; se conserva el estado actual:', err);
+                return;
+            }
+
+            const serverIds = new Set(serverPhotos.map(p => p.id));
+            [...entries.keys()].filter(id => !serverIds.has(id)).forEach(removePhoto);
+
+            // Las que faltaban entran como nuevas en orden de llegada (el servidor las
+            // devuelve de más nueva a más vieja). En la carga inicial todas son "viejas".
+            const missing = serverPhotos.filter(p => !entries.has(p.id))
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            serverPhotos.filter(p => entries.has(p.id)).forEach(p => addPhoto(p, { asNew: false }));
+            missing.forEach(p => addPhoto(p, { asNew: !initial }));
+
+            if (missing.length > 0 && !initial) {
+                console.info(`Resync: ${missing.length} foto(s) que faltaban entran a la cola de nuevas.`);
+            }
+            refillPreloads();
+            if (currentId === null) advance();
         }
 
         // Renderiza comentarios rotativos en lotes de a 2 si la foto tiene muchas dedicatorias
@@ -510,7 +705,7 @@
             function updateBatch() {
                 const batch = comments.slice(commentIndex, commentIndex + pageSize);
                 const total = comments.length;
-                const badge = total > pageSize 
+                const badge = total > pageSize
                     ? `<div class="comments-badge">💬 Dedicatorias (${commentIndex + 1}-${Math.min(commentIndex + batch.length, total)} de ${total})</div>`
                     : '';
 
@@ -534,7 +729,7 @@
             }
         }
 
-        // 4. Extraer payload SSE
+        // Extraer payload SSE
         function extractPayload(eventData) {
             try {
                 const parsed = JSON.parse(eventData);
@@ -544,29 +739,7 @@
             }
         }
 
-        // 5. Nueva foto publicada en vivo
-        function handleNewPhoto(photoPayload) {
-            if (!photoPayload || !photoPayload.id) return;
-
-            // Evitar fotos duplicadas si la ID ya existe
-            const exists = photos.some(p => p.id === photoPayload.id);
-            if (exists) return;
-
-            photos.unshift(photoPayload);
-
-            if (photos.length === 1) {
-                startSlideshow();
-                return;
-            }
-
-            currentIndex = 0;
-            showNextPhoto();
-
-            if (slideshowInterval) clearInterval(slideshowInterval);
-            slideshowInterval = setInterval(showNextPhoto, 7000);
-        }
-
-        // 6. Nuevo mensaje en vivo
+        // Nuevo mensaje en vivo
         function handleNewMessage(msgPayload) {
             const author = msgPayload.authorName || 'Invitado';
             const text = msgPayload.text || '';
@@ -584,14 +757,18 @@
             }, 9000);
         }
 
-        // 7. Conexión SSE con autoreconexión
+        // Conexión SSE con autoreconexión + resync al reconectar (Test 11)
         function setupSSE() {
             if (!!window.EventSource) {
                 const eventSource = new EventSource(`/api/v1/events/${SLUG}/stream`);
 
                 eventSource.addEventListener('PHOTO_PUBLISHED', (e) => {
+                    handlePublishedPhoto(extractPayload(e.data));
+                });
+
+                eventSource.addEventListener('PHOTO_DELETED', (e) => {
                     const payload = extractPayload(e.data);
-                    handleNewPhoto(payload);
+                    if (payload.photoId) removePhoto(payload.photoId);
                 });
 
                 eventSource.addEventListener('MESSAGE_CREATED', (e) => {
@@ -608,11 +785,32 @@
                     }
                 });
 
+                // Cualquier evento emitido mientras la conexión estaba caída se pierde (el
+                // servidor no tiene replay): al reconectar se pide el estado completo.
+                eventSource.onopen = () => {
+                    if (sseWasDisconnected) {
+                        console.warn('SSE reconectado tras un corte: resincronizando fotos.');
+                        sseWasDisconnected = false;
+                        resyncPhotos({ initial: false });
+                    }
+                };
+
                 eventSource.onerror = (err) => {
+                    sseWasDisconnected = true;
                     console.warn('Reconectando canal SSE del salón...', err);
                 };
             }
         }
+
+        // Solo para inspección desde DevTools (verificación manual); no altera el estado.
+        window.__screenState = () => ({
+            currentId,
+            newQueue: [...newQueue],
+            preloaded: [...preloads.entries()].map(([id, p]) => ({ id, status: p.status })),
+            photos: [...entries.entries()].map(([id, e]) => ({ id, uploader: e.photo.uploaderName, lastShownAt: e.lastShownAt, failures: e.failures })),
+            framesInDom: document.querySelectorAll('.photo-card-frame').length,
+            imgsInDom: document.querySelectorAll('img.slide-img').length
+        });
 
         // 8. Cargar mensajes iniciales para el ticker del zócalo
         async function fetchTickerMessages() {
