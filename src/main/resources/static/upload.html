@@ -149,155 +149,307 @@
 
             document.getElementById('upload-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-
-                const statusDiv = document.getElementById('status-message');
-                const btn = document.getElementById('btn-submit');
-                const progressBox = document.getElementById('progress-box');
-                const progressFill = document.getElementById('progress-fill');
-
-                const uploaderName = document.getElementById('uploaderName').value.trim();
-
-                if (!uploaderName) {
-                    statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor ingresá tu nombre. Es obligatorio.</div>';
-                    return;
-                }
-
-                if (!selectedFile) {
-                    statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor seleccioná o tomá una foto usando los botones superiores.</div>';
-                    return;
-                }
-
-                let contentType = selectedFile.type || 'image/jpeg';
-                if (contentType.toLowerCase() === 'image/jpg') {
-                    contentType = 'image/jpeg';
-                }
-
-                try {
-                    btn.disabled = true;
-                    btn.innerText = 'Optimizando foto...';
-                    progressBox.style.display = 'block';
-                    progressFill.style.width = '15%';
-
-                    const fileToUpload = await compressImageIfNeeded(selectedFile);
-
-                    let contentType = fileToUpload.type || 'image/jpeg';
-                    if (contentType.toLowerCase() === 'image/jpg') {
-                        contentType = 'image/jpeg';
-                    }
-
-                    btn.innerText = 'Iniciando subida...';
-                    progressFill.style.width = '30%';
-
-                    let isSuccess = false;
-                    let quotaExceeded = false;
-
-                    try {
-                        const presignedRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contentType: contentType, filename: fileToUpload.name || 'photo.jpg', guestToken: GUEST_TOKEN })
-                        });
-
-                        if (presignedRes.status === 403) {
-                            quotaExceeded = true;
-                        } else if (presignedRes.ok) {
-                            const { uploadUrl, key } = await presignedRes.json();
-                            progressFill.style.width = '60%';
-                            btn.innerText = 'Subiendo fotografía...';
-
-                            const uploadRes = await fetch(uploadUrl, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': contentType },
-                                body: fileToUpload
-                            });
-
-                            if (uploadRes.ok) {
-                                progressFill.style.width = '85%';
-                                btn.innerText = 'Registrando en la boda...';
-
-                                const confirmRes = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ key, uploaderName, guestToken: GUEST_TOKEN })
-                                });
-
-                                if (confirmRes.status === 403) {
-                                    quotaExceeded = true;
-                                } else if (confirmRes.ok) {
-                                    isSuccess = true;
-                                }
-                            }
-                        }
-                    } catch (presignedErr) {
-                        console.warn('Subida directa R2 Presigned bloqueada por el navegador o red. Ejecutando fallback garantizado vía servidor:', presignedErr);
-                    }
-
-                    if (quotaExceeded) {
-                        throw new Error(QUOTA_EXCEEDED_MESSAGE);
-                    }
-
-                    if (!isSuccess) {
-                        btn.innerText = 'Enviando fotografía...';
-                        progressFill.style.width = '70%';
-
-                        const safeFileName = (fileToUpload.name && fileToUpload.name.trim()) ? fileToUpload.name : 'galeria_photo.jpg';
-                        const formData = new FormData();
-                        formData.append('file', fileToUpload, safeFileName);
-                        formData.append('uploaderName', uploaderName);
-                        formData.append('guestToken', GUEST_TOKEN);
-
-                        const directRes = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        if (directRes.status === 403) {
-                            throw new Error(QUOTA_EXCEEDED_MESSAGE);
-                        }
-
-                        if (!directRes.ok) {
-                            const errData = await directRes.json().catch(() => ({}));
-                            throw new Error(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.');
-                        }
-                    }
-
-                    progressFill.style.width = '100%';
-                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Foto subida con éxito! Ya está en el álbum y en la pantalla del salón. 📸</div>';
-
-                    loadGuestQuota();
-
-                    selectedFile = null;
-                    cameraFile.value = '';
-                    galleryFile.value = '';
-                    previewBox.style.display = 'none';
-
-                    setTimeout(() => {
-                        statusDiv.innerHTML = '';
-                        progressBox.style.display = 'none';
-                        progressFill.style.width = '0%';
-                    }, 5000);
-
-                } catch (err) {
-                    console.error(err);
-                    statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(err.message)}</div>`;
-                    progressBox.style.display = 'none';
-                    progressFill.style.width = '0%';
-
-                    if (err.message === QUOTA_EXCEEDED_MESSAGE) {
-                        // El backend rechazó por cupo agotado en una condición de carrera que
-                        // el frontend no había detectado a tiempo (ej. otra pestaña gastó el
-                        // último cupo justo antes). Se refresca el badge/estado del form.
-                        loadGuestQuota();
-                    }
-                } finally {
-                    const btn = document.getElementById('btn-submit');
-                    if (btn && !btn.getAttribute('data-closed')) {
-                        btn.disabled = false;
-                        btn.innerText = 'Subir y Compartir Foto';
-                    }
-                }
+                await handleSubmit();
             });
         });
+
+        // ── Fase 9.0 (Bloque C): reintento automático ante red mala ──────────────────
+        //
+        // El flujo es presigned PUT -> sube directo a R2 -> /confirm. Un fallo de red
+        // (timeout, conexión cortada, TypeError de fetch) o un 5xx transitorio se
+        // reintenta hasta 3 veces (2s, 5s, 10s) SIN perder lo que ya se logró: el estado
+        // (`state`) vive solo en memoria (se pierde si se recarga la página, a propósito)
+        // y recuerda si ya se obtuvo la presigned URL y si el PUT a R2 ya terminó, para
+        // que un reintento retome desde ahí en vez de repetir todo desde cero.
+        //   - Falla pedir la presigned URL -> se reintenta ESE paso (nada se subió aún).
+        //   - Falla el PUT a R2 -> se reintenta el PUT con la MISMA url (nunca se pide
+        //     una nueva). Reintentar un PUT es inofensivo: sube el mismo archivo al
+        //     mismo objeto, R2 lo sobreescribe.
+        //   - Falla /confirm -> se reintenta SOLO /confirm, nunca el PUT. Esto es seguro
+        //     gracias a la reclamación atómica de upload_key en el backend
+        //     (PhotoUploadClaimService): un /confirm repetido con la misma key devuelve
+        //     la MISMA foto en vez de duplicarla o cobrar cupo de más.
+        // Un 4xx (archivo inválido, cupo agotado, evento cerrado) nunca se reintenta.
+        const RETRY_DELAYS_MS = [2000, 5000, 10000];
+
+        function retryableError(message) {
+            const err = new Error(message);
+            err.retryable = true;
+            return err;
+        }
+
+        function nonRetryableError(message, kind) {
+            const err = new Error(message);
+            err.retryable = false;
+            if (kind) err.kind = kind;
+            return err;
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        // Paso 1: presigned URL. Todavía no se subió nada: siempre es gratis reintentar
+        // este paso completo desde cero.
+        async function requestPresignedUrl(contentType, filename) {
+            let res;
+            try {
+                res = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contentType, filename, guestToken: GUEST_TOKEN })
+                });
+            } catch (networkErr) {
+                throw retryableError('No se pudo conectar para iniciar la subida.');
+            }
+            if (res.status === 403) throw nonRetryableError(QUOTA_EXCEEDED_MESSAGE, 'quota');
+            if (res.ok) return await res.json(); // { uploadUrl, key }
+            if (res.status >= 500) throw retryableError('El servidor tardó en iniciar la subida.');
+            const body = await res.json().catch(() => ({}));
+            throw nonRetryableError(body.message || 'No se pudo iniciar la subida.');
+        }
+
+        // Paso 2: PUT directo a R2 con la presigned URL ya obtenida.
+        async function putToR2(uploadUrl, contentType, file) {
+            let res;
+            try {
+                res = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file });
+            } catch (networkErr) {
+                throw retryableError('La foto no llegó al servidor de almacenamiento.');
+            }
+            if (res.ok) return;
+            if (res.status >= 500 || res.status === 429) throw retryableError('El almacenamiento tardó en responder.');
+            // 4xx acá (ej. URL vencida) no es un fallo de red: reintentar la MISMA url no
+            // sirve. Se marca no reintentable para que el llamador pruebe el fallback.
+            throw nonRetryableError('No se pudo completar la subida al almacenamiento.');
+        }
+
+        // Paso 3: confirmar. Seguro de llamar más de una vez con la MISMA key (ver
+        // comentario del bloque de arriba).
+        async function confirmUploadStep(key, uploaderName) {
+            let res;
+            try {
+                res = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, uploaderName, guestToken: GUEST_TOKEN })
+                });
+            } catch (networkErr) {
+                throw retryableError('No pudimos confirmar tu foto, pero ya se subió.');
+            }
+            if (res.ok) return await res.json();
+            if (res.status === 403) throw nonRetryableError(QUOTA_EXCEEDED_MESSAGE, 'quota');
+            // 503: otra confirmación con esta misma key está en curso (carrera o un
+            // reintento propio que se cruzó) -- se resuelve sola en el próximo intento.
+            if (res.status >= 500) throw retryableError('El servidor tardó en confirmar tu foto.');
+            const body = await res.json().catch(() => ({}));
+            throw nonRetryableError(body.message || 'No se pudo confirmar la fotografía.');
+        }
+
+        // Retoma desde donde quedó `state`: si ya hay presigned URL no pide otra, si el
+        // PUT ya terminó no vuelve a subir el archivo.
+        async function attemptUpload(state) {
+            if (!state.presigned) {
+                state.presigned = await requestPresignedUrl(state.contentType, state.fileName);
+            }
+            if (!state.putDone) {
+                await putToR2(state.presigned.uploadUrl, state.contentType, state.file);
+                state.putDone = true;
+            }
+            return await confirmUploadStep(state.presigned.key, state.uploaderName);
+        }
+
+        async function uploadWithRetries(state, onRetrying) {
+            for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+                try {
+                    return await attemptUpload(state);
+                } catch (err) {
+                    const exhausted = attempt === RETRY_DELAYS_MS.length;
+                    if (!err.retryable || exhausted) throw err;
+                    onRetrying(attempt + 1, RETRY_DELAYS_MS.length);
+                    await sleep(RETRY_DELAYS_MS[attempt]);
+                }
+            }
+        }
+
+        // Fallback garantizado por el servidor (multipart, sin presigned URL): para
+        // navegadores/redes que bloquean el PUT directo a R2. Solo se intenta si el PUT
+        // NUNCA llegó a completarse (state.putDone === false) -- si ya está en R2,
+        // usar este camino independiente duplicaría la foto.
+        async function uploadDirectFallback(state) {
+            const safeFileName = (state.file.name && state.file.name.trim()) ? state.file.name : 'galeria_photo.jpg';
+            const formData = new FormData();
+            formData.append('file', state.file, safeFileName);
+            formData.append('uploaderName', state.uploaderName);
+            formData.append('guestToken', GUEST_TOKEN);
+
+            let res;
+            try {
+                res = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, { method: 'POST', body: formData });
+            } catch (networkErr) {
+                throw nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.');
+            }
+            if (res.status === 403) throw nonRetryableError(QUOTA_EXCEEDED_MESSAGE, 'quota');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw nonRetryableError(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.');
+            }
+        }
+
+        async function handleSubmit() {
+            const statusDiv = document.getElementById('status-message');
+            const btn = document.getElementById('btn-submit');
+            const progressBox = document.getElementById('progress-box');
+            const progressFill = document.getElementById('progress-fill');
+
+            const uploaderName = document.getElementById('uploaderName').value.trim();
+
+            if (!uploaderName) {
+                statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor ingresá tu nombre. Es obligatorio.</div>';
+                return;
+            }
+
+            if (!selectedFile) {
+                statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor seleccioná o tomá una foto usando los botones superiores.</div>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Optimizando foto...';
+            progressBox.style.display = 'block';
+            progressFill.style.width = '15%';
+
+            const fileToUpload = await compressImageIfNeeded(selectedFile);
+            let contentType = fileToUpload.type || 'image/jpeg';
+            if (contentType.toLowerCase() === 'image/jpg') {
+                contentType = 'image/jpeg';
+            }
+
+            const state = {
+                file: fileToUpload,
+                contentType,
+                fileName: fileToUpload.name || 'photo.jpg',
+                uploaderName,
+                presigned: null,   // { uploadUrl, key } una vez obtenida
+                putDone: false     // true apenas el PUT a R2 termina con éxito
+            };
+
+            await runUpload(state);
+        }
+
+        async function runUpload(state) {
+            const btn = document.getElementById('btn-submit');
+            const progressFill = document.getElementById('progress-fill');
+            btn.innerText = 'Iniciando subida...';
+            progressFill.style.width = '30%';
+
+            try {
+                await uploadWithRetries(state, (attemptNumber, totalAttempts) => showRetrying(attemptNumber, totalAttempts));
+                onUploadSuccess();
+            } catch (err) {
+                if (!state.putDone && err.kind !== 'quota') {
+                    // El archivo NUNCA llegó a subirse a R2 (se agotaron los reintentos, o
+                    // el PUT falló de forma no reintentable -- ej. bloqueado por el
+                    // navegador/red). Sin nada subido todavía, es seguro probar el
+                    // fallback garantizado por el servidor antes de rendirse.
+                    try {
+                        btn.innerText = 'Enviando fotografía...';
+                        progressFill.style.width = '70%';
+                        await uploadDirectFallback(state);
+                        onUploadSuccess();
+                        return;
+                    } catch (fallbackErr) {
+                        handleUploadFailure(fallbackErr, state);
+                        return;
+                    }
+                }
+                handleUploadFailure(err, state);
+            }
+        }
+
+        function showRetrying(attemptNumber, totalAttempts) {
+            const btn = document.getElementById('btn-submit');
+            const statusDiv = document.getElementById('status-message');
+            btn.innerText = `Reintentando… (${attemptNumber} de ${totalAttempts})`;
+            statusDiv.innerHTML = '<div class="alert-box alert-retry" style="background: rgba(201, 161, 90, 0.15); border: 1px solid rgba(201, 161, 90, 0.4); color: var(--gold-soft); padding: 10px; border-radius: 8px; margin-top: 10px;">📶 Reintentando… la señal está débil.</div>';
+        }
+
+        function onUploadSuccess() {
+            const statusDiv = document.getElementById('status-message');
+            const progressBox = document.getElementById('progress-box');
+            const progressFill = document.getElementById('progress-fill');
+            const btn = document.getElementById('btn-submit');
+            const cameraFile = document.getElementById('cameraFile');
+            const galleryFile = document.getElementById('galleryFile');
+            const previewBox = document.getElementById('preview-box');
+
+            progressFill.style.width = '100%';
+            statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Foto subida con éxito! Ya está en el álbum y en la pantalla del salón. 📸</div>';
+
+            loadGuestQuota();
+
+            selectedFile = null;
+            cameraFile.value = '';
+            galleryFile.value = '';
+            previewBox.style.display = 'none';
+
+            if (!btn.getAttribute('data-closed')) {
+                btn.disabled = false;
+                btn.innerText = 'Subir y Compartir Foto';
+            }
+
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+                progressBox.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 5000);
+        }
+
+        // Error definitivo: nunca deja el botón/estado colgado en "reintentando". Si ya
+        // se armó un `state` (no es un error de validación previo a empezar), ofrece un
+        // botón para reintentar a mano SIN perder la foto elegida ni repetir lo que ya
+        // se logró (retoma con el mismo `state`, vía runUpload).
+        function handleUploadFailure(err, state) {
+            console.error(err);
+            const statusDiv = document.getElementById('status-message');
+            const progressBox = document.getElementById('progress-box');
+            const progressFill = document.getElementById('progress-fill');
+            const btn = document.getElementById('btn-submit');
+
+            progressBox.style.display = 'none';
+            progressFill.style.width = '0%';
+
+            const message = (err && err.message) ? err.message : 'No se pudo subir la fotografía. Intentá de nuevo.';
+            const offerManualRetry = !!state && err.kind !== 'quota';
+
+            statusDiv.innerHTML = `
+                <div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                    ${escapeHtml(message)}
+                    ${offerManualRetry ? '<div style="margin-top: 10px;"><button type="button" id="btn-manual-retry" class="btn-primary-elegant" style="padding: 8px 16px; font-size: 0.95rem;">Reintentar</button></div>' : ''}
+                </div>`;
+
+            if (!btn.getAttribute('data-closed')) {
+                btn.disabled = false;
+                btn.innerText = 'Subir y Compartir Foto';
+            }
+
+            if (err && err.kind === 'quota') {
+                loadGuestQuota();
+                return;
+            }
+
+            if (offerManualRetry) {
+                const retryBtn = document.getElementById('btn-manual-retry');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', async () => {
+                        statusDiv.innerHTML = '';
+                        progressBox.style.display = 'block';
+                        btn.disabled = true;
+                        await runUpload(state);
+                    });
+                }
+            }
+        }
 
         async function checkEventStatus() {
             try {

@@ -161,6 +161,33 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
+    // --- Fase 9.0 (Bloque C): idempotencia de /confirm ante reintentos/carreras ---
+
+    @ExceptionHandler(UploadInProgressException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUploadInProgress(
+            UploadInProgressException ex, HttpServletRequest request) {
+        log.debug("Confirmación duplicada en curso para {}: {}", request.getRequestURI(), ex.getMessage());
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "Service Unavailable - Upload In Progress",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+    }
+
+    @ExceptionHandler(UploadClaimFailedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUploadClaimFailed(
+            UploadClaimFailedException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                ex.getStatus(),
+                "Upload Previously Failed",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(ex.getStatus()).body(error);
+    }
+
     // --- Fase 9.0: errores de subida con mensaje para el invitado (no un 500 técnico) ---
 
     public static final String UPLOAD_TOO_LARGE_MESSAGE = "La foto es demasiado pesada, probá con otra";
