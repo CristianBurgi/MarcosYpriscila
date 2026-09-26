@@ -334,6 +334,7 @@ erDiagram
 | `V4__create_message.sql` | Tabla `message` con FK a `event`, índices en `eventId` |
 | `V5__create_guest_quota.sql` | Tabla `guest_quotas`: cupo de fotos por invitado y evento |
 | `V6__remove_photo_approval.sql` | Fase 9.0: publica las fotos pendientes y elimina `photos.is_approved` (publicación automática) |
+| `V7__add_upload_key_idempotency.sql` | Fase 9.0: columna `photos.upload_key` (única) + tabla `photo_upload_claims`, para que `POST /confirm` sea seguro de reintentar |
 
 ---
 
@@ -411,6 +412,21 @@ El login genera un **JWT de 8 horas** almacenado en el navegador del admin. La s
 - **Nunca un cuadradito:** `PdfTextSanitizer` quita del texto de usuarios todo carácter que ninguna fuente puede dibujar, los tonos de piel (en monocromo son un recuadro gris) y los unidores de secuencias compuestas (👨‍👩‍👧 se ve como las tres caras). Las banderas salen como letras en recuadro (AR). openhtmltopdf dibuja `#` cuando falta un glifo: los adornos de la plantilla son CSS, no caracteres.
 - **Contenido:** solo mensajes publicados (los rechazados por el filtro nunca se guardan; los borrados por el organizador desaparecen), en orden cronológico, con autor ("Anónimo" si está vacío) y fecha/hora de Argentina.
 - **ZIP del álbum completo:** el PDF se genera antes de empezar a escribir el ZIP; si falla, el ZIP de fotos sale igual y el error va a Sentry.
+
+---
+
+## 🔄 Subida resiliente ante mala señal (Bloque C)
+
+`upload.html` reintenta automáticamente ante un fallo de red (timeout, conexión cortada, `TypeError` de `fetch`) o un 5xx transitorio: hasta 3 veces, con espera creciente (2 s, 5 s, 10 s), mostrando "Reintentando… la señal está débil" en vez de un error. Un 4xx (archivo inválido, cupo agotado, evento cerrado) nunca se reintenta.
+
+El estado (`presigned`, `putDone`) vive solo en memoria del navegador — se pierde a propósito si se recarga la página — y le permite a un reintento retomar desde donde quedó, sin repetir pasos ya hechos:
+- Falla pedir la presigned URL → se reintenta ese paso (nada se subió aún).
+- Falla el PUT a R2 → se reintenta el PUT con la MISMA URL (nunca se pide una nueva; subir el mismo archivo dos veces es inofensivo, R2 sobreescribe el mismo objeto).
+- Falla `/confirm` → se reintenta SOLO `/confirm`, nunca el PUT.
+
+**`/confirm` es idempotente** (necesario porque el frontend puede llamarlo más de una vez con la misma `upload_key` si la respuesta de un intento anterior se perdió por la red): `PhotoUploadClaimService` reclama la `upload_key` de forma atómica en su propia transacción corta, ANTES de tocar storage/HEIC/cupo. Una reclamación duplicada devuelve la foto ya creada (o el mismo error definitivo, si el ganador de la carrera ya rechazó la subida) sin reprocesar nada. Si el ganador todavía está procesando, se responde `503` — retryable para el frontend, se resuelve solo en el siguiente intento.
+
+Agotados los 3 reintentos automáticos sin éxito (y solo si el archivo nunca llegó a subirse a R2), se prueba una vez el fallback garantizado por el servidor (`upload-direct`, multipart). Si el archivo ya está en R2, ese fallback nunca se intenta, para no duplicar la foto. Si todo falla, se muestra un error final con un botón "Reintentar" que retoma con el mismo estado, sin perder la foto elegida.
 
 ---
 
@@ -729,6 +745,7 @@ mvn test
 | `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 30 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
 | `GlobalExceptionHandlerSentryNoiseTest` | 10 | Desconexiones de clientes (escritura de la respuesta), recursos inexistentes y errores 4xx de Spring no llegan a Sentry; fallas de R2/BD con mensajes tipo "Connection reset" sí |
 | `GuestbookPdfIntegrationTest` / `GuestbookEndpointsTest` | 5 | PDF real con emojis simples y compuestos, acentos, ñ, 1000 caracteres, palabra sin espacios y sin autor (texto extraído con PDFBox, ningún glifo fuera de la página); descarga solo admin; ZIP completo con el PDF en la raíz |
+| `ConfirmUploadIdempotencyTest` | 3 | `POST /confirm` repetido con la misma `upload_key` (secuencial y con HEIC) devuelve la misma foto sin duplicar ni cobrar cupo de más; dos hilos reales confirmando la misma key en paralelo: una sola foto, un solo descuento, y el perdedor de la carrera falla en milisegundos (mutex propio), no bloqueado hasta que el ganador termina |
 | `ZipStreamingFailureTest` | 4 | ZIP: un fallo LEYENDO de R2 va a Sentry y el resto del álbum se descarga; un corte del cliente (escritura) no va a Sentry |
 | `StorageServiceTest` | 6 | Generación de presigned URLs de subida/descarga, borrado en R2, rechazo de tipos no permitidos |
 

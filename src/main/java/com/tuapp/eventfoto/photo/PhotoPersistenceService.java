@@ -36,11 +36,13 @@ public class PhotoPersistenceService {
      * GuestQuotaExceededException y la transacción se revierte sin haber insertado
      * ninguna foto ni comentario.
      *
+     * @param uploadKey la key ORIGINAL de la presigned URL (antes de convertir HEIC), única
+     *                  por intento de subida -- ver Photo.uploadKey.
      * @param publicUrl URL pública ya resuelta (string puro, sin llamada de red) para
      *                  incluir en la respuesta sin depender de la sesión de Hibernate.
      */
     @Transactional
-    public PhotoResponseDTO persistConfirmedPhoto(Event event, String storageKey, String uploaderName,
+    public PhotoResponseDTO persistConfirmedPhoto(Event event, String uploadKey, String storageKey, String uploaderName,
                                                   String caption, String guestToken, String publicUrl) {
         guestQuotaService.incrementUsageOrThrow(event, guestToken);
 
@@ -49,6 +51,7 @@ public class PhotoPersistenceService {
         Photo photo = Photo.builder()
                 .event(event)
                 .storageKey(storageKey)
+                .uploadKey(uploadKey)
                 .uploaderName(uploader)
                 .build();
         Photo savedPhoto = photoRepository.save(photo);

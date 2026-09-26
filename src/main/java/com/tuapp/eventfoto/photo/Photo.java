@@ -32,6 +32,16 @@ public class Photo {
     @Column(name = "storage_key", nullable = false, length = 512)
     private String storageKey;
 
+    /**
+     * La key ORIGINAL de la presigned URL (antes de cualquier conversión HEIC), que no
+     * cambia nunca. Distinta de storageKey, que puede ser la key final .jpg tras
+     * convertir. Sirve para que POST /confirm sea seguro de reintentar (Fase 9.0 -
+     * Bloque C): un reintento con la misma upload_key encuentra esta fila y la
+     * devuelve, sin volver a leer/convertir storage ni cobrar cupo de más.
+     */
+    @Column(name = "upload_key", unique = true, length = 512)
+    private String uploadKey;
+
     @Column(name = "uploader_name", length = 150)
     private String uploaderName;
 

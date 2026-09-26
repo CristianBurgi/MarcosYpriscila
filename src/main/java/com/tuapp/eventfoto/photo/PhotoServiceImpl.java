@@ -21,13 +21,17 @@ import com.tuapp.eventfoto.storage.StorageService;
 import io.sentry.Sentry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.StorageException;
+import com.tuapp.eventfoto.common.exception.UploadClaimFailedException;
+import com.tuapp.eventfoto.common.exception.UploadInProgressException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +39,7 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
@@ -54,6 +59,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final GuestQuotaService guestQuotaService;
     private final PhotoPersistenceService photoPersistenceService;
     private final GuestbookPdfService guestbookPdfService;
+    private final PhotoUploadClaimService photoUploadClaimService;
 
     @Override
     public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken) {
@@ -90,6 +96,24 @@ public class PhotoServiceImpl implements PhotoService {
             throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
         }
 
+        // Idempotencia (Fase 9.0 - Bloque C): el frontend puede llamar /confirm más de una
+        // vez con la MISMA upload_key (la key de la presigned URL) si la respuesta de un
+        // intento anterior se perdió por la red -- el PUT a R2 ya había terminado, no hace
+        // falta ni es seguro repetir todo desde cero. Se reclama ANTES de tocar storage/
+        // HEIC/cupo: ver PhotoUploadClaimService para el porqué de la transacción separada
+        // (evita bloquear al perdedor de una carrera concurrente durante toda la conversión).
+        boolean claimed;
+        try {
+            photoUploadClaimService.claimOrThrow(request.key());
+            claimed = true;
+        } catch (DataIntegrityViolationException e) {
+            claimed = false;
+        }
+
+        if (!claimed) {
+            return resolveAlreadyClaimedConfirm(request.key());
+        }
+
         // Verificación de contenido real (magic bytes) del objeto ya subido a storage,
         // independiente del Content-Type que haya declarado el cliente. Si es un HEIC/HEIF
         // real, se convierte acá mismo a JPEG (la mayoria de los navegadores -- Chrome,
@@ -102,7 +126,13 @@ public class PhotoServiceImpl implements PhotoService {
         // el proceso externo heif-convert y vuelve a subir/borrar en R2 -- operaciones
         // lentas que no deben retener una conexión de HikariCP ni mantener una transacción
         // abierta. Si algo acá falla, todavía no se tocó la base ni el cupo del invitado.
-        String finalKey = validateAndConvertIfNeeded(request.key());
+        String finalKey;
+        try {
+            finalKey = validateAndConvertIfNeeded(request.key());
+        } catch (RuntimeException e) {
+            photoUploadClaimService.markFailed(request.key(), statusOf(e), e.getMessage());
+            throw e;
+        }
 
         String publicUrl = storageService.generatePublicUrl(finalKey);
 
@@ -113,7 +143,7 @@ public class PhotoServiceImpl implements PhotoService {
         PhotoResponseDTO response;
         try {
             response = photoPersistenceService.persistConfirmedPhoto(
-                    event, finalKey, request.uploaderName(), request.caption(), request.guestToken(), publicUrl);
+                    event, request.key(), finalKey, request.uploaderName(), request.caption(), request.guestToken(), publicUrl);
         } catch (GuestQuotaExceededException e) {
             log.warn("Cupo agotado al confirmar; eliminando objeto huérfano '{}' de storage", finalKey);
             try {
@@ -121,12 +151,46 @@ public class PhotoServiceImpl implements PhotoService {
             } catch (Exception cleanupEx) {
                 log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", finalKey, cleanupEx.getMessage());
             }
+            photoUploadClaimService.markFailed(request.key(), HttpStatus.FORBIDDEN.value(), e.getMessage());
             throw e;
         }
 
         log.info("Foto confirmada y publicada con ID {} para el evento '{}'", response.id(), slug);
         sseBroadcaster.broadcastPhotoPublished(event.getId(), response);
         return response;
+    }
+
+    /**
+     * Otra llamada con la misma upload_key ya la reclamó (reintento propio o una carrera
+     * concurrente real). Si esa llamada ya terminó de persistir la foto, se devuelve tal
+     * cual (idempotencia), sin volver a tocar storage ni cupo. Si terminó en un rechazo
+     * definitivo (archivo inválido, cupo agotado), se le reconstruye al caller el MISMO
+     * status y mensaje. Si todavía está procesando, se lanza una excepción transitoria
+     * (503) que el propio mecanismo de reintento del frontend resuelve en su próximo
+     * intento, sin bloquear este hilo/conexión esperando a que termine.
+     */
+    private PhotoResponseDTO resolveAlreadyClaimedConfirm(String uploadKey) {
+        Optional<Photo> existing = photoRepository.findByUploadKey(uploadKey);
+        if (existing.isPresent()) {
+            Photo photo = existing.get();
+            log.info("confirmUpload idempotente: la upload_key '{}' ya fue procesada, devolviendo foto {}", uploadKey, photo.getId());
+            List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
+            return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
+        }
+
+        Optional<PhotoUploadClaim> claim = photoUploadClaimService.find(uploadKey);
+        if (claim.isPresent() && claim.get().getFailedStatus() != null) {
+            throw new UploadClaimFailedException(claim.get().getFailedStatus(), claim.get().getFailedMessage());
+        }
+
+        throw new UploadInProgressException("Tu foto se está procesando, esperá un instante.");
+    }
+
+    private static int statusOf(RuntimeException e) {
+        if (e instanceof InvalidFileContentException) {
+            return HttpStatus.UNPROCESSABLE_ENTITY.value();
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR.value();
     }
 
     @Override
@@ -215,7 +279,7 @@ public class PhotoServiceImpl implements PhotoService {
         // no dejar basura en storage sin un registro Photo que lo referencie.
         PhotoResponseDTO response;
         try {
-            response = photoPersistenceService.persistConfirmedPhoto(event, key, uploaderName, caption, guestToken, publicUrl);
+            response = photoPersistenceService.persistConfirmedPhoto(event, key, key, uploaderName, caption, guestToken, publicUrl);
         } catch (GuestQuotaExceededException e) {
             log.warn("Cupo agotado tras subir a storage en upload-direct; eliminando objeto huérfano '{}'", key);
             try {

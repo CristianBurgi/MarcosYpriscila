@@ -56,7 +56,7 @@ class ZipStreamingFailureTest {
         guestbookPdfService = mock(GuestbookPdfService.class);
         photoService = new PhotoServiceImpl(photoRepository, mock(CommentRepository.class), eventService, storageService,
                 mock(SseBroadcaster.class), mock(RateLimiterService.class), mock(GuestQuotaService.class),
-                mock(PhotoPersistenceService.class), guestbookPdfService);
+                mock(PhotoPersistenceService.class), guestbookPdfService, mock(PhotoUploadClaimService.class));
 
         event = Event.builder().id(UUID.randomUUID()).slug("marcos-y-priscila").build();
         brokenInR2 = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/marcos-y-priscila/rota.jpg").uploaderName("Ana").build();
