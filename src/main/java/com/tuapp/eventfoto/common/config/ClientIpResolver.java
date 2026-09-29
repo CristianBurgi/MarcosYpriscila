@@ -22,9 +22,17 @@ import org.springframework.stereotype.Component;
  * local, por ejemplo), se ignora el header por completo y se usa remoteAddr tal cual: ahí
  * no hay ningún proxy de por medio cuya palabra valga más que la conexión real.
  *
- * Pendiente de confirmar contra logs reales de producción (ver PR): esta implementación
- * asume el rango de proxies internos que documenta Railway; si el patrón real difiere,
- * ajustar TRUSTED_PROXY_RANGE_* acá, en un solo lugar.
+ * Pendiente de confirmar contra logs reales de producción: esta implementación asume
+ * el rango de proxies internos que documenta Railway. Para verificarlo, activar el log
+ * DEBUG de este paquete en Railway con la variable de entorno
+ * {@code LOGGING_LEVEL_COM_TUAPP_EVENTFOTO_COMMON_CONFIG=DEBUG} (a nivel de PAQUETE, no
+ * de clase: Spring hace binding de variables de entorno en minúsculas --
+ * "LOGGING_LEVEL_..._CLIENTIPRESOLVER" resolvería a la propiedad
+ * "logging.level....clientipresolver", que nunca matchea el logger real
+ * "com.tuapp.eventfoto.common.config.ClientIpResolver" porque los nombres de clase Java
+ * llevan mayúsculas. El paquete no tiene ese problema porque ya es todo minúsculas).
+ * Si el patrón real difiere de lo asumido, ajustar TRUSTED_PROXY_RANGE_* acá, en un solo
+ * lugar.
  */
 @Slf4j
 @Component
@@ -36,7 +44,13 @@ public class ClientIpResolver {
     public String resolve(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();
         String forwardedFor = request.getHeader("X-Forwarded-For");
+        String resolved = doResolve(remoteAddr, forwardedFor);
 
+        log.debug("ClientIpResolver: remoteAddr='{}' X-Forwarded-For='{}' -> resuelto='{}'", remoteAddr, forwardedFor, resolved);
+        return resolved;
+    }
+
+    private String doResolve(String remoteAddr, String forwardedFor) {
         if (forwardedFor == null || forwardedFor.isBlank() || !isTrustedInternalProxy(remoteAddr)) {
             return remoteAddr;
         }
@@ -51,7 +65,6 @@ public class ClientIpResolver {
 
         // Toda la cadena son proxies internos conocidos (sin IP de cliente real presente):
         // no hay nada mejor para devolver que la conexión directa.
-        log.debug("X-Forwarded-For ('{}') son todo hops internos conocidos de Railway; usando remoteAddr", forwardedFor);
         return remoteAddr;
     }
 
