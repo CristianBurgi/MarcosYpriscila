@@ -52,14 +52,17 @@ cloudflare:
     endpoint: ${R2_ENDPOINT:https://<account-id>.r2.cloudflarestorage.com}
     public-url: ${R2_PUBLIC_URL:}
 
-# Configuración de Autenticación y JWT para Admin
+# Configuración de Autenticación y JWT
 security:
-  admin:
-    email: ${ADMIN_EMAIL:admin@boda.com}
-    password: ${ADMIN_PASSWORD:admin123}
+  # Superadmin (fase 9.1 Bloque 1): credenciales por variable de entorno, sin fila en BD.
+  superadmin:
+    email: ${SUPERADMIN_EMAIL:superadmin@eventfoto.com.ar}
+    password: ${SUPERADMIN_PASSWORD:admin123}
+    jwt:
+      expiration-ms: ${SUPERADMIN_JWT_EXPIRATION_MS:7200000} # 2 horas -- sin tokenVersion que revisar en BD, la única defensa es una sesión corta
   jwt:
     secret: ${JWT_SECRET:very_secret_jwt_key_that_is_at_least_256_bits_long_for_security_reasons}
-    expiration-ms: ${JWT_EXPIRATION_MS:28800000} # 8 horas (28,800,000 ms)
+    expiration-ms: ${JWT_EXPIRATION_MS:28800000} # 8 horas (28,800,000 ms) -- organizador
 
 management:
   endpoints:

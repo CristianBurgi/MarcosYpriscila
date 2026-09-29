@@ -22,19 +22,21 @@ class ProductionSecretsValidatorTest {
 
     private static final String REAL_JWT = "k7Qp2vX9mR4tW8zL1nB6cF3hJ0dS5gY2aE7uI9oP";
 
-    private static ProductionSecretsValidator validator(String mode, String admin, String jwt, String db, String r2Key, String r2Secret) {
-        return new ProductionSecretsValidator(mode, admin, jwt, db, r2Key, r2Secret);
+    private static ProductionSecretsValidator validator(String mode, String superadminEmail, String superadminPassword,
+                                                          String jwt, String db, String r2Key, String r2Secret) {
+        return new ProductionSecretsValidator(mode, superadminEmail, superadminPassword, jwt, db, r2Key, r2Secret);
     }
 
     @Test
-    @DisplayName("En producción (r2) no arranca si ADMIN_PASSWORD o JWT_SECRET tienen el valor de ejemplo, y el mensaje no expone el valor")
+    @DisplayName("En producción (r2) no arranca si SUPERADMIN_PASSWORD o JWT_SECRET tienen el valor de ejemplo, y el mensaje no expone el valor")
     void productionWithExampleSecretsFailsWithoutLeakingValues() {
-        var v = validator("r2", "admin123", "very_secret_jwt_key_that_is_at_least_256_bits_long_for_security_reasons",
+        var v = validator("r2", "real-admin@example.com", "admin123",
+                "very_secret_jwt_key_that_is_at_least_256_bits_long_for_security_reasons",
                 "real-db-pass-XYZ", "real-access", "real-secret");
 
         assertThatThrownBy(v::validateOnStartup)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("ADMIN_PASSWORD")
+                .hasMessageContaining("SUPERADMIN_PASSWORD")
                 .hasMessageContaining("JWT_SECRET")
                 .hasMessageNotContaining("admin123")
                 .hasMessageNotContaining("very_secret_jwt_key");
@@ -45,7 +47,8 @@ class ProductionSecretsValidatorTest {
     void everyKnownExampleValueIsRejected() {
         ProductionSecretsValidator.KNOWN_EXAMPLE_VALUES.forEach((var, examples) -> examples.forEach(example -> {
             var v = validator("r2",
-                    var.equals("ADMIN_PASSWORD") ? example : "real-admin-pass",
+                    var.equals("SUPERADMIN_EMAIL") ? example : "real-admin@example.com",
+                    var.equals("SUPERADMIN_PASSWORD") ? example : "real-admin-pass",
                     var.equals("JWT_SECRET") ? example : REAL_JWT,
                     var.equals("DB_PASSWORD") ? example : "real-db-pass",
                     var.equals("R2_ACCESS_KEY") ? example : "real-access",
@@ -57,16 +60,20 @@ class ProductionSecretsValidatorTest {
     @Test
     @DisplayName("En producción no arranca con secretos vacíos ni con un JWT_SECRET de menos de 32 caracteres")
     void missingOrShortSecretsFail() {
-        assertThat(validator("r2", "", REAL_JWT, "db", "a", "s").findProblems()).containsExactly("ADMIN_PASSWORD: no está seteada");
-        assertThat(validator("r2", "real", "corto", "db", "a", "s").findProblems()).containsExactly("JWT_SECRET: tiene menos de 32 caracteres");
+        assertThat(validator("r2", "real-admin@example.com", "", REAL_JWT, "db", "a", "s").findProblems())
+                .containsExactly("SUPERADMIN_PASSWORD: no está seteada");
+        assertThat(validator("r2", "", "real", REAL_JWT, "db", "a", "s").findProblems())
+                .containsExactly("SUPERADMIN_EMAIL: no está seteada");
+        assertThat(validator("r2", "real-admin@example.com", "real", "corto", "db", "a", "s").findProblems())
+                .containsExactly("JWT_SECRET: tiene menos de 32 caracteres");
     }
 
     @Test
     @DisplayName("Con secretos reales arranca; en modo local no valida (los valores de ejemplo son lo esperado en desarrollo)")
     void realSecretsOrLocalModeStart() {
-        assertThatCode(validator("r2", "real-admin-pass", REAL_JWT, "real-db", "real-access", "real-secret")::validateOnStartup)
+        assertThatCode(validator("r2", "real-admin@example.com", "real-admin-pass", REAL_JWT, "real-db", "real-access", "real-secret")::validateOnStartup)
                 .doesNotThrowAnyException();
-        assertThatCode(validator("local", "admin123", "super_secret_jwt_key_minimo_32_caracteres_123456",
+        assertThatCode(validator("local", "superadmin@eventfoto.com.ar", "admin123", "super_secret_jwt_key_minimo_32_caracteres_123456",
                 "postgres_local_dev_password", "r2_placeholder_access_key", "r2_placeholder_secret_key")::validateOnStartup)
                 .doesNotThrowAnyException();
     }
@@ -99,7 +106,8 @@ class ProductionSecretsValidatorTest {
 
         // 3. application-test.yml y docker-compose.yml (propiedades, no variables)
         Map<String, Object> testYml = new Yaml().load(read("src/test/resources/application-test.yml"));
-        found.get("ADMIN_PASSWORD").add(String.valueOf(path(testYml, "security", "admin", "password")));
+        found.get("SUPERADMIN_EMAIL").add(String.valueOf(path(testYml, "security", "superadmin", "email")));
+        found.get("SUPERADMIN_PASSWORD").add(String.valueOf(path(testYml, "security", "superadmin", "password")));
         found.get("JWT_SECRET").add(String.valueOf(path(testYml, "security", "jwt", "secret")));
         found.get("DB_PASSWORD").add(String.valueOf(path(testYml, "spring", "datasource", "password")));
         Map<String, Object> compose = new Yaml().load(read("docker-compose.yml"));

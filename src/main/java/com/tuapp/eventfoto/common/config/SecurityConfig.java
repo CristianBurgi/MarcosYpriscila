@@ -73,12 +73,22 @@ public class SecurityConfig {
                     "/api/v1/events/**", "/api/v1/photos/**", "/api/v1/messages/**", "/api/v1/comments/**"
                 ).permitAll()
                 
-                // Rutas de Login y Autenticación Admin
+                // Rutas de Login y Autenticación del organizador
                 .requestMatchers("/admin/login", "/api/v1/admin/auth/login").permitAll()
-                
-                // Rutas protegidas que requieren rol ADMIN
-                .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
-                
+
+                // Activación de cuenta del organizador (link de un solo uso, público hasta que se consume)
+                .requestMatchers(HttpMethod.GET, "/activar-cuenta").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/organizer/activate").permitAll()
+
+                // Rutas protegidas que requieren rol ORGANIZER
+                .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ORGANIZER")
+
+                // Login del superadmin
+                .requestMatchers("/superadmin/login", "/api/v1/superadmin/auth/login").permitAll()
+
+                // Rutas protegidas que requieren rol SUPERADMIN, aisladas de ORGANIZER
+                .requestMatchers("/superadmin/**", "/api/v1/superadmin/**").hasRole("SUPERADMIN")
+
                 // Cierre por defecto: cualquier otra request requiere autenticación
                 .anyRequest().authenticated()
             )
@@ -93,6 +103,8 @@ public class SecurityConfig {
             String requestURI = request.getRequestURI();
             if (requestURI.startsWith("/api/")) {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Acceso no autorizado: Token JWT ausente o inválido");
+            } else if (requestURI.startsWith("/superadmin")) {
+                response.sendRedirect("/superadmin/login");
             } else {
                 response.sendRedirect("/admin/login");
             }

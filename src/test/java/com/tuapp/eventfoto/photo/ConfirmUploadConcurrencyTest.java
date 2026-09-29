@@ -1,7 +1,10 @@
 package com.tuapp.eventfoto.photo;
 
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.storage.StorageService;
 import org.junit.jupiter.api.AfterEach;
@@ -15,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,6 +56,9 @@ class ConfirmUploadConcurrencyTest {
     @Autowired
     private GuestQuotaRepository guestQuotaRepository;
 
+    @Autowired
+    private OrganizerRepository organizerRepository;
+
     @MockBean
     private StorageService storageService;
 
@@ -62,13 +69,18 @@ class ConfirmUploadConcurrencyTest {
         photoRepository.deleteAll();
         guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
+        organizerRepository.deleteAll();
+
+        Organizer organizer = organizerRepository.save(Organizer.builder().email("concurrency@test.com").build());
 
         event = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
 
         // streamObject lento (simula R2 degradado) + firma JPEG válida

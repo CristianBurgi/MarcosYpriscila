@@ -3,7 +3,10 @@ package com.tuapp.eventfoto.message;
 import com.tuapp.eventfoto.common.config.JwtAuthenticationFilter;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import jakarta.servlet.http.Cookie;
@@ -21,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -52,28 +56,36 @@ class GuestbookEndpointsTest {
     @Autowired
     private PhotoRepository photoRepository;
     @Autowired
+    private OrganizerRepository organizerRepository;
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     private Event event;
+    private Organizer organizer;
 
     @BeforeEach
     void setUp() {
         messageRepository.deleteAll();
         photoRepository.deleteAll();
-        eventRepository.findBySlug("libro-endpoint").ifPresent(eventRepository::delete);
+        eventRepository.deleteAll();
+        organizerRepository.deleteAll();
+        organizer = organizerRepository.save(Organizer.builder().email("libro-endpoint@test.com").build());
         event = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de prueba")
                 .slug("libro-endpoint")
-                .eventDate(Instant.parse("2026-09-19T18:00:00Z"))
+                .eventDate(LocalDate.parse("2026-09-19"))
                 .uploadDeadline(Instant.parse("2026-10-04T23:59:00Z"))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
         messageRepository.save(Message.builder().event(event).authorName("Tía Marta").text("¡Felicidades! 😘").build());
         photoRepository.save(Photo.builder().event(event).storageKey("photos/libro-endpoint/foto.jpg").uploaderName("Ana").build());
     }
 
     private Cookie adminCookie() {
-        return new Cookie(JwtAuthenticationFilter.COOKIE_NAME, jwtTokenProvider.generateToken("admin@boda.com"));
+        return new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME,
+                jwtTokenProvider.generateOrganizerToken(organizer.getId(), organizer.getEmail(), organizer.getTokenVersion()));
     }
 
     @Test

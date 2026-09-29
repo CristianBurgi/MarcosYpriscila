@@ -2,7 +2,10 @@ package com.tuapp.eventfoto.photo;
 
 import com.tuapp.eventfoto.common.exception.UploadInProgressException;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.storage.StorageService;
@@ -17,6 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.io.ByteArrayInputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -55,6 +59,8 @@ class ConfirmUploadIdempotencyTest {
     private PhotoRepository photoRepository;
     @Autowired
     private GuestQuotaRepository guestQuotaRepository;
+    @Autowired
+    private OrganizerRepository organizerRepository;
     @MockBean
     private StorageService storageService;
 
@@ -65,13 +71,18 @@ class ConfirmUploadIdempotencyTest {
         photoRepository.deleteAll();
         guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
+        organizerRepository.deleteAll();
+
+        Organizer organizer = organizerRepository.save(Organizer.builder().email("idempotency@test.com").build());
 
         event = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
 
         when(storageService.generatePublicUrl(anyString())).thenAnswer(inv -> "https://r2.test/" + inv.getArgument(0));

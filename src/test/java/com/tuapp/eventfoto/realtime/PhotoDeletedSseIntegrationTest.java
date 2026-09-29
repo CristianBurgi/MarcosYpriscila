@@ -2,7 +2,10 @@ package com.tuapp.eventfoto.realtime;
 
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,18 +53,26 @@ class PhotoDeletedSseIntegrationTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private OrganizerRepository organizerRepository;
+
     private Event event;
+    private Organizer organizer;
 
     @BeforeEach
     void setUp() {
         photoRepository.deleteAll();
         eventRepository.deleteAll();
+        organizerRepository.deleteAll();
+        organizer = organizerRepository.save(Organizer.builder().email("sse@test.com").build());
         event = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
     }
 
@@ -78,7 +90,7 @@ class PhotoDeletedSseIntegrationTest {
         clearInvocations(screen); // descarta el INIT
 
         mockMvc.perform(delete("/api/v1/admin/photos/" + photo.getId())
-                        .header("Authorization", "Bearer " + jwtTokenProvider.generateToken("admin@boda.com")))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.generateOrganizerToken(organizer.getId(), organizer.getEmail(), organizer.getTokenVersion())))
                 .andExpect(status().isNoContent());
 
         ArgumentCaptor<SseEmitter.SseEventBuilder> captor = ArgumentCaptor.forClass(SseEmitter.SseEventBuilder.class);

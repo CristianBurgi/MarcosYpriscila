@@ -3,13 +3,14 @@ package com.tuapp.eventfoto.event.dto;
 import com.tuapp.eventfoto.event.Event;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record EventResponseDTO(
     UUID id,
     String name,
     String slug,
-    Instant eventDate,
+    LocalDate eventDate,
     Instant uploadDeadline,
     boolean isActive,
     Instant createdAt
