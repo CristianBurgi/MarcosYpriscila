@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.message;
 
+import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.message.dto.CreateMessageRequestDTO;
 import com.tuapp.eventfoto.message.dto.MessageResponseDTO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class MessageController {
 
     private final MessageService messageService;
+    private final ClientIpResolver clientIpResolver;
 
     /**
      * POST /api/v1/events/{slug}/messages
@@ -29,7 +31,7 @@ public class MessageController {
             @Valid @RequestBody CreateMessageRequestDTO request,
             HttpServletRequest servletRequest) {
 
-        String clientIp = getClientIp(servletRequest);
+        String clientIp = clientIpResolver.resolve(servletRequest);
         MessageResponseDTO message = messageService.addMessage(slug, request, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).body(message);
     }
@@ -47,13 +49,5 @@ public class MessageController {
         Pageable pageable = PageRequest.of(page, size);
         Page<MessageResponseDTO> messages = messageService.getMessages(slug, pageable);
         return ResponseEntity.ok(messages);
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null || xfHeader.isBlank()) {
-            return request.getRemoteAddr();
-        }
-        return xfHeader.split(",")[0].trim();
     }
 }

@@ -59,6 +59,17 @@ class SuperadminEventServiceTest {
     }
 
     @Test
+    @DisplayName("Un nombre de evento muy largo no rompe la creación (el slug se recorta, no el nombre guardado)")
+    void veryLongEventNameDoesNotBreakCreation() {
+        String longName = "Cumpleaños de quince años de la prima Antonella con toda la familia reunida en el salón del club social del barrio";
+
+        var result = superadminEventService.createFreeEvent("nombre-largo@test.com", longName, "Prueba de nombre largo");
+
+        assertThat(result.event().getName()).isEqualTo(longName);
+        assertThat(result.event().getSlug().length()).isLessThan(100);
+    }
+
+    @Test
     @DisplayName("Dos eventos sin costo para el mismo email ya existente quedan bajo la misma cuenta")
     void twoFreeEventsForSameExistingEmailShareOneAccount() {
         organizerRepository.save(Organizer.builder().email("repetido@test.com").build());

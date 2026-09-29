@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- La URL lleva el token de activación en la query string; sin esto, cargar
+         Google Fonts (u otro recurso de terceros) filtraría la URL completa, token
+         incluido, en el header Referer de esa request. -->
+    <meta name="referrer" content="no-referrer">
     <title>Activar tu cuenta — EventFoto</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

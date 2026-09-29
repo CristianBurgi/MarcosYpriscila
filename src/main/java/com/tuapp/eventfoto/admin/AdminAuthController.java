@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.admin;
 
 import com.tuapp.eventfoto.admin.dto.AuthResponseDTO;
 import com.tuapp.eventfoto.admin.dto.LoginRequestDTO;
+import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.common.config.JwtAuthenticationFilter;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.organizer.OrganizerAuthService;
@@ -26,6 +27,7 @@ public class AdminAuthController {
 
     private final OrganizerAuthService organizerAuthService;
     private final RateLimiterService rateLimiterService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(
@@ -33,7 +35,7 @@ public class AdminAuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
-        String clientIp = extractClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         rateLimiterService.checkAdminLoginRateLimit(clientIp);
 
         AuthResponseDTO authResponse = organizerAuthService.authenticate(request);
@@ -65,14 +67,6 @@ public class AdminAuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
 
         return ResponseEntity.noContent().build();
-    }
-
-    private String extractClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }
 

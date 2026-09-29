@@ -275,6 +275,26 @@ class AdminSecurityTest {
     }
 
     @Test
+    @DisplayName("Un X-Forwarded-For inventado y distinto en cada intento no evita el bloqueo del rate limit")
+    void fabricatedXForwardedForDoesNotEvadeLoginRateLimit() throws Exception {
+        LoginRequestDTO badRequest = new LoginRequestDTO("admin-security@test.com", "wrongpass");
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/admin/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(badRequest))
+                            .header("X-Forwarded-For", "10.0.0." + i)) // el atacante cambia el header en cada intento
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/v1/admin/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRequest))
+                        .header("X-Forwarded-For", "10.0.0.99"))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
     @DisplayName("Permitir acceso público únicamente a GET /actuator/health y proteger otros endpoints de Actuator")
     void shouldAllowPublicAccessToActuatorHealthOnly() throws Exception {
         // GET /actuator/health debe responder HTTP 200 OK

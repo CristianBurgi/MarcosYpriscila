@@ -26,6 +26,14 @@ public class SlugGenerator {
     private static final int SUFFIX_LENGTH = 8;
     private static final int MAX_ATTEMPTS = 10;
 
+    /**
+     * events.slug es VARCHAR(100); eventName no tiene límite propio (además del
+     * @Size(max=255) del DTO), así que la base normalizada se recorta bien por debajo
+     * de esa cota -- 60 + "-" + 8 del sufijo deja margen de sobra y evita el 500 por
+     * "value too long for type character varying(100)" con un nombre largo.
+     */
+    private static final int MAX_BASE_LENGTH = 60;
+
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final EventRepository eventRepository;
@@ -51,6 +59,9 @@ public class SlugGenerator {
         withoutAccents = DIACRITICS.matcher(withoutAccents).replaceAll("");
         String slugified = NON_ALPHANUMERIC.matcher(withoutAccents.toLowerCase()).replaceAll("-");
         slugified = EDGE_HYPHENS.matcher(slugified).replaceAll("");
+        if (slugified.length() > MAX_BASE_LENGTH) {
+            slugified = EDGE_HYPHENS.matcher(slugified.substring(0, MAX_BASE_LENGTH)).replaceAll("");
+        }
         return slugified.isBlank() ? "evento" : slugified;
     }
 

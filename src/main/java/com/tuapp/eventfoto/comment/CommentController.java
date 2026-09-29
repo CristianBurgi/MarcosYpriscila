@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.comment;
 
 import com.tuapp.eventfoto.comment.dto.CommentResponseDTO;
 import com.tuapp.eventfoto.comment.dto.CreateCommentRequestDTO;
+import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.UUID;
 public class CommentController {
 
     private final CommentService commentService;
+    private final ClientIpResolver clientIpResolver;
 
     /**
      * POST /api/v1/photos/{photoId}/comments
@@ -29,7 +31,7 @@ public class CommentController {
             @Valid @RequestBody CreateCommentRequestDTO request,
             HttpServletRequest servletRequest) {
 
-        String clientIp = getClientIp(servletRequest);
+        String clientIp = clientIpResolver.resolve(servletRequest);
         CommentResponseDTO comment = commentService.addComment(photoId, request, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).body(comment);
     }
@@ -42,13 +44,5 @@ public class CommentController {
     public ResponseEntity<List<CommentResponseDTO>> getPhotoComments(@PathVariable UUID photoId) {
         List<CommentResponseDTO> comments = commentService.getPhotoComments(photoId);
         return ResponseEntity.ok(comments);
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null || xfHeader.isBlank()) {
-            return request.getRemoteAddr();
-        }
-        return xfHeader.split(",")[0].trim();
     }
 }
