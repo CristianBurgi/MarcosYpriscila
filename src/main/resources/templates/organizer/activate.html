@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- La URL lleva el token de activación en la query string; sin esto, cargar
+         Google Fonts (u otro recurso de terceros) filtraría la URL completa, token
+         incluido, en el header Referer de esa request. -->
+    <meta name="referrer" content="no-referrer">
+    <title>Activar tu cuenta — EventFoto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --accent-purple: #c084fc;
+            --accent-pink: #f472b6;
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-gradient); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: var(--text-primary); }
+        .card { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 24px; padding: 40px; width: 100%; max-width: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .header { text-align: center; margin-bottom: 28px; }
+        h1 { font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, #f472b6, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+        .header p { color: var(--text-muted); font-size: 0.9rem; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
+        .form-control { width: 100%; padding: 14px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 1rem; outline: none; }
+        .form-control:focus { border-color: var(--accent-purple); box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.25); }
+        .btn-submit { width: 100%; padding: 14px; margin-top: 10px; background: linear-gradient(135deg, #ec4899, #8b5cf6); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .alert { display: none; padding: 12px 16px; border-radius: 12px; font-size: 0.9rem; margin-bottom: 20px; text-align: center; }
+        .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
+        .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+        .success-view { display: none; text-align: center; }
+        .success-view a { display: inline-block; margin-top: 16px; color: var(--accent-purple); font-weight: 600; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h1>Activá tu cuenta</h1>
+        <p>Elegí tu contraseña para poder loguearte</p>
+    </div>
+
+    <div id="alertError" class="alert alert-error"></div>
+
+    <form id="activateForm">
+        <div class="form-group">
+            <label for="password">Contraseña nueva</label>
+            <input type="password" id="password" class="form-control" placeholder="Mínimo 8 caracteres" required minlength="8" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label for="passwordConfirm">Repetí la contraseña</label>
+            <input type="password" id="passwordConfirm" class="form-control" required minlength="8" autocomplete="new-password">
+        </div>
+        <button type="submit" id="btnSubmit" class="btn-submit">Activar cuenta</button>
+    </form>
+
+    <div id="successView" class="success-view">
+        <div class="alert alert-success" style="display:block">Cuenta activada correctamente.</div>
+        <a href="/admin/login">Ir a iniciar sesión</a>
+    </div>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const form = document.getElementById('activateForm');
+    const alertError = document.getElementById('alertError');
+
+    if (!token) {
+        alertError.innerText = 'El link no incluye un token de activación válido.';
+        alertError.style.display = 'block';
+        form.querySelectorAll('input, button').forEach(el => el.disabled = true);
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        alertError.style.display = 'none';
+
+        const password = document.getElementById('password').value;
+        const passwordConfirm = document.getElementById('passwordConfirm').value;
+
+        if (password !== passwordConfirm) {
+            alertError.innerText = 'Las contraseñas no coinciden.';
+            alertError.style.display = 'block';
+            return;
+        }
+
+        const btnSubmit = document.getElementById('btnSubmit');
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = 'Activando...';
+
+        try {
+            const response = await fetch('/api/v1/organizer/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token, password })
+            });
+
+            if (response.ok) {
+                form.style.display = 'none';
+                document.getElementById('successView').style.display = 'block';
+            } else {
+                const errData = await response.json().catch(() => ({}));
+                alertError.innerText = errData.message || 'El link no es válido, ya se usó o venció.';
+                alertError.style.display = 'block';
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = 'Activar cuenta';
+            }
+        } catch (err) {
+            alertError.innerText = 'Error de conexión con el servidor.';
+            alertError.style.display = 'block';
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = 'Activar cuenta';
+        }
+    });
+</script>
+</body>
+</html>

@@ -109,6 +109,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(InvalidActivationTokenException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidActivationToken(
+            InvalidActivationTokenException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request - Invalid Activation Token",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
     @ExceptionHandler(GuestQuotaExceededException.class)
     public ResponseEntity<ErrorResponseDTO> handleGuestQuotaExceeded(
             GuestQuotaExceededException ex, HttpServletRequest request) {

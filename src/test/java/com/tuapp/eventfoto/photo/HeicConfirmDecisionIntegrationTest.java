@@ -3,7 +3,10 @@ package com.tuapp.eventfoto.photo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.storage.FileSignatureValidator;
 import com.tuapp.eventfoto.storage.StorageService;
@@ -23,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +65,7 @@ class HeicConfirmDecisionIntegrationTest {
     @Autowired private EventRepository eventRepository;
     @Autowired private PhotoRepository photoRepository;
     @Autowired private GuestQuotaRepository guestQuotaRepository;
+    @Autowired private OrganizerRepository organizerRepository;
     @Autowired private RateLimiterService rateLimiterService;
 
     @MockBean private StorageService storageService;
@@ -96,14 +101,19 @@ class HeicConfirmDecisionIntegrationTest {
         photoRepository.deleteAll();
         guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
+        organizerRepository.deleteAll();
         bucket.clear();
 
+        Organizer organizer = organizerRepository.save(Organizer.builder().email("heic@test.com").build());
+
         eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86_400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864_000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
 
         // StorageService respaldado por el mapa -> la decisión corre sobre bytes reales.

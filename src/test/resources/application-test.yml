@@ -23,9 +23,11 @@ cloudflare:
     endpoint: http://localhost:8080
 
 security:
-  admin:
-    email: admin@boda.com
+  superadmin:
+    email: superadmin@boda.com
     password: admin123
+    jwt:
+      expiration-ms: 7200000
   jwt:
     secret: super_secret_jwt_key_minimo_32_caracteres_123456
     expiration-ms: 28800000

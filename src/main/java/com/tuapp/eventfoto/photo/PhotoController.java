@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.photo;
 
+import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class PhotoController {
 
     private final PhotoService photoService;
+    private final ClientIpResolver clientIpResolver;
 
     /**
      * POST /api/v1/events/{slug}/photos/upload-url
@@ -31,7 +33,7 @@ public class PhotoController {
             @Valid @RequestBody UploadUrlRequestDTO request,
             HttpServletRequest servletRequest) {
 
-        String clientIp = getClientIp(servletRequest);
+        String clientIp = clientIpResolver.resolve(servletRequest);
         // Pasar guestToken para rate limiting en dos capas (por guest + por IP)
         UploadUrlResponseDTO response = photoService.generateUploadUrl(slug, request, clientIp, request.guestToken());
         return ResponseEntity.ok(response);
@@ -79,13 +81,5 @@ public class PhotoController {
         Pageable pageable = PageRequest.of(page, size);
         Page<PhotoResponseDTO> photos = photoService.getPhotos(slug, pageable);
         return ResponseEntity.ok(photos);
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null || xfHeader.isBlank()) {
-            return request.getRemoteAddr();
-        }
-        return xfHeader.split(",")[0].trim();
     }
 }

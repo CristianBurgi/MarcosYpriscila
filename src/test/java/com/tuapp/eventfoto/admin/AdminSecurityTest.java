@@ -5,7 +5,10 @@ import com.tuapp.eventfoto.admin.dto.LoginRequestDTO;
 import com.tuapp.eventfoto.common.config.JwtAuthenticationFilter;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import jakarta.servlet.http.Cookie;
@@ -16,11 +19,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -45,12 +50,19 @@ class AdminSecurityTest {
     private PhotoRepository photoRepository;
 
     @Autowired
+    private OrganizerRepository organizerRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     private com.tuapp.eventfoto.common.config.RateLimiterService rateLimiterService;
 
     private Event event;
+    private Organizer organizer;
     private String adminJwtToken;
 
     @BeforeEach
@@ -58,16 +70,24 @@ class AdminSecurityTest {
         rateLimiterService.resetRateLimits();
         photoRepository.deleteAllInBatch();
         eventRepository.deleteAllInBatch();
+        organizerRepository.deleteAllInBatch();
 
-        event = eventRepository.saveAndFlush(Event.builder()
-                .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86400))
-                .uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true)
+        organizer = organizerRepository.saveAndFlush(Organizer.builder()
+                .email("admin-security@test.com")
+                .passwordHash(passwordEncoder.encode("admin123"))
                 .build());
 
-        adminJwtToken = jwtTokenProvider.generateToken("admin@boda.com");
+        event = eventRepository.saveAndFlush(Event.builder()
+                .organizer(organizer)
+                .name("Boda de Marcos y Priscila")
+                .slug("marcos-y-priscila")
+                .eventDate(LocalDate.now().plusDays(1))
+                .uploadDeadline(Instant.now().plusSeconds(864000))
+                .isActive(true)
+                .origin(EventOrigin.PAID)
+                .build());
+
+        adminJwtToken = jwtTokenProvider.generateOrganizerToken(organizer.getId(), organizer.getEmail(), organizer.getTokenVersion());
     }
 
 
@@ -89,21 +109,21 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Login exitoso devuelve 200 OK y setea cookie JWT-TOKEN")
     void shouldAuthenticateAdminSuccessfully() throws Exception {
-        LoginRequestDTO loginRequest = new LoginRequestDTO("admin@boda.com", "admin123");
+        LoginRequestDTO loginRequest = new LoginRequestDTO("admin-security@test.com", "admin123");
 
         mockMvc.perform(post("/api/v1/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
-                .andExpect(cookie().exists(JwtAuthenticationFilter.COOKIE_NAME))
+                .andExpect(cookie().exists(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME))
                 .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.email").value("admin@boda.com"));
+                .andExpect(jsonPath("$.email").value("admin-security@test.com"));
     }
 
     @Test
     @DisplayName("Login fallido devuelve 401 Unauthorized con contraseña incorrecta")
     void shouldFailLoginWithBadCredentials() throws Exception {
-        LoginRequestDTO loginRequest = new LoginRequestDTO("admin@boda.com", "wrongpassword");
+        LoginRequestDTO loginRequest = new LoginRequestDTO("admin-security@test.com", "wrongpassword");
 
         mockMvc.perform(post("/api/v1/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -115,7 +135,7 @@ class AdminSecurityTest {
     @DisplayName("Acceso concedido al dashboard con Cookie JWT válida")
     void shouldAccessDashboardWithJwtCookie() throws Exception {
         mockMvc.perform(get("/admin/dashboard")
-                        .cookie(new Cookie(JwtAuthenticationFilter.COOKIE_NAME, adminJwtToken)))
+                        .cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, adminJwtToken)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/dashboard"))
                 .andExpect(model().attributeExists("photos", "totalPhotos", "totalMessages", "guestMenuUrl"))
@@ -224,7 +244,7 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Validar encabezado Set-Cookie con atributos HttpOnly, Secure y SameSite=Strict en login")
     void shouldReturnSetCookieHeaderWithSameSiteStrictOnLogin() throws Exception {
-        LoginRequestDTO loginRequest = new LoginRequestDTO("admin@boda.com", "admin123");
+        LoginRequestDTO loginRequest = new LoginRequestDTO("admin-security@test.com", "admin123");
 
         mockMvc.perform(post("/api/v1/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -238,7 +258,7 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Bloquear intentos de login si superan el límite de rate limit por IP (429 Too Many Requests)")
     void shouldBlockLoginAfterMaxFailedAttempts() throws Exception {
-        LoginRequestDTO badRequest = new LoginRequestDTO("admin@boda.com", "wrongpass");
+        LoginRequestDTO badRequest = new LoginRequestDTO("admin-security@test.com", "wrongpass");
 
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/api/v1/admin/auth/login")
@@ -251,6 +271,26 @@ class AdminSecurityTest {
         mockMvc.perform(post("/api/v1/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(badRequest)))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("Un X-Forwarded-For inventado y distinto en cada intento no evita el bloqueo del rate limit")
+    void fabricatedXForwardedForDoesNotEvadeLoginRateLimit() throws Exception {
+        LoginRequestDTO badRequest = new LoginRequestDTO("admin-security@test.com", "wrongpass");
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/admin/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(badRequest))
+                            .header("X-Forwarded-For", "10.0.0." + i)) // el atacante cambia el header en cada intento
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/v1/admin/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRequest))
+                        .header("X-Forwarded-For", "10.0.0.99"))
                 .andExpect(status().isTooManyRequests());
     }
 

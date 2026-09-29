@@ -1,7 +1,10 @@
 package com.tuapp.eventfoto.message;
 
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -21,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +50,8 @@ class GuestbookPdfIntegrationTest {
     @Autowired
     private EventRepository eventRepository;
     @Autowired
+    private OrganizerRepository organizerRepository;
+    @Autowired
     private MessageRepository messageRepository;
 
     private Event event;
@@ -54,12 +60,16 @@ class GuestbookPdfIntegrationTest {
     void setUp() {
         messageRepository.deleteAll();
         eventRepository.findBySlug("libro-prueba").ifPresent(eventRepository::delete);
+        organizerRepository.findByEmailIgnoreCase("libro-prueba@test.com").ifPresent(organizerRepository::delete);
+        Organizer organizer = organizerRepository.save(Organizer.builder().email("libro-prueba@test.com").build());
         event = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("libro-prueba")
-                .eventDate(Instant.parse("2026-09-19T18:00:00Z"))
+                .eventDate(LocalDate.parse("2026-09-19"))
                 .uploadDeadline(Instant.parse("2026-10-04T23:59:00Z"))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
 
         Instant t = Instant.parse("2026-09-19T21:05:00Z");

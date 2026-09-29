@@ -2,7 +2,10 @@ package com.tuapp.eventfoto.realtime;
 
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.message.MessageRepository;
 import com.tuapp.eventfoto.message.MessageService;
 import com.tuapp.eventfoto.message.dto.CreateMessageRequestDTO;
@@ -21,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -56,6 +60,9 @@ class RealtimeIntegrationTest {
     @Autowired
     private MessageService messageService;
 
+    @Autowired
+    private OrganizerRepository organizerRepository;
+
     private Event event1;
     private Event event2;
 
@@ -65,21 +72,28 @@ class RealtimeIntegrationTest {
         messageRepository.deleteAll();
         photoRepository.deleteAll();
         eventRepository.deleteAll();
+        organizerRepository.deleteAll();
+
+        Organizer organizer = organizerRepository.save(Organizer.builder().email("realtime@test.com").build());
 
         event1 = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
 
         event2 = eventRepository.save(Event.builder()
+                .organizer(organizer)
                 .name("Cumpleaños de Prueba")
                 .slug("cumple-prueba")
-                .eventDate(Instant.now().plusSeconds(86400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build());
     }
 

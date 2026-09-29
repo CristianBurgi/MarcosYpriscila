@@ -54,7 +54,7 @@ public class GuestbookPdfService {
 
         byte[] pdf = pdfRenderService.render("pdf/libro-de-visitas", Map.of(
                 "eventName", sanitizer.clean(event.getName()),
-                "eventDate", COVER_DATE.format(event.getEventDate()),
+                "eventDate", event.getEventDate() != null ? COVER_DATE.format(event.getEventDate()) : "Fecha a confirmar",
                 "entries", entries
         ));
         log.info("Libro de visitas generado para '{}': {} mensajes, {} bytes", slug, entries.size(), pdf.length);

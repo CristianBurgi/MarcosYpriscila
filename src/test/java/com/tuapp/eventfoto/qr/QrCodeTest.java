@@ -14,6 +14,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,7 +57,7 @@ class QrCodeTest {
     @DisplayName("Endpoint GET /api/v1/events/{slug}/qr debe responder con imagen PNG")
     void shouldReturnQrCodePngFromEndpoint() throws Exception {
         UUID eventId = UUID.randomUUID();
-        EventResponseDTO eventDto = new EventResponseDTO(eventId, "Boda de Marcos y Priscila", "marcos-y-priscila", Instant.now(), null, true, Instant.now());
+        EventResponseDTO eventDto = new EventResponseDTO(eventId, "Boda de Marcos y Priscila", "marcos-y-priscila", LocalDate.now(), null, true, Instant.now());
         when(eventService.getEventBySlug(anyString())).thenReturn(eventDto);
 
         mockMvc.perform(get("/api/v1/events/marcos-y-priscila/qr")
@@ -69,7 +70,7 @@ class QrCodeTest {
     @Test
     @DisplayName("El QR apunta a APP_BASE_URL aunque la request llegue con otro host (X-Forwarded-Host)")
     void qrTargetComesOnlyFromAppBaseUrl() throws Exception {
-        EventResponseDTO eventDto = new EventResponseDTO(UUID.randomUUID(), "Boda", "marcos-y-priscila", Instant.now(), null, true, Instant.now());
+        EventResponseDTO eventDto = new EventResponseDTO(UUID.randomUUID(), "Boda", "marcos-y-priscila", LocalDate.now(), null, true, Instant.now());
         when(eventService.getEventBySlug(anyString())).thenReturn(eventDto);
 
         byte[] png = mockMvc.perform(get("/api/v1/events/marcos-y-priscila/qr")

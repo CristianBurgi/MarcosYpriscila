@@ -2,8 +2,10 @@ package com.tuapp.eventfoto.admin;
 
 import com.tuapp.eventfoto.admin.dto.AuthResponseDTO;
 import com.tuapp.eventfoto.admin.dto.LoginRequestDTO;
+import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.common.config.JwtAuthenticationFilter;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
+import com.tuapp.eventfoto.organizer.OrganizerAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -13,13 +15,19 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Login del organizador (antes login del único admin de la app -- ver
+ * OrganizerAuthService, fase 9.1 Bloque 1). Las rutas se mantienen bajo /admin: el
+ * Bloque 2 ("Mis eventos") va a rehacer este panel de todos modos.
+ */
 @RestController
 @RequestMapping("/api/v1/admin/auth")
 @RequiredArgsConstructor
 public class AdminAuthController {
 
-    private final AdminAuthService adminAuthService;
+    private final OrganizerAuthService organizerAuthService;
     private final RateLimiterService rateLimiterService;
+    private final ClientIpResolver clientIpResolver;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponseDTO> login(
@@ -27,13 +35,13 @@ public class AdminAuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
-        String clientIp = extractClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         rateLimiterService.checkAdminLoginRateLimit(clientIp);
 
-        AuthResponseDTO authResponse = adminAuthService.authenticate(request);
+        AuthResponseDTO authResponse = organizerAuthService.authenticate(request);
 
         // Crear ResponseCookie HttpOnly con SameSite=Strict y Secure para máxima protección CSRF
-        ResponseCookie jwtCookie = ResponseCookie.from(JwtAuthenticationFilter.COOKIE_NAME, authResponse.token())
+        ResponseCookie jwtCookie = ResponseCookie.from(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, authResponse.token())
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
@@ -48,7 +56,7 @@ public class AdminAuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse response) {
-        ResponseCookie jwtCookie = ResponseCookie.from(JwtAuthenticationFilter.COOKIE_NAME, "")
+        ResponseCookie jwtCookie = ResponseCookie.from(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, "")
                 .httpOnly(true)
                 .secure(true)
                 .sameSite("Strict")
@@ -59,14 +67,6 @@ public class AdminAuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, jwtCookie.toString());
 
         return ResponseEntity.noContent().build();
-    }
-
-    private String extractClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }
 

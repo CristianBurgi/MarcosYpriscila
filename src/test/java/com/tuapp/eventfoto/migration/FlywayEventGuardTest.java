@@ -1,0 +1,164 @@
+package com.tuapp.eventfoto.migration;
+
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+/**
+ * V12 (fase 9.1 Bloque 1) agrega events.organizer_id NOT NULL asumiendo que 'events'
+ * está vacía -- el guard tiene que frenar el deploy con un error claro si alguna vez
+ * no lo está, en vez de dejar la tabla en un estado inconsistente.
+ *
+ * Esto no se puede probar contra H2 (los tests normales de la app corren con Flyway
+ * deshabilitado y ddl-auto=create-drop): el guard usa un bloque PL/pgSQL (DO $$ ...
+ * RAISE EXCEPTION) que H2 no soporta. Se necesita un Postgres real -- se usa el mismo
+ * que docker-compose.yml levanta para desarrollo local, leyendo las credenciales del
+ * .env del repo (nunca se hardcodean acá). Si no hay .env o el Postgres no responde
+ * (por ejemplo en un entorno de CI sin Docker), el test se omite en vez de fallar: no
+ * hay Testcontainers en el proyecto y agregarlo es más cambio del que pide este bloque.
+ *
+ * Corre contra una base descartable creada y borrada en el mismo test -- nunca toca
+ * eventfoto_db (la base real de desarrollo local).
+ */
+class FlywayEventGuardTest {
+
+    private String adminUrl;
+    private String user;
+    private String password;
+    private String throwawayDb;
+    private String throwawayUrl;
+
+    @BeforeEach
+    void setUp() throws IOException, SQLException {
+        Map<String, String> env = loadDotEnv();
+        String dbUrl = env.get("DB_URL");
+        user = env.get("DB_USER");
+        password = env.get("DB_PASSWORD");
+
+        boolean hasConfig = dbUrl != null && user != null && password != null
+                && dbUrl.startsWith("jdbc:postgresql://") && !dbUrl.contains("localhost:5433");
+        assumeTrue(hasConfig, "Sin DB_URL/DB_USER/DB_PASSWORD de Postgres en .env: se omite (requiere Postgres local)");
+
+        this.adminUrl = dbUrl;
+        boolean reachable;
+        try (Connection ignored = DriverManager.getConnection(adminUrl, user, password)) {
+            reachable = true;
+        } catch (SQLException e) {
+            reachable = false;
+        }
+        assumeTrue(reachable, "Postgres local no responde en " + redact(adminUrl) + ": se omite");
+
+        throwawayDb = "eventfoto_flyway_guard_" + System.nanoTime();
+        try (Connection conn = DriverManager.getConnection(adminUrl, user, password);
+             Statement st = conn.createStatement()) {
+            st.execute("CREATE DATABASE " + throwawayDb);
+        }
+        throwawayUrl = replaceDbName(adminUrl, throwawayDb);
+    }
+
+    @AfterEach
+    void tearDown() throws SQLException {
+        if (throwawayDb == null) {
+            return;
+        }
+        try (Connection conn = DriverManager.getConnection(adminUrl, user, password);
+             Statement st = conn.createStatement()) {
+            // Cierra conexiones colgadas de Flyway/Hikari antes del DROP.
+            st.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '" + throwawayDb + "' AND pid <> pg_backend_pid()");
+            st.execute("DROP DATABASE IF EXISTS " + throwawayDb);
+        }
+    }
+
+    @Test
+    @DisplayName("V12 falla con un mensaje claro si 'events' ya tiene filas al momento de correr")
+    void v12FailsWhenEventsHasRows() throws SQLException {
+        Flyway.configure()
+                .dataSource(throwawayUrl, user, password)
+                .target("11")
+                .load()
+                .migrate();
+
+        try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password);
+             Statement st = conn.createStatement()) {
+            st.execute("""
+                    INSERT INTO events (id, name, slug, event_date, upload_deadline, is_active, created_at)
+                    VALUES (gen_random_uuid(), 'Evento fantasma', 'evento-fantasma', now(), now() + interval '1 day', true, now())
+                    """);
+        } catch (SQLException e) {
+            // gen_random_uuid() requiere pgcrypto en algunas instalaciones de Postgres.
+            try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password);
+                 Statement st = conn.createStatement()) {
+                st.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+                st.execute("""
+                        INSERT INTO events (id, name, slug, event_date, upload_deadline, is_active, created_at)
+                        VALUES (gen_random_uuid(), 'Evento fantasma', 'evento-fantasma', now(), now() + interval '1 day', true, now())
+                        """);
+            }
+        }
+
+        Flyway fullMigration = Flyway.configure()
+                .dataSource(throwawayUrl, user, password)
+                .load();
+
+        assertThatThrownBy(fullMigration::migrate)
+                .isInstanceOf(FlywayException.class)
+                .hasMessageContaining("V12");
+
+        try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password);
+             Statement st = conn.createStatement()) {
+            var rs = st.executeQuery("SELECT column_name FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'organizer_id'");
+            assertThat(rs.next()).as("organizer_id no debería existir: V12 tiene que abortar antes del ALTER TABLE").isFalse();
+        }
+    }
+
+    private static Map<String, String> loadDotEnv() throws IOException {
+        Path path = Path.of(".env");
+        if (!Files.exists(path)) {
+            return Map.of();
+        }
+        Map<String, String> map = new HashMap<>();
+        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            int eq = trimmed.indexOf('=');
+            if (eq > 0) {
+                map.put(trimmed.substring(0, eq).trim(), trimmed.substring(eq + 1).trim());
+            }
+        }
+        return map;
+    }
+
+    private static String replaceDbName(String jdbcUrl, String newDbName) {
+        Matcher m = Pattern.compile("(jdbc:postgresql://[^/]+/)([^?]+)(.*)").matcher(jdbcUrl);
+        if (!m.matches()) {
+            throw new IllegalArgumentException("No se pudo parsear DB_URL para reemplazar el nombre de la base: " + redact(jdbcUrl));
+        }
+        return m.group(1) + newDbName + m.group(3);
+    }
+
+    private static String redact(String jdbcUrl) {
+        return jdbcUrl.replaceAll("://[^@/]+@", "://***@");
+    }
+}

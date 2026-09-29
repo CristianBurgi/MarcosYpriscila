@@ -14,8 +14,8 @@ import java.util.Set;
  * Falla el arranque en producción ({@code app.storage.mode=r2}) si algún secreto coincide
  * con un valor de ejemplo publicado en el repo (defaults de application.yml, .env.example,
  * application-test.yml, docker-compose.yml). El repo es público: cualquiera que lea esos
- * archivos podría entrar al panel (ADMIN_PASSWORD) o firmar sus propios JWT de admin
- * (JWT_SECRET) si producción quedó con el valor de ejemplo.
+ * archivos podría entrar como superadmin (SUPERADMIN_EMAIL/SUPERADMIN_PASSWORD) o
+ * firmar sus propios JWT (JWT_SECRET) si producción quedó con el valor de ejemplo.
  *
  * Fase 9.0 (A2): el 24/09 se detectó que APP_BASE_URL en Railway tenía un placeholder
  * ("tu-boda-produccion...") y nadie se enteró porque el código lo ignoraba en silencio.
@@ -33,7 +33,8 @@ public class ProductionSecretsValidator {
 
     /** Variable de entorno -> valores de ejemplo publicados en el repo. */
     static final Map<String, Set<String>> KNOWN_EXAMPLE_VALUES = Map.of(
-            "ADMIN_PASSWORD", Set.of("admin123"),
+            "SUPERADMIN_EMAIL", Set.of("superadmin@eventfoto.com.ar", "superadmin@boda.com"),
+            "SUPERADMIN_PASSWORD", Set.of("admin123"),
             "JWT_SECRET", Set.of(
                     "very_secret_jwt_key_that_is_at_least_256_bits_long_for_security_reasons",
                     "super_secret_jwt_key_minimo_32_caracteres_123456"),
@@ -47,14 +48,16 @@ public class ProductionSecretsValidator {
 
     public ProductionSecretsValidator(
             @Value("${app.storage.mode:local}") String storageMode,
-            @Value("${security.admin.password:}") String adminPassword,
+            @Value("${security.superadmin.email:}") String superadminEmail,
+            @Value("${security.superadmin.password:}") String superadminPassword,
             @Value("${security.jwt.secret:}") String jwtSecret,
             @Value("${spring.datasource.password:}") String dbPassword,
             @Value("${cloudflare.r2.access-key:}") String r2AccessKey,
             @Value("${cloudflare.r2.secret-key:}") String r2SecretKey) {
         this.storageMode = storageMode;
         this.actualValues = Map.of(
-                "ADMIN_PASSWORD", nullToEmpty(adminPassword),
+                "SUPERADMIN_EMAIL", nullToEmpty(superadminEmail),
+                "SUPERADMIN_PASSWORD", nullToEmpty(superadminPassword),
                 "JWT_SECRET", nullToEmpty(jwtSecret),
                 "DB_PASSWORD", nullToEmpty(dbPassword),
                 "R2_ACCESS_KEY", nullToEmpty(r2AccessKey),

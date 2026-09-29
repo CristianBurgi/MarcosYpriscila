@@ -49,6 +49,9 @@ public class RateLimiterService {
     // Buckets para admin login (solo IP, sin guestToken)
     private final Map<String, Queue<Long>> adminLoginBuckets = new ConcurrentHashMap<>();
 
+    // Bucket separado para login de superadmin (mismo mecanismo, aislado del de organizador)
+    private final Map<String, Queue<Long>> superadminLoginBuckets = new ConcurrentHashMap<>();
+
     /**
      * Chequea rate limit para presigned URLs de foto.
      * Aplica dos capas: primero por guestToken, luego por IP.
@@ -90,6 +93,15 @@ public class RateLimiterService {
                 "Has superado el límite de 5 intentos de inicio de sesión en 15 minutos. Por favor intentá más tarde.");
     }
 
+    /**
+     * Chequea rate limit para login de superadmin. Mismo mecanismo que el de
+     * organizador, pero con su propio bucket -- no comparten cupo de intentos.
+     */
+    public void checkSuperadminLoginRateLimit(String clientIp) {
+        checkRateLimit(clientIp, superadminLoginBuckets, ADMIN_LOGIN_LIMIT_PER_15_MINUTES, FIFTEEN_MINUTES_IN_MS,
+                "Has superado el límite de 5 intentos de inicio de sesión en 15 minutos. Por favor intentá más tarde.");
+    }
+
     // === DEPRECATED: Métodos antiguos que solo usan IP ===
     // Mantenerlos para compatibilidad si algo aún los usa
     @Deprecated
@@ -128,6 +140,7 @@ public class RateLimiterService {
         commentMessageByGuestTokenBuckets.clear();
         commentMessageByIpBuckets.clear();
         adminLoginBuckets.clear();
+        superadminLoginBuckets.clear();
     }
 }
 

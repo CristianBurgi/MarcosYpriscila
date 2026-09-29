@@ -5,7 +5,10 @@ import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.comment.dto.CreateCommentRequestDTO;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
 import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.message.MessageRepository;
 import com.tuapp.eventfoto.message.dto.CreateMessageRequestDTO;
 import com.tuapp.eventfoto.photo.GuestQuotaRepository;
@@ -28,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
+import java.time.LocalDate;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.when;
@@ -66,6 +70,9 @@ class PublicApiIntegrationTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private OrganizerRepository organizerRepository;
+
     @MockBean
     private StorageService storageService;
 
@@ -80,18 +87,23 @@ class PublicApiIntegrationTest {
         photoRepository.deleteAll();
         guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
+        organizerRepository.deleteAll();
+
+        Organizer organizer = organizerRepository.save(Organizer.builder().email("public-api@test.com").build());
 
         testEvent = Event.builder()
+                .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
                 .slug("marcos-y-priscila")
-                .eventDate(Instant.now().plusSeconds(86400))
+                .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
+                .origin(EventOrigin.PAID)
                 .build();
 
         eventRepository.save(testEvent);
 
-        adminJwtToken = jwtTokenProvider.generateToken("admin@boda.com");
+        adminJwtToken = jwtTokenProvider.generateOrganizerToken(organizer.getId(), organizer.getEmail(), organizer.getTokenVersion());
 
         when(storageService.generateUploadUrl(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn("https://r2.test-storage.com/upload-presigned-url");
