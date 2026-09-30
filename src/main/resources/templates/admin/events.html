@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis eventos — EventFoto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e1035 100%);
+            --glass-card: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-purple: #a855f7;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-gradient); min-height: 100vh; color: var(--text-main); padding-bottom: 60px; }
+        .navbar {
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border); padding: 16px 32px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .navbar-brand {
+            font-size: 1.4rem; font-weight: 700;
+            background: linear-gradient(135deg, #f472b6, #a855f7);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5;
+            padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 600;
+        }
+        .btn-logout:hover { background: rgba(239, 68, 68, 0.4); }
+        .container { max-width: 960px; margin: 32px auto; padding: 0 20px; }
+        h1 { font-size: 1.8rem; margin-bottom: 4px; }
+        .subtitle { color: var(--text-sub); margin-bottom: 24px; }
+        .events-list { display: grid; gap: 14px; }
+        .event-card {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: 16px;
+            padding: 20px 24px; color: inherit; text-decoration: none; transition: border-color .2s, transform .2s;
+        }
+        .event-card:hover { border-color: rgba(168, 85, 247, 0.6); transform: translateY(-1px); }
+        .event-name { font-size: 1.15rem; font-weight: 600; margin-bottom: 4px; }
+        .event-meta { color: var(--text-sub); font-size: 0.9rem; display: flex; gap: 16px; flex-wrap: wrap; }
+        .event-side { display: flex; align-items: center; gap: 14px; }
+        .badge { padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+        .badge-active { background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
+        .badge-closed { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .empty {
+            text-align: center; background: var(--glass-card); border: 1px dashed var(--glass-border);
+            border-radius: 16px; padding: 48px 24px; color: var(--text-sub);
+        }
+        .empty i { font-size: 2.2rem; color: var(--accent-purple); margin-bottom: 12px; }
+        .empty h2 { color: var(--text-main); font-size: 1.2rem; margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-brand"><i class="fa-solid fa-gem" style="margin-right: 8px;"></i> EventFoto</div>
+    <button class="btn-logout" id="btnLogout"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
+</nav>
+
+<div class="container">
+    <h1>Mis eventos</h1>
+    <p class="subtitle">Elegí un evento para ver su álbum, moderar y descargar el material.</p>
+
+    <div class="events-list" th:if="${!events.isEmpty()}">
+        <a class="event-card" th:each="ev : ${events}" th:href="@{'/admin/eventos/' + ${ev.slug()}}">
+            <div>
+                <div class="event-name" th:text="${ev.name()}">Nombre del evento</div>
+                <div class="event-meta">
+                    <span><i class="fa-regular fa-calendar"></i>
+                        <span th:text="${ev.eventDate() != null ? #temporals.format(ev.eventDate(), 'dd/MM/yyyy') : 'Fecha a confirmar'}">01/01/2026</span></span>
+                    <span><i class="fa-regular fa-image"></i>
+                        <span th:text="${ev.photoCount() == 1 ? '1 foto' : ev.photoCount() + ' fotos'}">0 fotos</span></span>
+                </div>
+            </div>
+            <div class="event-side">
+                <span class="badge" th:classappend="${ev.isActive() ? 'badge-active' : 'badge-closed'}"
+                      th:text="${ev.isActive() ? 'Activo' : 'Cerrado'}">Activo</span>
+                <i class="fa-solid fa-chevron-right" style="color: var(--text-sub);"></i>
+            </div>
+        </a>
+    </div>
+
+    <div class="empty" th:if="${events.isEmpty()}">
+        <i class="fa-regular fa-calendar-plus"></i>
+        <h2>Todavía no tenés eventos</h2>
+        <p>Cuando se cree un evento para tu cuenta, va a aparecer acá.</p>
+    </div>
+</div>
+
+<script>
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+        await fetch('/api/v1/admin/auth/logout', { method: 'POST' });
+        window.location.href = '/admin/login';
+    });
+</script>
+</body>
+</html>

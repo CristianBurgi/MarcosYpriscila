@@ -67,12 +67,12 @@ La aplicación está desplegada en producción en Railway:
 
 | Vista | URL |
 |---|---|
-| **Menú de invitados** | `https://marcosypriscila-production.up.railway.app/menu.html` |
-| **Álbum colaborativo** | `https://marcosypriscila-production.up.railway.app/album.html` |
-| **Subida de fotos** | `https://marcosypriscila-production.up.railway.app/upload.html` |
-| **Libro de Visitas** | `https://marcosypriscila-production.up.railway.app/messages.html` |
-| **Pantalla del salón** | `https://marcosypriscila-production.up.railway.app/screen.html` |
-| **Panel de Admin** | `https://marcosypriscila-production.up.railway.app/admin/login` |
+| **Menú de invitados** | `https://marcosypriscila-production.up.railway.app/e/{slug}` |
+| **Álbum colaborativo** | `https://marcosypriscila-production.up.railway.app/e/{slug}/album` |
+| **Subida de fotos** | `https://marcosypriscila-production.up.railway.app/e/{slug}/subir` |
+| **Libro de Visitas** | `https://marcosypriscila-production.up.railway.app/e/{slug}/mensajes` |
+| **Pantalla del salón** | `https://marcosypriscila-production.up.railway.app/e/{slug}/pantalla` |
+| **Panel del organizador** | `https://marcosypriscila-production.up.railway.app/admin/login` → `/admin/eventos` (Mis eventos) → `/admin/eventos/{slug}` |
 
 ---
 
@@ -256,7 +256,7 @@ MarcosYpriscila/
     │       ├── moderation/
     │       │   └── blocked-words-es.txt  # Diccionario de palabras bloqueadas (43 palabras, editable)
     │       ├── static/                # Frontend invitados (HTML/CSS/JS)
-    │       │   ├── index.html         # Redirect a menu.html
+    │       │   ├── index.html         # Eliminado: `/` muestra una pantalla neutra
     │       │   ├── menu.html          # Menú principal de invitados
     │       │   ├── upload.html        # Subida de fotos
     │       │   ├── album.html         # Galería colaborativa
@@ -363,16 +363,14 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | Método | Ruta | Descripción |
 |---|---|---|
 | `POST` | `/api/v1/admin/auth/login` | Login del organizador → devuelve JWT |
-| `GET` | `/api/v1/admin/photos` | Lista las fotos del evento (paginado) |
-| `DELETE` | `/api/v1/admin/photos/{photoId}` | Elimina una foto de R2 y de la base de datos y emite `PHOTO_DELETED` |
-| `GET` | `/api/v1/admin/photos/{photoId}/download` | Genera presigned URL de lectura y redirige (HTTP 302) |
-| `GET` | `/api/v1/admin/photos/download-zip` | Genera y transmite en ZIP streaming el álbum completo o selección (`?photoIds=...`). El álbum completo incluye `libro-de-visitas.pdf` en la raíz |
+| `GET` | `/api/v1/admin/events/{slug}/photos` | Lista las fotos del evento (paginado) |
+| `DELETE` | `/api/v1/admin/events/{slug}/photos/{photoId}` | Elimina una foto de R2 y de la base de datos y emite `PHOTO_DELETED` |
+| `GET` | `/api/v1/admin/events/{slug}/photos/{photoId}/download` | Genera presigned URL de lectura y redirige (HTTP 302) |
+| `GET` | `/api/v1/admin/events/{slug}/photos/download-zip` | Genera y transmite en ZIP streaming el álbum completo o selección (`?photoIds=...`). El álbum completo incluye `libro-de-visitas.pdf` en la raíz |
 | `GET` | `/api/v1/admin/events/{slug}/libro-de-visitas.pdf` | Descarga el libro de visitas en PDF |
-| `GET` | `/api/v1/admin/comments/all` | Lista todos los comentarios de fotos |
-| `DELETE` | `/api/v1/admin/comments/{commentId}` | Borra un comentario |
-| `GET` | `/api/v1/admin/messages/all` | Lista todos los mensajes del Libro de Visitas |
-| `DELETE` | `/api/v1/admin/messages/{messageId}` | Borra un mensaje |
-| `PATCH` | `/api/v1/admin/events/{slug}/toggle-uploads` | Abre o cierra las subidas de fotos |
+| `DELETE` | `/api/v1/admin/events/{slug}/comments/{commentId}` | Borra un comentario |
+| `DELETE` | `/api/v1/admin/events/{slug}/messages/{messageId}` | Borra un mensaje |
+| `PATCH` | `/api/v1/admin/events/{slug}/toggle-status` | Abre o cierra las subidas de fotos |
 
 ### Formato de errores
 
@@ -394,7 +392,7 @@ Todos los errores tienen el mismo formato JSON consistente:
 
 ## 🖥️ Panel de Administración
 
-El panel `/admin/dashboard` es una página Thymeleaf renderizada server-side, accesible solo con JWT válido. Tiene **3 pestañas**:
+El panel `/admin/eventos/{slug}` es una página Thymeleaf renderizada server-side, accesible solo con JWT válido. Tiene **3 pestañas**:
 
 1. **🖼️ Fotos** — Galería de las fotos del evento (se agregan en vivo por SSE), con borrado individual, selección para ZIP y descarga del álbum completo.
 2. **📨 Libro de Visitas** — Listado de mensajes con nombre de autor, texto y botón de borrado.
@@ -470,7 +468,7 @@ El QR se genera en el servidor con la biblioteca **Google ZXing**. La URL que en
 ```
 GET /api/v1/events/{slug}/qr?size=400
 → Devuelve: image/png (bytes del QR)
-→ URL codificada: https://{APP_BASE_URL}/menu.html?slug={slug}
+→ URL codificada: https://{APP_BASE_URL}/e/{slug}
 ```
 
 El admin puede descargarlo desde el dashboard. En la `screen.html` (pantalla del salón), el QR aparece como una tarjeta flotante en el lado derecho de la pantalla, centrada verticalmente, con la leyenda *"Escaneá el QR y subí tu foto"*.
@@ -584,7 +582,7 @@ El `docker-compose.yml` levanta un PostgreSQL en `localhost:5433` con la base `e
 
 ### 4. Inicializar los datos de prueba
 
-Al iniciar, el `DataInitializer` crea automáticamente el evento `marcos-y-priscila` si no existe en la base de datos.
+No hay eventos de seed: los crea el superadmin (`/superadmin/events/new`) y quedan asociados a un organizador.
 
 ### 5. Ejecutar la aplicación
 

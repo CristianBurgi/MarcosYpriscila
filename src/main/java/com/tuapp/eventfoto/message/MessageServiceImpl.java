@@ -80,13 +80,13 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional
-    public void deleteMessage(UUID messageId) {
-        Message message = messageRepository.findById(messageId)
+    public void deleteMessage(UUID eventId, UUID messageId) {
+        Message message = messageRepository.findByIdAndEventId(messageId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el mensaje con ID: " + messageId));
 
         messageRepository.delete(message);
         log.info("Mensaje con ID {} eliminado exitosamente por administración", messageId);
 
-        sseBroadcaster.broadcastMessageDeleted(message.getEvent().getId(), messageId);
+        sseBroadcaster.broadcastMessageDeleted(eventId, messageId);
     }
 }

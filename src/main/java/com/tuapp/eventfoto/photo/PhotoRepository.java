@@ -20,5 +20,8 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
     long countByEventId(UUID eventId);
 
+    /** Busqueda acotada al evento: una foto de otro evento es "no encontrada" (IDOR). */
+    Optional<Photo> findByIdAndEventId(UUID id, UUID eventId);
+
     Optional<Photo> findByUploadKey(String uploadKey);
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subir Fotografía | Boda de Marcos y Priscila</title>
+    <title>Subir Fotografía | Evento</title>
     <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,10 +42,11 @@
 
         .footer-wedding { display: none; } /* reemplazado por .footer-note */
     </style>
+    <script src="/js/event-context.js"></script>
 </head>
 <body>
     <header class="header-section">
-        <a href="/menu.html" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
         <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
         <h1 class="page-title">Compartí este instante</h1>
         <p class="page-sub">Tu foto puede aparecer en la pantalla en vivo</p>
@@ -99,7 +100,7 @@
     </footer>
 
     <script>
-        const SLUG = 'marcos-y-priscila';
+        const SLUG = window.EVENT_SLUG;
         let selectedFile = null;
 
         const GUEST_TOKEN_KEY = 'eventfoto_guest_token';

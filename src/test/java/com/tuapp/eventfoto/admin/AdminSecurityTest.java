@@ -80,7 +80,7 @@ class AdminSecurityTest {
         event = eventRepository.saveAndFlush(Event.builder()
                 .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
+                .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
@@ -94,7 +94,7 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Redirigir a /admin/login al intentar acceder al dashboard sin JWT")
     void shouldRedirectToLoginWithoutJwt() throws Exception {
-        mockMvc.perform(get("/admin/dashboard"))
+        mockMvc.perform(get("/admin/eventos/" + event.getSlug()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/login"));
     }
@@ -102,7 +102,7 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Devolver 401 Unauthorized al consultar API admin sin token JWT")
     void shouldReturn401ForAdminApiWithoutJwt() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/photos"))
+        mockMvc.perform(get("/api/v1/admin/events/" + event.getSlug() + "/photos"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -134,7 +134,7 @@ class AdminSecurityTest {
     @Test
     @DisplayName("Acceso concedido al dashboard con Cookie JWT válida")
     void shouldAccessDashboardWithJwtCookie() throws Exception {
-        mockMvc.perform(get("/admin/dashboard")
+        mockMvc.perform(get("/admin/eventos/" + event.getSlug())
                         .cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, adminJwtToken)))
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/dashboard"))
@@ -147,11 +147,11 @@ class AdminSecurityTest {
     void shouldListPublishedPhotos() throws Exception {
         Photo photo = photoRepository.saveAndFlush(Photo.builder()
                 .event(event)
-                .storageKey("photos/marcos-y-priscila/test.jpg")
+                .storageKey("photos/evento-demo-k7m2xq9p/test.jpg")
                 .uploaderName("María")
                 .build());
 
-        mockMvc.perform(get("/api/v1/admin/photos?slug=" + event.getSlug())
+        mockMvc.perform(get("/api/v1/admin/events/" + event.getSlug() + "/photos")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(photo.getId().toString()))
@@ -163,11 +163,11 @@ class AdminSecurityTest {
     void shouldDeleteSinglePhoto() throws Exception {
         Photo photo = photoRepository.saveAndFlush(Photo.builder()
                 .event(event)
-                .storageKey("photos/marcos-y-priscila/bad.jpg")
+                .storageKey("photos/evento-demo-k7m2xq9p/bad.jpg")
                 .uploaderName("Spam")
                 .build());
 
-        mockMvc.perform(delete("/api/v1/admin/photos/" + photo.getId())
+        mockMvc.perform(delete("/api/v1/admin/events/" + event.getSlug() + "/photos/" + photo.getId())
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNoContent());
 
@@ -179,7 +179,7 @@ class AdminSecurityTest {
     void shouldReturn404WhenDeletingNonExistentPhoto() throws Exception {
         java.util.UUID randomId = java.util.UUID.randomUUID();
 
-        mockMvc.perform(delete("/api/v1/admin/photos/" + randomId)
+        mockMvc.perform(delete("/api/v1/admin/events/" + event.getSlug() + "/photos/" + randomId)
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNotFound());
     }
@@ -189,13 +189,13 @@ class AdminSecurityTest {
     void shouldNotExposeApprovalEndpoints() throws Exception {
         Photo photo = photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p1.jpg").build());
 
-        mockMvc.perform(patch("/api/v1/admin/photos/" + photo.getId() + "/approve")
+        mockMvc.perform(patch("/api/v1/admin/events/" + event.getSlug() + "/photos/" + photo.getId() + "/approve")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().is4xxClientError());
-        mockMvc.perform(post("/api/v1/admin/photos/approve-all?slug=" + event.getSlug())
+        mockMvc.perform(post("/api/v1/admin/events/" + event.getSlug() + "/photos/approve-all")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().is4xxClientError());
-        mockMvc.perform(get("/api/v1/admin/photos/pending")
+        mockMvc.perform(get("/api/v1/admin/events/" + event.getSlug() + "/photos/pending")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().is4xxClientError());
     }
@@ -219,11 +219,11 @@ class AdminSecurityTest {
     void shouldRedirectForSinglePhotoDownload() throws Exception {
         Photo photo = photoRepository.saveAndFlush(Photo.builder()
                 .event(event)
-                .storageKey("photos/marcos-y-priscila/photo.jpg")
+                .storageKey("photos/evento-demo-k7m2xq9p/photo.jpg")
                 .uploaderName("Carlos")
                 .build());
 
-        mockMvc.perform(get("/api/v1/admin/photos/" + photo.getId() + "/download")
+        mockMvc.perform(get("/api/v1/admin/events/" + event.getSlug() + "/photos/" + photo.getId() + "/download")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().is3xxRedirection());
     }
@@ -234,11 +234,11 @@ class AdminSecurityTest {
         photoRepository.save(Photo.builder().event(event).storageKey("p1.jpg").build());
         photoRepository.saveAndFlush(Photo.builder().event(event).storageKey("p2.jpg").build());
 
-        mockMvc.perform(get("/api/v1/admin/photos/download-zip?slug=" + event.getSlug())
+        mockMvc.perform(get("/api/v1/admin/events/" + event.getSlug() + "/photos/download-zip")
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/zip"))
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"album-marcos-y-priscila.zip\""));
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"album-evento-demo-k7m2xq9p.zip\""));
     }
 
     @Test

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Libro de Visitas | Boda de Marcos y Priscila</title>
+    <title>Libro de Visitas | Evento</title>
     <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,10 +85,11 @@
             padding: 0 1.25rem;
         }
     </style>
+    <script src="/js/event-context.js"></script>
 </head>
 <body>
     <header class="header-section">
-        <a href="/menu.html" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
         <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
         <h1 class="page-title">Libro de Visitas</h1>
         <p class="page-sub">Dejá tus buenos deseos para los novios</p>
@@ -125,7 +126,7 @@
     </footer>
 
     <script>
-        const SLUG = 'marcos-y-priscila';
+        const SLUG = window.EVENT_SLUG;
 
         // Misma identidad de invitado que usa upload.html para las fotos: así el rate
         // limiting por guestToken (15 mensajes/min) es por invitado y no compartido.

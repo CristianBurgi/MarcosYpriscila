@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -21,4 +22,6 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     Page<Message> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
 
     long countByEventId(UUID eventId);
+
+    Optional<Message> findByIdAndEventId(UUID id, UUID eventId);
 }

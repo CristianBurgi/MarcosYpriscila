@@ -68,7 +68,7 @@ class PhotoDeletedSseIntegrationTest {
         event = eventRepository.save(Event.builder()
                 .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
+                .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
@@ -77,11 +77,11 @@ class PhotoDeletedSseIntegrationTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/admin/photos/{id} emite PHOTO_DELETED con el photoId a los suscriptores del evento")
+    @DisplayName("DELETE /api/v1/admin/events/{slug}/photos/{id} emite PHOTO_DELETED con el photoId a los suscriptores del evento")
     void deletingPhotoEmitsPhotoDeletedEvent() throws Exception {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(event)
-                .storageKey("photos/marcos-y-priscila/borrar.jpg")
+                .storageKey("photos/evento-demo-k7m2xq9p/borrar.jpg")
                 .uploaderName("Tío Beto")
                 .build());
 
@@ -89,7 +89,7 @@ class PhotoDeletedSseIntegrationTest {
         sseBroadcaster.register(event.getId(), screen);
         clearInvocations(screen); // descarta el INIT
 
-        mockMvc.perform(delete("/api/v1/admin/photos/" + photo.getId())
+        mockMvc.perform(delete("/api/v1/admin/events/evento-demo-k7m2xq9p/photos/" + photo.getId())
                         .header("Authorization", "Bearer " + jwtTokenProvider.generateOrganizerToken(organizer.getId(), organizer.getEmail(), organizer.getTokenVersion())))
                 .andExpect(status().isNoContent());
 

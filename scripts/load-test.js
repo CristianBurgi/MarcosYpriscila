@@ -18,7 +18,7 @@ const http = require('http');
 const https = require('https');
 
 const TARGET_URL = process.argv[2] || 'https://marcosypriscila-production.up.railway.app';
-const SLUG = 'marcos-y-priscila';
+const SLUG = process.env.SLUG || 'evento-demo-k7m2xq9p';
 const CONCURRENCY = parseInt(process.argv[3] || '25', 10);
 
 console.log('===============================================================');

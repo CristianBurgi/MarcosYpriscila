@@ -78,8 +78,8 @@ public class AppUrls {
         return baseUrl;
     }
 
-    /** URL absoluta a la que apunta el QR de un evento (menú del invitado). */
+    /** URL absoluta a la que apunta el QR de un evento (menú del invitado). Formato estable: va impreso en los QR de las tarjetas de mesa. */
     public String guestMenuUrl(String slug) {
-        return baseUrl + "/menu.html?slug=" + slug;
+        return baseUrl + "/e/" + slug;
     }
 }

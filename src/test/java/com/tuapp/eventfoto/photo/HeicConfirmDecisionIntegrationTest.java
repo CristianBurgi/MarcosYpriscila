@@ -109,7 +109,7 @@ class HeicConfirmDecisionIntegrationTest {
         eventRepository.save(Event.builder()
                 .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
+                .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864_000))
                 .isActive(true)
@@ -145,13 +145,13 @@ class HeicConfirmDecisionIntegrationTest {
         assertThat(FileSignatureValidator.isHeicSignature(REAL_JPEG_BYTES)).isFalse();
         assertThat(FileSignatureValidator.isValidImageSignature(REAL_JPEG_BYTES)).isTrue();
 
-        String key = "photos/marcos-y-priscila/" + UUID.randomUUID() + extension;
+        String key = "photos/evento-demo-k7m2xq9p/" + UUID.randomUUID() + extension;
         bucket.put(key, REAL_JPEG_BYTES); // simula la subida del cliente vía presigned URL
 
         ConfirmUploadRequestDTO request =
                 new ConfirmUploadRequestDTO(key, "emi", null, "guest-token-real-jpeg" + extension);
 
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -174,13 +174,13 @@ class HeicConfirmDecisionIntegrationTest {
         byte[] heicBytes = realHeicHeader();
         assertThat(FileSignatureValidator.isHeicSignature(heicBytes)).isTrue();
 
-        String heicKey = "photos/marcos-y-priscila/" + UUID.randomUUID() + ".heic";
+        String heicKey = "photos/evento-demo-k7m2xq9p/" + UUID.randomUUID() + ".heic";
         bucket.put(heicKey, heicBytes);
 
         ConfirmUploadRequestDTO request =
                 new ConfirmUploadRequestDTO(heicKey, "emi", null, "guest-token-real-heic");
 
-        String body = mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+        String body = mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())

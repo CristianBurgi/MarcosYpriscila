@@ -71,7 +71,7 @@ class UploadErrorResponsesIntegrationTest {
     }
 
     private HttpRequest uploadRequest(byte[] body) {
-        return HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/events/marcos-y-priscila/photos/upload-direct"))
+        return HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/events/evento-demo-k7m2xq9p/photos/upload-direct"))
                 .timeout(Duration.ofSeconds(60))
                 .header("Content-Type", "multipart/form-data; boundary=" + BOUNDARY)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))

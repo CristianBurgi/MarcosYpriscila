@@ -313,11 +313,10 @@ public class PhotoServiceImpl implements PhotoService {
      */
     @Override
     @Transactional
-    public void deletePhoto(UUID photoId) {
-        Photo photo = photoRepository.findById(photoId)
+    public void deletePhoto(UUID eventId, UUID photoId) {
+        Photo photo = photoRepository.findByIdAndEventId(photoId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
-        UUID eventId = photo.getEvent().getId();
         String storageKey = photo.getStorageKey();
 
         // 1. Eliminar primero el objeto en almacenamiento (Cloudflare R2 o local)
@@ -345,8 +344,8 @@ public class PhotoServiceImpl implements PhotoService {
 
     @Override
     @Transactional(readOnly = true)
-    public String generateDownloadUrl(UUID photoId) {
-        Photo photo = photoRepository.findById(photoId)
+    public String generateDownloadUrl(UUID eventId, UUID photoId) {
+        Photo photo = photoRepository.findByIdAndEventId(photoId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
         return storageService.generateDownloadUrl(photo.getStorageKey());

@@ -1,6 +1,8 @@
 package com.tuapp.eventfoto.photo;
 
 import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
+import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.OwnedEvent;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,65 +19,64 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Fotos del panel. Todas las rutas cuelgan de /events/{slug}: el evento sale de la ruta,
+ * se valida que sea del organizador logueado (@OwnedEvent) y cada foto se busca acotada
+ * a ese evento.
+ */
 @RestController
-@RequestMapping("/api/v1/admin/photos")
+@RequestMapping("/api/v1/admin/events/{slug}/photos")
 @RequiredArgsConstructor
 public class AdminPhotoController {
 
     private final PhotoService photoService;
 
     /**
-     * GET /api/v1/admin/photos?slug=marcos-y-priscila
+     * GET /api/v1/admin/events/{slug}/photos
      * Devuelve la lista paginada de fotografías publicadas del evento.
      */
     @GetMapping
     public ResponseEntity<Page<PhotoResponseDTO>> getPhotos(
-            @RequestParam(defaultValue = "marcos-y-priscila") String slug,
+            @OwnedEvent Event event,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PhotoResponseDTO> photos = photoService.getPhotos(slug, PageRequest.of(page, size));
+        Page<PhotoResponseDTO> photos = photoService.getPhotos(event.getSlug(), PageRequest.of(page, size));
         return ResponseEntity.ok(photos);
     }
 
     /**
-     * DELETE /api/v1/admin/photos/{photoId}
+     * DELETE /api/v1/admin/events/{slug}/photos/{photoId}
      * Único control de moderación: elimina la fotografía de R2 y de la base de datos,
      * y notifica PHOTO_DELETED por SSE.
      */
     @DeleteMapping("/{photoId}")
-    public ResponseEntity<Void> deletePhoto(@PathVariable String photoId) {
-        UUID uuid = parseUUID(photoId);
-        photoService.deletePhoto(uuid);
+    public ResponseEntity<Void> deletePhoto(@OwnedEvent Event event, @PathVariable String photoId) {
+        photoService.deletePhoto(event.getId(), parseUUID(photoId));
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * GET /api/v1/admin/photos/{photoId}/download
+     * GET /api/v1/admin/events/{slug}/photos/{photoId}/download
      * Genera una Presigned GET URL en R2 y redirige (HTTP 302) al cliente para descarga directa.
      */
     @GetMapping("/{photoId}/download")
-    public ResponseEntity<Void> downloadSinglePhoto(@PathVariable String photoId) {
-        UUID uuid = parseUUID(photoId);
-        String presignedDownloadUrl = photoService.generateDownloadUrl(uuid);
+    public ResponseEntity<Void> downloadSinglePhoto(@OwnedEvent Event event, @PathVariable String photoId) {
+        String presignedDownloadUrl = photoService.generateDownloadUrl(event.getId(), parseUUID(photoId));
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(presignedDownloadUrl))
                 .build();
     }
 
     /**
-     * GET /api/v1/admin/photos/download-zip?slug=marcos-y-priscila&photoIds=uuid1,uuid2
+     * GET /api/v1/admin/events/{slug}/photos/download-zip?photoIds=uuid1,uuid2
      * Transmite en tiempo real (streaming) un archivo ZIP con las fotografías del evento.
+     * Los photoIds que no son de este evento se ignoran (la consulta está acotada al evento).
      */
-    @GetMapping({"/download-zip", "/events/{slug}/download-zip"})
+    @GetMapping("/download-zip")
     public void downloadPhotosZip(
-            // Antes el parámetro se llamaba slugPath y nunca se enlazaba con {slug}: la ruta
-            // /events/{slug}/download-zip siempre descargaba el evento por defecto.
-            @PathVariable(name = "slug", required = false) String slugPath,
-            @RequestParam(name = "slug", defaultValue = "marcos-y-priscila") String slugParam,
+            @OwnedEvent Event event,
             @RequestParam(required = false) List<String> photoIds,
             HttpServletResponse response) throws IOException {
-
-        String effectiveSlug = (slugPath != null && !slugPath.isBlank()) ? slugPath : slugParam;
 
         List<UUID> parsedUuids = Collections.emptyList();
         if (photoIds != null && !photoIds.isEmpty()) {
@@ -85,9 +86,9 @@ public class AdminPhotoController {
         }
 
         response.setContentType("application/zip");
-        response.setHeader("Content-Disposition", String.format("attachment; filename=\"album-%s.zip\"", effectiveSlug));
+        response.setHeader("Content-Disposition", String.format("attachment; filename=\"album-%s.zip\"", event.getSlug()));
 
-        photoService.streamPhotosZip(effectiveSlug, parsedUuids, response.getOutputStream());
+        photoService.streamPhotosZip(event.getSlug(), parsedUuids, response.getOutputStream());
     }
 
     private UUID parseUUID(String rawId) {

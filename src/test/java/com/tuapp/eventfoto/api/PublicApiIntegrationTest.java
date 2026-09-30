@@ -94,7 +94,7 @@ class PublicApiIntegrationTest {
         testEvent = Event.builder()
                 .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
+                .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
@@ -122,10 +122,10 @@ class PublicApiIntegrationTest {
     @Test
     @DisplayName("GET /api/v1/events/{slug} - Debe retornar 200 OK con los datos del evento")
     void shouldReturnEventDetails() throws Exception {
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila"))
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name", is("Boda de Marcos y Priscila")))
-                .andExpect(jsonPath("$.slug", is("marcos-y-priscila")));
+                .andExpect(jsonPath("$.slug", is("evento-demo-k7m2xq9p")));
     }
 
     @Test
@@ -145,7 +145,7 @@ class PublicApiIntegrationTest {
 
         UploadUrlRequestDTO request = new UploadUrlRequestDTO("image/jpeg", "boda.jpg", "guest-token-upload-url-test");
 
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/upload-url")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/upload-url")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -165,7 +165,7 @@ class PublicApiIntegrationTest {
     void shouldPublishConfirmedPhotoWithoutAdminAction() throws Exception {
         String guestToken = "guest-token-confirm-test";
         UploadUrlRequestDTO urlRequest = new UploadUrlRequestDTO("image/jpeg", "boda.jpg", guestToken);
-        String urlResponse = mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/upload-url")
+        String urlResponse = mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/upload-url")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(urlRequest)))
                 .andExpect(status().isOk())
@@ -173,7 +173,7 @@ class PublicApiIntegrationTest {
         String key = objectMapper.readTree(urlResponse).get("key").asText();
 
         ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key, "Invitado Feliz", "¡Felicidades!", guestToken);
-        String confirmResponse = mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+        String confirmResponse = mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -183,7 +183,7 @@ class PublicApiIntegrationTest {
         String photoId = objectMapper.readTree(confirmResponse).get("id").asText();
 
         // Sin ninguna llamada a /api/v1/admin/**: la galería pública ya la muestra.
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/photos"))
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/photos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id", is(photoId)))
                 .andExpect(jsonPath("$.totalElements", is(1)));
@@ -195,7 +195,7 @@ class PublicApiIntegrationTest {
         MockMultipartFile file = new MockMultipartFile("file", "boda.jpg", "image/jpeg",
                 new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0x10, 'J', 'F', 'I', 'F', 0, 1, 1});
 
-        String response = mockMvc.perform(multipart("/api/v1/events/marcos-y-priscila/photos/upload-direct")
+        String response = mockMvc.perform(multipart("/api/v1/events/evento-demo-k7m2xq9p/photos/upload-direct")
                         .file(file)
                         .param("uploaderName", "Caro")
                         .param("guestToken", "guest-token-direct-test"))
@@ -203,7 +203,7 @@ class PublicApiIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         String photoId = objectMapper.readTree(response).get("id").asText();
 
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/photos"))
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/photos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id", is(photoId)))
                 .andExpect(jsonPath("$.content[0].uploaderName", is("Caro")));
@@ -249,7 +249,7 @@ class PublicApiIntegrationTest {
     void shouldAddGuestbookMessage() throws Exception {
         CreateMessageRequestDTO request = new CreateMessageRequestDTO("Padrino Juan", "Les deseamos toda la felicidad del mundo en esta etapa.");
 
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/messages")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/messages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -258,7 +258,7 @@ class PublicApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/admin/comments/{commentId} - Debe eliminar comentario por moderación de admin")
+    @DisplayName("DELETE /api/v1/admin/events/{slug}/comments/{commentId} - Debe eliminar comentario por moderación de admin")
     void shouldDeleteCommentByAdmin() throws Exception {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
@@ -271,7 +271,7 @@ class PublicApiIntegrationTest {
                 .text("Texto no permitido")
                 .build());
 
-        mockMvc.perform(delete("/api/v1/admin/comments/" + comment.getId())
+        mockMvc.perform(delete("/api/v1/admin/events/evento-demo-k7m2xq9p/comments/" + comment.getId())
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNoContent());
     }
@@ -281,7 +281,7 @@ class PublicApiIntegrationTest {
     void shouldRejectProfaneMessageWith422() throws Exception {
         CreateMessageRequestDTO request = new CreateMessageRequestDTO("Spammer", "Sos un h.d.p.");
 
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/messages")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/messages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity())
@@ -310,7 +310,7 @@ class PublicApiIntegrationTest {
     @Test
     @DisplayName("GET /api/v1/events/{slug}/guest-quota - Debe devolver 24 fotos disponibles para un token nuevo")
     void shouldReturnFullQuotaForNewGuestToken() throws Exception {
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/guest-quota")
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/guest-quota")
                         .param("token", "guest-token-quota-fresh"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.remainingPhotos", is(24)))
@@ -323,12 +323,12 @@ class PublicApiIntegrationTest {
         String guestToken = "guest-token-quota-decrement";
         ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-decrement.jpg", "Invitado", null, guestToken);
 
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/guest-quota")
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/guest-quota")
                         .param("token", guestToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.remainingPhotos", is(23)));
@@ -341,21 +341,21 @@ class PublicApiIntegrationTest {
 
         for (int i = 1; i <= 24; i++) {
             ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-limit-" + i + ".jpg", "Invitado", null, guestToken);
-            mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+            mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated());
         }
 
         ConfirmUploadRequestDTO request25 = new ConfirmUploadRequestDTO("photos/quota-limit-25.jpg", "Invitado", null, guestToken);
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request25)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status", is(403)))
                 .andExpect(jsonPath("$.message", containsString("Ya usaste tus 24 fotos")));
 
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/guest-quota")
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/guest-quota")
                         .param("token", guestToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.remainingPhotos", is(0)));
@@ -368,14 +368,14 @@ class PublicApiIntegrationTest {
 
         for (int i = 1; i <= 24; i++) {
             ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-upload-url-" + i + ".jpg", "Invitado", null, guestToken);
-            mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/confirm")
+            mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated());
         }
 
         UploadUrlRequestDTO uploadUrlRequest = new UploadUrlRequestDTO("image/jpeg", "otra-mas.jpg", guestToken);
-        mockMvc.perform(post("/api/v1/events/marcos-y-priscila/photos/upload-url")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/upload-url")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(uploadUrlRequest)))
                 .andExpect(status().isForbidden())
@@ -384,7 +384,7 @@ class PublicApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/admin/messages/{messageId} - Debe eliminar mensaje del libro de visitas por admin")
+    @DisplayName("DELETE /api/v1/admin/events/{slug}/messages/{messageId} - Debe eliminar mensaje del libro de visitas por admin")
     void shouldDeleteMessageByAdmin() throws Exception {
         com.tuapp.eventfoto.message.Message message = messageRepository.save(com.tuapp.eventfoto.message.Message.builder()
                 .event(testEvent)
@@ -392,7 +392,7 @@ class PublicApiIntegrationTest {
                 .text("Mensaje indeseado")
                 .build());
 
-        mockMvc.perform(delete("/api/v1/admin/messages/" + message.getId())
+        mockMvc.perform(delete("/api/v1/admin/events/evento-demo-k7m2xq9p/messages/" + message.getId())
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNoContent());
     }

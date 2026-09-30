@@ -111,7 +111,7 @@ class GuestbookEndpointsTest {
     @Test
     @DisplayName("El ZIP del álbum completo trae libro-de-visitas.pdf en la raíz (y primero); una selección de fotos no")
     void fullAlbumZipContainsTheGuestbook() throws Exception {
-        List<String> full = zipEntries(mockMvc.perform(get("/api/v1/admin/photos/events/libro-endpoint/download-zip").cookie(adminCookie()))
+        List<String> full = zipEntries(mockMvc.perform(get("/api/v1/admin/events/libro-endpoint/photos/download-zip").cookie(adminCookie()))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"album-libro-endpoint.zip\""))
                 .andReturn().getResponse().getContentAsByteArray());
@@ -119,8 +119,8 @@ class GuestbookEndpointsTest {
         assertThat(full).hasSize(2); // PDF + la foto
 
         String photoId = photoRepository.findAll().get(0).getId().toString();
-        List<String> selection = zipEntries(mockMvc.perform(get("/api/v1/admin/photos/download-zip")
-                        .param("slug", "libro-endpoint").param("photoIds", photoId).cookie(adminCookie()))
+        List<String> selection = zipEntries(mockMvc.perform(get("/api/v1/admin/events/libro-endpoint/photos/download-zip")
+                        .param("photoIds", photoId).cookie(adminCookie()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray());
         assertThat(selection).doesNotContain("libro-de-visitas.pdf").hasSize(1);

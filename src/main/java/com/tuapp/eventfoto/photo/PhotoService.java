@@ -23,11 +23,11 @@ public interface PhotoService {
 
     Page<PhotoResponseDTO> getPhotos(String slug, Pageable pageable);
 
-    void deletePhoto(UUID photoId);
+    void deletePhoto(UUID eventId, UUID photoId);
 
     long countTotalPhotos(String slug);
 
-    String generateDownloadUrl(UUID photoId);
+    String generateDownloadUrl(UUID eventId, UUID photoId);
 
     void streamPhotosZip(String slug, List<UUID> photoIds, OutputStream outputStream);
 }

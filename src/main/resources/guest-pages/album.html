@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Álbum de Fotos | Boda de Marcos y Priscila</title>
+    <title>Álbum de Fotos | Evento</title>
     <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -211,11 +211,12 @@
             margin-bottom: 1rem;
         }
     </style>
+    <script src="/js/event-context.js"></script>
 </head>
 <body>
 
     <header class="gallery-header">
-        <a href="/menu.html" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
         <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
         <h1 class="page-title">Álbum del Evento</h1>
         <p class="page-sub">Reviví los mejores momentos compartidos por nuestros invitados</p>
@@ -279,7 +280,7 @@
     </footer>
 
     <script>
-        const SLUG = 'marcos-y-priscila';
+        const SLUG = window.EVENT_SLUG;
         const PAGE_SIZE = 12;
         let activePhotoId = null;
 
