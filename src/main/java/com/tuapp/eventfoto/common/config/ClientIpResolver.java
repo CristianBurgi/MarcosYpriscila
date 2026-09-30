@@ -4,6 +4,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 /**
  * Única fuente de la IP del cliente para rate limiting (login de organizador/superadmin,
  * comentarios, mensajes, subida de fotos) -- antes había 5 copias de esta lógica, cada
@@ -11,28 +16,29 @@ import org.springframework.stereotype.Component;
  * cliente: cualquiera puede mandar un valor distinto en cada request y esquivar el límite
  * por IP por completo.
  *
- * La única parte del request que el cliente no puede falsificar es la conexión TCP en sí
- * ({@code request.getRemoteAddr()}). En Railway, esa dirección es la del último hop de su
- * red interna (rango 100.64.0.0/10, RFC 6598 -- documentado por Railway como el rango de
- * sus proxies internos entre el edge y el contenedor de la app), nunca la del cliente
- * externo. Por eso el algoritmo es: SOLO se confía en X-Forwarded-For cuando quien nos
- * conectó directamente es un hop interno conocido de Railway -- y ahí se toma, de derecha
- * a izquierda, la primera dirección de la cadena que NO sea también un hop interno (puede
- * haber más de uno). Si quien nos conectó no es un proxy interno reconocido (desarrollo
- * local, por ejemplo), se ignora el header por completo y se usa remoteAddr tal cual: ahí
- * no hay ningún proxy de por medio cuya palabra valga más que la conexión real.
+ * <p><b>ESTADO ACTUAL (30/09/2026): la lógica de abajo está CONFIRMADA ROTA en
+ * producción, a propósito, mientras se termina de diagnosticar.</b> Verificado con dos
+ * redes reales distintas (WiFi y datos móviles): {@code remoteAddr} sí cae en
+ * 100.64.0.0/10 como se esperaba, pero el ÚLTIMO valor de X-Forwarded-For no es el
+ * cliente -- es un hop de borde de Railway con IP PÚBLICA, igual para las dos redes
+ * (152.233.23.194 en ambos casos). Como ese hop no está en el rango interno conocido,
+ * {@link #doResolve} lo toma como si fuera el cliente real: hoy, en la práctica, TODOS
+ * los clientes resuelven a esa misma IP y el rate limiting por IP es global (cualquiera
+ * puede agotarle el cupo de login a todos los demás). No cambiar la regla todavía --
+ * falta confirmar con curl contra producción qué headers pisa Railway (X-Real-IP,
+ * Forwarded, X-Envoy-External-Address) antes de elegir cuál usar.
  *
- * Pendiente de confirmar contra logs reales de producción: esta implementación asume
- * el rango de proxies internos que documenta Railway. Para verificarlo, activar el log
- * DEBUG de este paquete en Railway con la variable de entorno
- * {@code LOGGING_LEVEL_COM_TUAPP_EVENTFOTO_COMMON_CONFIG=DEBUG} (a nivel de PAQUETE, no
- * de clase: Spring hace binding de variables de entorno en minúsculas --
- * "LOGGING_LEVEL_..._CLIENTIPRESOLVER" resolvería a la propiedad
- * "logging.level....clientipresolver", que nunca matchea el logger real
- * "com.tuapp.eventfoto.common.config.ClientIpResolver" porque los nombres de clase Java
- * llevan mayúsculas. El paquete no tiene ese problema porque ya es todo minúsculas).
- * Si el patrón real difiere de lo asumido, ajustar TRUSTED_PROXY_RANGE_* acá, en un solo
- * lugar.
+ * <p>La única parte del request que el cliente no puede falsificar es la conexión TCP en
+ * sí ({@code request.getRemoteAddr()}). Por eso {@link #resolve} vuelca en el log DEBUG
+ * remoteAddr, todos los headers candidatos y la lista completa de nombres de header
+ * recibidos -- para diagnosticar con curl (mandando X-Forwarded-For/X-Real-IP falsos)
+ * cuál de ellos pisa Railway con un valor propio (ese es confiable) y cuál deja pasar
+ * el valor del cliente tal cual (ese no sirve).
+ *
+ * <p>Activar en Railway con {@code LOGGING_LEVEL_COM_TUAPP_EVENTFOTO_COMMON_CONFIG=DEBUG}
+ * (a nivel de PAQUETE, no de clase: Spring hace binding de variables de entorno en
+ * minúsculas -- apuntar a la clase resolvería a un nombre de logger que nunca matchea
+ * el real, que lleva mayúsculas).
  */
 @Slf4j
 @Component
@@ -46,8 +52,26 @@ public class ClientIpResolver {
         String forwardedFor = request.getHeader("X-Forwarded-For");
         String resolved = doResolve(remoteAddr, forwardedFor);
 
-        log.debug("ClientIpResolver: remoteAddr='{}' X-Forwarded-For='{}' -> resuelto='{}'", remoteAddr, forwardedFor, resolved);
+        if (log.isDebugEnabled()) {
+            log.debug("ClientIpResolver: remoteAddr='{}' X-Forwarded-For='{}' X-Real-IP='{}' Forwarded='{}' "
+                            + "X-Envoy-External-Address='{}' headers-recibidos={} -> resuelto='{}'",
+                    remoteAddr, forwardedFor,
+                    request.getHeader("X-Real-IP"),
+                    request.getHeader("Forwarded"),
+                    request.getHeader("X-Envoy-External-Address"),
+                    headerNames(request),
+                    resolved);
+        }
         return resolved;
+    }
+
+    private static String headerNames(HttpServletRequest request) {
+        Enumeration<String> names = request.getHeaderNames();
+        if (names == null) {
+            return "[]";
+        }
+        return StreamSupport.stream(Collections.list(names).spliterator(), false)
+                .collect(Collectors.joining(", ", "[", "]"));
     }
 
     private String doResolve(String remoteAddr, String forwardedFor) {
