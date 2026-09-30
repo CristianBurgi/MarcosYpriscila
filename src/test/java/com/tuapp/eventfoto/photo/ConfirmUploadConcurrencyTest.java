@@ -76,7 +76,7 @@ class ConfirmUploadConcurrencyTest {
         event = eventRepository.save(Event.builder()
                 .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
+                .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
@@ -108,8 +108,8 @@ class ConfirmUploadConcurrencyTest {
         List<Future<?>> futures = IntStream.range(0, CONCURRENT).<Future<?>>mapToObj(i -> pool.submit(() -> {
             try {
                 ConfirmUploadRequestDTO req = new ConfirmUploadRequestDTO(
-                        "photos/marcos-y-priscila/concurrent-" + i + ".jpg", "Invitado " + i, null, "guest-token-" + i);
-                photoService.confirmUpload("marcos-y-priscila", req);
+                        "photos/evento-demo-k7m2xq9p/concurrent-" + i + ".jpg", "Invitado " + i, null, "guest-token-" + i);
+                photoService.confirmUpload("evento-demo-k7m2xq9p", req);
                 ok.incrementAndGet();
             } catch (Exception e) {
                 failed.incrementAndGet();

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boda de Marcos y Priscila | Menú Principal</title>
+    <title>Evento | Menú Principal</title>
     <!-- Google Fonts, FontAwesome & Theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,14 +51,15 @@
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+    <script src="/js/event-context.js"></script>
 </head>
 <body>
 
     <!-- Header Elegante -->
     <header class="hero-header">
         <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
-        <h1 class="names" id="couple-names">Marcos &amp; Priscila</h1>
-        <div class="subtitle" id="event-date">19 · Septiembre · 2026</div>
+        <h1 class="names" id="couple-names">&nbsp;</h1>
+        <div class="subtitle" id="event-date"></div>
         <p class="welcome-subtitle">¡Bienvenidos a nuestra celebración! Elegí una opción para acompañarnos:</p>
     </header>
 
@@ -66,18 +67,18 @@
     <main class="menu-container">
         <div class="divider"><span class="l"></span>Elegí una opción<span class="l"></span></div>
 
-        <a href="/upload.html" class="btn-elegant" id="upload-card">
+        <a href="#" data-event-path="/subir" class="btn-elegant" id="upload-card">
             <svg viewBox="0 0 24 24" fill="none" stroke="#e6cfa0" stroke-width="1.3"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg>
             Subir Foto
         </a>
         <p id="upload-desc" style="text-align: center; font-size: 0.8rem; color: var(--cream-muted); margin: -6px 0 14px;"></p>
 
-        <a href="/album.html" class="btn-elegant">
+        <a href="#" data-event-path="/album" class="btn-elegant">
             <svg viewBox="0 0 24 24" fill="none" stroke="#e6cfa0" stroke-width="1.3"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg>
             Ver Álbum
         </a>
 
-        <a href="/messages.html" class="btn-elegant">
+        <a href="#" data-event-path="/mensajes" class="btn-elegant">
             <svg viewBox="0 0 24 24" fill="none" stroke="#e6cfa0" stroke-width="1.3"><path d="M12 20s-7-4.4-9.3-8.6C1.2 8 2.6 5 5.7 5c1.8 0 3.2 1 4.3 2.6C11.1 6 12.5 5 14.3 5c3.1 0 4.5 3 3 6.4C15 15.6 12 20 12 20z"/></svg>
             Libro de Visitas
         </a>
@@ -86,7 +87,7 @@
     </main>
 
     <script>
-        const SLUG = 'marcos-y-priscila';
+        const SLUG = window.EVENT_SLUG;
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {

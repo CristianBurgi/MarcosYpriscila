@@ -13,5 +13,5 @@ public interface MessageService {
 
     long countTotalMessages(String slug);
 
-    void deleteMessage(java.util.UUID messageId);
+    void deleteMessage(java.util.UUID eventId, java.util.UUID messageId);
 }

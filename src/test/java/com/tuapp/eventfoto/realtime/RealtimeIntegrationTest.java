@@ -79,7 +79,7 @@ class RealtimeIntegrationTest {
         event1 = eventRepository.save(Event.builder()
                 .organizer(organizer)
                 .name("Boda de Marcos y Priscila")
-                .slug("marcos-y-priscila")
+                .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
@@ -100,7 +100,7 @@ class RealtimeIntegrationTest {
     @Test
     @DisplayName("GET /api/v1/events/{slug}/stream - Debe retornar 200 OK con Content-Type text/event-stream")
     void shouldOpenSseStream() throws Exception {
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/stream"))
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/stream"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM));
     }
@@ -120,7 +120,7 @@ class RealtimeIntegrationTest {
                 .build());
 
         // Al borrar la foto en event1, emite PHOTO_DELETED solo a event1
-        photoService.deletePhoto(photo.getId());
+        photoService.deletePhoto(event1.getId(), photo.getId());
 
         // Al crear un mensaje en event2, emite solo a event2
         messageService.addMessage("cumple-prueba", new CreateMessageRequestDTO("Invitado", "¡Feliz cumple!"), "127.0.0.1");

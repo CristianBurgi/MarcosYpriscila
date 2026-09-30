@@ -16,6 +16,7 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 @Configuration
 @EnableWebSecurity
@@ -50,6 +51,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            // El slug del evento va en la URL y es la llave del álbum: a otros sitios solo
+            // se les manda el origen, nunca la dirección completa.
+            .headers(headers -> headers.referrerPolicy(referrer -> referrer
+                .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(customAuthenticationEntryPoint())
@@ -57,7 +62,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas de vistas y recursos estáticos
                 .requestMatchers(
-                    "/", "/index.html", "/album.html", "/screen.html", "/favicon.ico", "/upload.html", "/menu.html", "/messages.html",
+                    "/", "/e/**", "/favicon.ico",
+                    "/album.html", "/screen.html", "/upload.html", "/menu.html", "/messages.html", // redirects 302 a /e/{slug}
                     "/css/**", "/js/**", "/images/**", "/uploads/**"
                 ).permitAll()
 

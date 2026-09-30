@@ -14,7 +14,7 @@ class AppUrlsTest {
         AppUrls urls = new AppUrls("  https://eventfoto.com.ar/  ", "r2");
 
         assertThat(urls.baseUrl()).isEqualTo("https://eventfoto.com.ar");
-        assertThat(urls.guestMenuUrl("marcos-y-priscila")).isEqualTo("https://eventfoto.com.ar/menu.html?slug=marcos-y-priscila");
+        assertThat(urls.guestMenuUrl("evento-demo-k7m2xq9p")).isEqualTo("https://eventfoto.com.ar/e/evento-demo-k7m2xq9p");
     }
 
     @Test

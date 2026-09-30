@@ -412,10 +412,13 @@
 <body>
 
 <nav class="navbar">
-    <div class="navbar-brand"><i class="fa-solid fa-gem" style="margin-right: 8px;"></i> Panel de Moderación — Boda</div>
+    <div class="navbar-brand"><i class="fa-solid fa-gem" style="margin-right: 8px;"></i> Panel de Moderación</div>
     <div class="navbar-user">
-        <span th:text="${event.name}">Boda de Marcos y Priscila</span>
-        <a href="/screen.html" target="_blank" class="btn btn-toggle-event" style="padding: 6px 14px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+        <a href="/admin/eventos" class="btn btn-toggle-event" style="padding: 6px 14px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-list"></i> Mis eventos
+        </a>
+        <span th:text="${event.name}">Nombre del evento</span>
+        <a th:href="@{'/e/' + ${slug} + '/pantalla'}" target="_blank" class="btn btn-toggle-event" style="padding: 6px 14px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
             <i class="fa-solid fa-desktop"></i> Pantalla Salón
         </a>
         <button class="btn btn-toggle-event" id="btnOpenQrModal" onclick="openQrModal()" style="padding: 6px 14px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;">
@@ -638,7 +641,7 @@
                     Los invitados escanean este QR con la cámara de su celular para acceder al menú y compartir fotos en vivo:
                 </p>
                 <div style="background: #ffffff; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-bottom: 16px;">
-                    <img th:src="@{'/api/v1/events/' + ${slug} + '/qr?size=350'}" alt="Código QR Boda" style="width: 240px; height: 240px; display: block; margin: 0 auto;">
+                    <img th:src="@{'/api/v1/events/' + ${slug} + '/qr?size=350'}" alt="Código QR del evento" style="width: 240px; height: 240px; display: block; margin: 0 auto;">
                 </div>
                 <div style="font-family: monospace; font-size: 0.82rem; color: #a855f7; word-break: break-all; margin-bottom: 20px; background: rgba(168, 85, 247, 0.1); padding: 8px 12px; border-radius: 8px;">
                     <span th:text="${guestMenuUrl}">(APP_BASE_URL)/menu.html?slug=...</span>
@@ -656,7 +659,7 @@
 </div>
 
 <script th:inline="javascript">
-    const slug = /*[[${slug}]]*/ 'marcos-y-priscila';
+    const slug = /*[[${slug}]]*/ 'evento-demo-k7m2xq9p';
     let targetPhotoIdToDelete = null;
     let targetMsgIdToDelete = null;
     let targetCommentIdToDelete = null;
@@ -745,7 +748,7 @@
         closeDeleteModal();
 
         try {
-            const res = await fetch(`/api/v1/admin/photos/${photoId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/photos/${photoId}`, { method: 'DELETE' });
             if (res.ok || res.status === 204) {
                 removePhotoCard(photoId);
             } else if (res.status === 404) {
@@ -779,7 +782,7 @@
         closeDeleteMsgModal();
 
         try {
-            const res = await fetch(`/api/v1/admin/messages/${msgId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/messages/${msgId}`, { method: 'DELETE' });
             if (res.ok || res.status === 204) {
                 removeMessageCard(msgId);
             } else if (res.status === 404) {
@@ -812,7 +815,7 @@
         closeDeleteCommentModal();
 
         try {
-            const res = await fetch(`/api/v1/admin/comments/${commentId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/comments/${commentId}`, { method: 'DELETE' });
             if (res.ok || res.status === 204) {
                 removeCommentItem(commentId);
             } else if (res.status === 404) {
@@ -1077,11 +1080,11 @@
     }
 
     function downloadFullZip() {
-        window.location.href = `/api/v1/admin/photos/download-zip?slug=${encodeURIComponent(slug)}`;
+        window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/download-zip`;
     }
 
     function downloadSinglePhoto(photoId) {
-        window.location.href = `/api/v1/admin/photos/${encodeURIComponent(photoId)}/download`;
+        window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/${encodeURIComponent(photoId)}/download`;
     }
 
     function downloadSelectedPhotos(photoIds) {
@@ -1090,7 +1093,7 @@
             return;
         }
         const idsParam = photoIds.join(',');
-        window.location.href = `/api/v1/admin/photos/download-zip?slug=${encodeURIComponent(slug)}&photoIds=${encodeURIComponent(idsParam)}`;
+        window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/download-zip?photoIds=${encodeURIComponent(idsParam)}`;
     }
 
     async function logout() {

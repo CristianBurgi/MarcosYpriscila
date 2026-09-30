@@ -31,7 +31,7 @@ import static org.mockito.Mockito.mockStatic;
 class GlobalExceptionHandlerSentryNoiseTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
-    private final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/events/marcos-y-priscila/stream");
+    private final MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/events/evento-demo-k7m2xq9p/stream");
 
     @Test
     @DisplayName("ClientAbortException (el cliente cortó mientras se le escribía, ej. cancela el ZIP) no se reporta a Sentry")
@@ -54,7 +54,7 @@ class GlobalExceptionHandlerSentryNoiseTest {
     @MethodSource("serverSideFailuresThatLookLikeDisconnects")
     @DisplayName("Una falla leyendo de R2/BD con mensaje 'Connection reset'/'Broken pipe' o EOFException SÍ va a Sentry")
     void serverSideReadFailuresAreStillReported(String description, Exception ex) {
-        MockHttpServletRequest zipDownload = new MockHttpServletRequest("GET", "/api/v1/admin/photos/download-zip");
+        MockHttpServletRequest zipDownload = new MockHttpServletRequest("GET", "/api/v1/admin/events/evento-demo-k7m2xq9p/photos/download-zip");
 
         try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {
             ResponseEntity<ErrorResponseDTO> response = handler.handleGenericException(ex, zipDownload);
@@ -80,7 +80,7 @@ class GlobalExceptionHandlerSentryNoiseTest {
     @Test
     @DisplayName("IOException con mensaje localizado durante el async dispatch del SSE (reproducido en Windows) no va a Sentry")
     void localizedDisconnectDuringAsyncDispatchIsNotReported() {
-        MockHttpServletRequest asyncDispatch = new MockHttpServletRequest("GET", "/api/v1/events/marcos-y-priscila/stream");
+        MockHttpServletRequest asyncDispatch = new MockHttpServletRequest("GET", "/api/v1/events/evento-demo-k7m2xq9p/stream");
         asyncDispatch.setDispatcherType(jakarta.servlet.DispatcherType.ASYNC);
 
         try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {

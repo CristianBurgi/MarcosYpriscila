@@ -1,14 +1,26 @@
 package com.tuapp.eventfoto.common.config;
 
+import com.tuapp.eventfoto.event.OwnedEventArgumentResolver;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 @Configuration
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
+
+    private final OwnedEventArgumentResolver ownedEventArgumentResolver;
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(ownedEventArgumentResolver);
+    }
 
     /**
      * Mapea las rutas /uploads/** y /photos/** hacia la carpeta local de archivos del disco ('uploads/').

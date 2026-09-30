@@ -93,17 +93,16 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public void deleteComment(UUID commentId) {
-        Comment comment = commentRepository.findById(commentId)
+    public void deleteComment(UUID eventId, UUID commentId) {
+        Comment comment = commentRepository.findByIdAndPhotoEventId(commentId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el comentario con ID: " + commentId));
         
         UUID photoId = comment.getPhoto() != null ? comment.getPhoto().getId() : null;
-        UUID eventId = (comment.getPhoto() != null && comment.getPhoto().getEvent() != null) ? comment.getPhoto().getEvent().getId() : null;
 
         commentRepository.delete(comment);
         log.info("Comentario con ID {} eliminado exitosamente por administración", commentId);
 
-        if (eventId != null && photoId != null) {
+        if (photoId != null) {
             sseBroadcaster.broadcastCommentDeleted(eventId, commentId, photoId);
         }
     }

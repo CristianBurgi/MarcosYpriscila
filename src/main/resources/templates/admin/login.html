@@ -176,7 +176,7 @@
             });
 
             if (response.ok) {
-                window.location.href = '/admin/dashboard';
+                window.location.href = '/admin/eventos';
             } else {
                 const errData = await response.json().catch(() => ({}));
                 alertError.innerText = errData.message || 'Credenciales inválidas. Por favor intente nuevamente.';

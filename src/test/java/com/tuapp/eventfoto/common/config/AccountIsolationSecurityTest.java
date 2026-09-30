@@ -81,7 +81,7 @@ class AccountIsolationSecurityTest {
                 .claim("organizerId", organizer.getId().toString())
                 .claim("tokenVersion", organizer.getTokenVersion() + 1)); // versión que la BD todavía no tiene
 
-        mockMvc.perform(get("/api/v1/admin/photos").cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, staleToken)))
+        mockMvc.perform(get("/api/v1/admin/events/evento-demo-k7m2xq9p/photos").cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, staleToken)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -92,7 +92,7 @@ class AccountIsolationSecurityTest {
                 .subject(organizer.getEmail())
                 .claim("role", "ROLE_ADMIN")); // formato pre-Bloque 1: sin organizerId ni tokenVersion
 
-        mockMvc.perform(get("/api/v1/admin/photos").cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, legacyToken)))
+        mockMvc.perform(get("/api/v1/admin/events/evento-demo-k7m2xq9p/photos").cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, legacyToken)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -103,7 +103,7 @@ class AccountIsolationSecurityTest {
                 .subject(organizer.getEmail())
                 .claim("role", "ORGANIZER")); // rol correcto, pero sin los claims obligatorios
 
-        mockMvc.perform(get("/api/v1/admin/photos").cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, malformed)))
+        mockMvc.perform(get("/api/v1/admin/events/evento-demo-k7m2xq9p/photos").cookie(new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME, malformed)))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -130,7 +130,7 @@ class AccountIsolationSecurityTest {
 
         // Autenticado (firma y rol válidos), pero sin el rol ORGANIZER que exige la ruta:
         // Spring Security devuelve 403 (Forbidden), no 401 -- 401 es "no autenticado".
-        mockMvc.perform(get("/api/v1/admin/photos")
+        mockMvc.perform(get("/api/v1/admin/events/evento-demo-k7m2xq9p/photos")
                         .header("Authorization", "Bearer " + superadminToken))
                 .andExpect(status().isForbidden());
     }

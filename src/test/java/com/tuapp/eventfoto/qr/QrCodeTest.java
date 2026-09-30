@@ -41,7 +41,7 @@ class QrCodeTest {
     @Test
     @DisplayName("Debe generar exitosamente una imagen PNG de código QR")
     void shouldGenerateQrCodePngBytes() {
-        String targetUrl = "https://boda-marcos-y-priscila.up.railway.app/menu.html?slug=marcos-y-priscila";
+        String targetUrl = "https://eventfoto.up.railway.app/e/evento-demo-k7m2xq9p";
         byte[] qrBytes = qrCodeService.generateQrCodePng(targetUrl, 300, 300);
 
         assertNotNull(qrBytes);
@@ -57,23 +57,23 @@ class QrCodeTest {
     @DisplayName("Endpoint GET /api/v1/events/{slug}/qr debe responder con imagen PNG")
     void shouldReturnQrCodePngFromEndpoint() throws Exception {
         UUID eventId = UUID.randomUUID();
-        EventResponseDTO eventDto = new EventResponseDTO(eventId, "Boda de Marcos y Priscila", "marcos-y-priscila", LocalDate.now(), null, true, Instant.now());
+        EventResponseDTO eventDto = new EventResponseDTO(eventId, "Boda de Marcos y Priscila", "evento-demo-k7m2xq9p", LocalDate.now(), null, true, Instant.now());
         when(eventService.getEventBySlug(anyString())).thenReturn(eventDto);
 
-        mockMvc.perform(get("/api/v1/events/marcos-y-priscila/qr")
+        mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/qr")
                         .param("size", "350"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.IMAGE_PNG))
-                .andExpect(header().string("Content-Disposition", "inline; filename=\"qr-marcos-y-priscila.png\""));
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"qr-evento-demo-k7m2xq9p.png\""));
     }
 
     @Test
     @DisplayName("El QR apunta a APP_BASE_URL aunque la request llegue con otro host (X-Forwarded-Host)")
     void qrTargetComesOnlyFromAppBaseUrl() throws Exception {
-        EventResponseDTO eventDto = new EventResponseDTO(UUID.randomUUID(), "Boda", "marcos-y-priscila", LocalDate.now(), null, true, Instant.now());
+        EventResponseDTO eventDto = new EventResponseDTO(UUID.randomUUID(), "Boda", "evento-demo-k7m2xq9p", LocalDate.now(), null, true, Instant.now());
         when(eventService.getEventBySlug(anyString())).thenReturn(eventDto);
 
-        byte[] png = mockMvc.perform(get("/api/v1/events/marcos-y-priscila/qr")
+        byte[] png = mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/qr")
                         .header("X-Forwarded-Host", "otro-host.up.railway.app")
                         .header("X-Forwarded-Proto", "https"))
                 .andExpect(status().isOk())
@@ -84,6 +84,6 @@ class QrCodeTest {
                 new com.google.zxing.BinaryBitmap(new com.google.zxing.common.HybridBinarizer(
                         new com.google.zxing.client.j2se.BufferedImageLuminanceSource(image))));
 
-        assertEquals("https://qr-test.eventfoto.com.ar/menu.html?slug=marcos-y-priscila", decoded.getText());
+        assertEquals("https://qr-test.eventfoto.com.ar/e/evento-demo-k7m2xq9p", decoded.getText());
     }
 }

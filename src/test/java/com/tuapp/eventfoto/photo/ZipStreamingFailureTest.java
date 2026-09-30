@@ -58,11 +58,11 @@ class ZipStreamingFailureTest {
                 mock(SseBroadcaster.class), mock(RateLimiterService.class), mock(GuestQuotaService.class),
                 mock(PhotoPersistenceService.class), guestbookPdfService, mock(PhotoUploadClaimService.class));
 
-        event = Event.builder().id(UUID.randomUUID()).slug("marcos-y-priscila").build();
-        brokenInR2 = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/marcos-y-priscila/rota.jpg").uploaderName("Ana").build();
-        healthy = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/marcos-y-priscila/sana.jpg").uploaderName("Beto").build();
+        event = Event.builder().id(UUID.randomUUID()).slug("evento-demo-k7m2xq9p").build();
+        brokenInR2 = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/evento-demo-k7m2xq9p/rota.jpg").uploaderName("Ana").build();
+        healthy = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/evento-demo-k7m2xq9p/sana.jpg").uploaderName("Beto").build();
 
-        when(eventService.getEventEntityBySlug("marcos-y-priscila")).thenReturn(event);
+        when(eventService.getEventEntityBySlug("evento-demo-k7m2xq9p")).thenReturn(event);
         when(photoRepository.findByEventId(event.getId())).thenReturn(List.of(brokenInR2, healthy));
         when(storageService.streamObject(healthy.getStorageKey())).thenAnswer(inv -> new ByteArrayInputStream(PHOTO_OK_BYTES));
     }
@@ -75,7 +75,7 @@ class ZipStreamingFailureTest {
         ByteArrayOutputStream client = new ByteArrayOutputStream();
 
         try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {
-            photoService.streamPhotosZip("marcos-y-priscila", null, client);
+            photoService.streamPhotosZip("evento-demo-k7m2xq9p", null, client);
 
             sentry.verify(() -> Sentry.captureException(r2Failure));
             sentry.verifyNoMoreInteractions();
@@ -104,7 +104,7 @@ class ZipStreamingFailureTest {
         when(storageService.streamObject(brokenInR2.getStorageKey())).thenThrow(sdkFailure);
 
         try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {
-            photoService.streamPhotosZip("marcos-y-priscila", null, new ByteArrayOutputStream());
+            photoService.streamPhotosZip("evento-demo-k7m2xq9p", null, new ByteArrayOutputStream());
 
             sentry.verify(() -> Sentry.captureException(sdkFailure));
         }
@@ -127,7 +127,7 @@ class ZipStreamingFailureTest {
         };
 
         try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {
-            assertThatCode(() -> photoService.streamPhotosZip("marcos-y-priscila", null, clientThatHungUp))
+            assertThatCode(() -> photoService.streamPhotosZip("evento-demo-k7m2xq9p", null, clientThatHungUp))
                     .doesNotThrowAnyException();
 
             sentry.verifyNoInteractions();
@@ -141,11 +141,11 @@ class ZipStreamingFailureTest {
     void guestbookFailureDoesNotBlockThePhotos() throws IOException {
         when(storageService.streamObject(brokenInR2.getStorageKey())).thenAnswer(inv -> new ByteArrayInputStream(PHOTO_OK_BYTES));
         IllegalStateException pdfFailure = new IllegalStateException("fuente corrupta");
-        when(guestbookPdfService.generate("marcos-y-priscila")).thenThrow(pdfFailure);
+        when(guestbookPdfService.generate("evento-demo-k7m2xq9p")).thenThrow(pdfFailure);
         ByteArrayOutputStream client = new ByteArrayOutputStream();
 
         try (MockedStatic<Sentry> sentry = mockStatic(Sentry.class)) {
-            assertThatCode(() -> photoService.streamPhotosZip("marcos-y-priscila", null, client)).doesNotThrowAnyException();
+            assertThatCode(() -> photoService.streamPhotosZip("evento-demo-k7m2xq9p", null, client)).doesNotThrowAnyException();
             sentry.verify(() -> Sentry.captureException(pdfFailure));
         }
 

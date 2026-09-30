@@ -14,5 +14,5 @@ public interface CommentService {
 
     List<CommentResponseDTO> getEventComments(String slug);
 
-    void deleteComment(UUID commentId);
+    void deleteComment(UUID eventId, UUID commentId);
 }
