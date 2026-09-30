@@ -275,7 +275,7 @@ class AdminSecurityTest {
     }
 
     @Test
-    @DisplayName("Un X-Forwarded-For inventado y distinto en cada intento no evita el bloqueo del rate limit")
+    @DisplayName("Un X-Real-IP inventado y distinto en cada intento no evita el bloqueo del rate limit (remoteAddr en tests no es un hop interno de Railway, así que el header se ignora)")
     void fabricatedXForwardedForDoesNotEvadeLoginRateLimit() throws Exception {
         LoginRequestDTO badRequest = new LoginRequestDTO("admin-security@test.com", "wrongpass");
 
@@ -283,14 +283,14 @@ class AdminSecurityTest {
             mockMvc.perform(post("/api/v1/admin/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(badRequest))
-                            .header("X-Forwarded-For", "10.0.0." + i)) // el atacante cambia el header en cada intento
+                            .header("X-Real-IP", "10.0.0." + i)) // el atacante cambia el header en cada intento
                     .andExpect(status().isUnauthorized());
         }
 
         mockMvc.perform(post("/api/v1/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(badRequest))
-                        .header("X-Forwarded-For", "10.0.0.99"))
+                        .header("X-Real-IP", "10.0.0.99"))
                 .andExpect(status().isTooManyRequests());
     }
 
