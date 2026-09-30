@@ -9,6 +9,33 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # Postgres real, misma versión mayor que produce Railway (confirmado 30/09/2026:
+    # "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2)"). Se usa para: FlywayEventGuardTest
+    # (el guard de V12 usa PL/pgSQL, que H2 no soporta) y SchemaValidationIntegrationTest
+    # (Flyway + ddl-auto=validate contra un esquema real, para detectar drift entre las
+    # entidades JPA y las migraciones antes del deploy, no durante). La suite normal con
+    # H2 (perfil "test") sigue corriendo igual, sin tocar este service container.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: eventfoto_ci
+          POSTGRES_USER: eventfoto_ci
+          POSTGRES_PASSWORD: eventfoto_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/eventfoto_ci
+      DB_USER: eventfoto_ci
+      DB_PASSWORD: eventfoto_ci_password
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -20,5 +47,5 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - name: Ejecutar tests (mvn test)
+      - name: Ejecutar tests (mvn test) -- incluye la suite con H2 y, gracias a DB_URL/DB_USER/DB_PASSWORD de arriba, los tests contra Postgres real (FlywayEventGuardTest, SchemaValidationIntegrationTest)
         run: mvn -B test

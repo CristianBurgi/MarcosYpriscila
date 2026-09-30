@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.migration;
 
+import com.tuapp.eventfoto.testsupport.PostgresTestCredentials;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.AfterEach;
@@ -7,21 +8,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -31,14 +27,18 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * Esto no se puede probar contra H2 (los tests normales de la app corren con Flyway
  * deshabilitado y ddl-auto=create-drop): el guard usa un bloque PL/pgSQL (DO $$ ...
- * RAISE EXCEPTION) que H2 no soporta. Se necesita un Postgres real -- se usa el mismo
- * que docker-compose.yml levanta para desarrollo local, leyendo las credenciales del
- * .env del repo (nunca se hardcodean acá). Si no hay .env o el Postgres no responde
- * (por ejemplo en un entorno de CI sin Docker), el test se omite en vez de fallar: no
- * hay Testcontainers en el proyecto y agregarlo es más cambio del que pide este bloque.
+ * RAISE EXCEPTION) que H2 no soporta. Se necesita un Postgres real -- en CI lo provee
+ * el service container del workflow (ver .github/workflows/ci.yml, variables de entorno
+ * reales DB_URL/DB_USER/DB_PASSWORD); en local cae al .env del repo (mismo mecanismo que
+ * usa la app) -- ver PostgresTestCredentials.
+ *
+ * Si faltan credenciales o Postgres no responde: en CI (variable CI=true, que GitHub
+ * Actions define siempre) el test FALLA con un mensaje claro -- ahí se supone que el
+ * service container arranca, así que un fallo silencioso (test salteado, CI en verde
+ * igual) sería peor que no tener el test. En local, sin esa garantía, se omite.
  *
  * Corre contra una base descartable creada y borrada en el mismo test -- nunca toca
- * eventfoto_db (la base real de desarrollo local).
+ * eventfoto_db (la base real de desarrollo local) ni la del service container de CI.
  */
 class FlywayEventGuardTest {
 
@@ -49,24 +49,31 @@ class FlywayEventGuardTest {
     private String throwawayUrl;
 
     @BeforeEach
-    void setUp() throws IOException, SQLException {
-        Map<String, String> env = loadDotEnv();
-        String dbUrl = env.get("DB_URL");
-        user = env.get("DB_USER");
-        password = env.get("DB_PASSWORD");
+    void setUp() throws SQLException {
+        PostgresTestCredentials.Credentials creds = PostgresTestCredentials.resolveOrNull();
+        if (creds == null) {
+            if (PostgresTestCredentials.isCi()) {
+                fail("CI=true pero faltan DB_URL/DB_USER/DB_PASSWORD de Postgres: revisar el service container en .github/workflows/ci.yml. Este test no puede saltearse en CI.");
+            }
+            assumeTrue(false, "Sin DB_URL/DB_USER/DB_PASSWORD de Postgres (env real o .env): se omite (solo en local)");
+        }
 
-        boolean hasConfig = dbUrl != null && user != null && password != null
-                && dbUrl.startsWith("jdbc:postgresql://") && !dbUrl.contains("localhost:5433");
-        assumeTrue(hasConfig, "Sin DB_URL/DB_USER/DB_PASSWORD de Postgres en .env: se omite (requiere Postgres local)");
+        this.adminUrl = creds.url();
+        this.user = creds.user();
+        this.password = creds.password();
 
-        this.adminUrl = dbUrl;
         boolean reachable;
         try (Connection ignored = DriverManager.getConnection(adminUrl, user, password)) {
             reachable = true;
         } catch (SQLException e) {
             reachable = false;
         }
-        assumeTrue(reachable, "Postgres local no responde en " + redact(adminUrl) + ": se omite");
+        if (!reachable) {
+            if (PostgresTestCredentials.isCi()) {
+                fail("CI=true pero Postgres no responde en " + redact(adminUrl) + ": revisar el health check del service container en .github/workflows/ci.yml.");
+            }
+            assumeTrue(false, "Postgres local no responde en " + redact(adminUrl) + ": se omite (solo en local)");
+        }
 
         throwawayDb = "eventfoto_flyway_guard_" + System.nanoTime();
         try (Connection conn = DriverManager.getConnection(adminUrl, user, password);
@@ -129,25 +136,6 @@ class FlywayEventGuardTest {
             var rs = st.executeQuery("SELECT column_name FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'organizer_id'");
             assertThat(rs.next()).as("organizer_id no debería existir: V12 tiene que abortar antes del ALTER TABLE").isFalse();
         }
-    }
-
-    private static Map<String, String> loadDotEnv() throws IOException {
-        Path path = Path.of(".env");
-        if (!Files.exists(path)) {
-            return Map.of();
-        }
-        Map<String, String> map = new HashMap<>();
-        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                continue;
-            }
-            int eq = trimmed.indexOf('=');
-            if (eq > 0) {
-                map.put(trimmed.substring(0, eq).trim(), trimmed.substring(eq + 1).trim());
-            }
-        }
-        return map;
     }
 
     private static String replaceDbName(String jdbcUrl, String newDbName) {
