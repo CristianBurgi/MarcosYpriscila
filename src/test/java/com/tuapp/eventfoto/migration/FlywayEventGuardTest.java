@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -29,8 +30,12 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * RAISE EXCEPTION) que H2 no soporta. Se necesita un Postgres real -- en CI lo provee
  * el service container del workflow (ver .github/workflows/ci.yml, variables de entorno
  * reales DB_URL/DB_USER/DB_PASSWORD); en local cae al .env del repo (mismo mecanismo que
- * usa la app). Si ninguna de las dos fuentes tiene credenciales, o el Postgres no
- * responde, el test se omite en vez de fallar -- ver PostgresTestCredentials.
+ * usa la app) -- ver PostgresTestCredentials.
+ *
+ * Si faltan credenciales o Postgres no responde: en CI (variable CI=true, que GitHub
+ * Actions define siempre) el test FALLA con un mensaje claro -- ahí se supone que el
+ * service container arranca, así que un fallo silencioso (test salteado, CI en verde
+ * igual) sería peor que no tener el test. En local, sin esa garantía, se omite.
  *
  * Corre contra una base descartable creada y borrada en el mismo test -- nunca toca
  * eventfoto_db (la base real de desarrollo local) ni la del service container de CI.
@@ -46,7 +51,12 @@ class FlywayEventGuardTest {
     @BeforeEach
     void setUp() throws SQLException {
         PostgresTestCredentials.Credentials creds = PostgresTestCredentials.resolveOrNull();
-        assumeTrue(creds != null, "Sin DB_URL/DB_USER/DB_PASSWORD de Postgres (env real o .env): se omite");
+        if (creds == null) {
+            if (PostgresTestCredentials.isCi()) {
+                fail("CI=true pero faltan DB_URL/DB_USER/DB_PASSWORD de Postgres: revisar el service container en .github/workflows/ci.yml. Este test no puede saltearse en CI.");
+            }
+            assumeTrue(false, "Sin DB_URL/DB_USER/DB_PASSWORD de Postgres (env real o .env): se omite (solo en local)");
+        }
 
         this.adminUrl = creds.url();
         this.user = creds.user();
@@ -58,7 +68,12 @@ class FlywayEventGuardTest {
         } catch (SQLException e) {
             reachable = false;
         }
-        assumeTrue(reachable, "Postgres local no responde en " + redact(adminUrl) + ": se omite");
+        if (!reachable) {
+            if (PostgresTestCredentials.isCi()) {
+                fail("CI=true pero Postgres no responde en " + redact(adminUrl) + ": revisar el health check del service container en .github/workflows/ci.yml.");
+            }
+            assumeTrue(false, "Postgres local no responde en " + redact(adminUrl) + ": se omite (solo en local)");
+        }
 
         throwawayDb = "eventfoto_flyway_guard_" + System.nanoTime();
         try (Connection conn = DriverManager.getConnection(adminUrl, user, password);

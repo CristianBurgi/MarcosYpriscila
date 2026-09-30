@@ -16,6 +16,13 @@ import java.util.Map;
  * GitHub Actions las setea directo sin ningún .env) -- si faltan, cae al .env del repo
  * (conveniencia para desarrollo local, mismo mecanismo que usa la app misma vía
  * spring-dotenv). Nunca se loguean ni se exponen los valores resueltos.
+ *
+ * <p>{@link #isCi()} distingue el comportamiento cuando Postgres no está disponible:
+ * en CI (GitHub Actions define {@code CI=true} siempre) la falta de credenciales o de
+ * conexión tiene que FALLAR el test con un mensaje claro -- nunca saltearse en
+ * silencio, porque ahí sí hay un service container que se supone que arranca (ver
+ * .github/workflows/ci.yml). En local, sin esa garantía, se sigue omitiendo el test si
+ * no hay Postgres a mano.
  */
 public final class PostgresTestCredentials {
 
@@ -23,6 +30,10 @@ public final class PostgresTestCredentials {
     }
 
     private PostgresTestCredentials() {
+    }
+
+    public static boolean isCi() {
+        return "true".equalsIgnoreCase(System.getenv("CI"));
     }
 
     public static Credentials resolveOrNull() {

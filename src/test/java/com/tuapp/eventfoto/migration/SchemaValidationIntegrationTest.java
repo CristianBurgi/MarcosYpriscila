@@ -1,12 +1,15 @@
 package com.tuapp.eventfoto.migration;
 
 import com.tuapp.eventfoto.testsupport.PostgresTestCredentials;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Arranca la app COMPLETA (sin el perfil "test", que fuerza H2 + Flyway apagado +
@@ -19,20 +22,37 @@ import org.springframework.test.context.DynamicPropertySource;
  * desincronizada del esquema real, o un tipo de columna que H2 acepta pero Postgres no,
  * recién se hubieran visto ahí. Ahora se detectan en CI.
  *
- * Solo corre cuando hay Postgres real disponible (service container de CI, o .env local
- * -- ver PostgresTestCredentials); si no, se salta la clase entera SIN intentar levantar
- * el contexto de Spring (@EnabledIfEnvironmentVariable evalúa antes de cualquier bootstrap,
- * a diferencia de un Assumptions.assumeTrue dentro de un @Test, que llegaría tarde).
+ * Si faltan credenciales (ver PostgresTestCredentials): en CI (CI=true, que GitHub
+ * Actions define siempre) {@link #requirePostgresInCi()} FALLA la clase entera con un
+ * mensaje claro, sin intentar levantar el contexto de Spring -- un service container
+ * caído o una variable mal escrita no puede dejar este test salteado con CI en verde
+ * igual. En local se omite. @BeforeAll (estático) corre ANTES de que SpringExtension
+ * cree la instancia de test y dispare el bootstrap del contexto, así que el gate llega
+ * a tiempo (a diferencia de un assumeTrue dentro de un @Test, que llegaría tarde).
+ *
+ * Si hay credenciales pero Postgres no responde (container caído, por ejemplo), no hace
+ * falta un chequeo aparte acá: Spring intenta conectar al armar el pool de Hikari y esa
+ * conexión fallida ya hace fallar el test con un mensaje claro, no lo saltea.
  */
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "DB_URL", matches = "jdbc:postgresql://.+")
 class SchemaValidationIntegrationTest {
+
+    @BeforeAll
+    static void requirePostgresInCi() {
+        if (PostgresTestCredentials.resolveOrNull() != null) {
+            return;
+        }
+        if (PostgresTestCredentials.isCi()) {
+            fail("CI=true pero faltan DB_URL/DB_USER/DB_PASSWORD de Postgres: revisar el service container en .github/workflows/ci.yml. Este test no puede saltearse en CI.");
+        }
+        assumeTrue(false, "Sin DB_URL/DB_USER/DB_PASSWORD de Postgres (env real o .env): se omite (solo en local)");
+    }
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
         PostgresTestCredentials.Credentials creds = PostgresTestCredentials.resolveOrNull();
         if (creds == null) {
-            return; // @EnabledIfEnvironmentVariable ya debería haber saltado la clase antes de llegar acá
+            return; // requirePostgresInCi() ya frenó (fail o skip) antes de llegar acá
         }
         registry.add("spring.datasource.url", creds::url);
         registry.add("spring.datasource.username", creds::user);
