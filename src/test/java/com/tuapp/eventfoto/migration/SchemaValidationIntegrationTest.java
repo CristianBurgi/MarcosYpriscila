@@ -33,6 +33,17 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * Si hay credenciales pero Postgres no responde (container caído, por ejemplo), no hace
  * falta un chequeo aparte acá: Spring intenta conectar al armar el pool de Hikari y esa
  * conexión fallida ya hace fallar el test con un mensaje claro, no lo saltea.
+ *
+ * <p>El contexto arranca SIN el perfil "test", así que además de Postgres necesita todo
+ * lo que necesitaría producción para bootear -- en particular, S3Config arma el bean
+ * S3Client/S3Presigner siempre (no solo con storage.mode=r2), parseando
+ * cloudflare.r2.endpoint como URI. El default de application.yml para esa propiedad es
+ * un placeholder literal ("https://&lt;account-id&gt;...") que no es una URI válida y
+ * rompe ese bean. En local esto no se nota porque spring-dotenv carga el .env del repo
+ * (que sí tiene un endpoint válido); en CI no hay .env, así que hace falta fijar acá un
+ * valor de prueba válido -- sin tocar los defaults de application.yml, que
+ * ProductionSecretsValidator/R2ConfigurationValidator necesitan intactos para poder
+ * detectar placeholders reales en producción.
  */
 @SpringBootTest
 class SchemaValidationIntegrationTest {
@@ -57,6 +68,13 @@ class SchemaValidationIntegrationTest {
         registry.add("spring.datasource.url", creds::url);
         registry.add("spring.datasource.username", creds::user);
         registry.add("spring.datasource.password", creds::password);
+
+        // S3Config arma S3Client/S3Presigner siempre, parseando cloudflare.r2.endpoint
+        // como URI -- el placeholder por defecto de application.yml no es una URI válida
+        // (ver comentario de la clase). No es un endpoint real: nunca se llama en este
+        // test (storage.mode sigue en "local"), solo tiene que ser sintácticamente válido
+        // para que el bean se construya.
+        registry.add("cloudflare.r2.endpoint", () -> "https://ci-test.r2.cloudflarestorage.com");
     }
 
     @Test
