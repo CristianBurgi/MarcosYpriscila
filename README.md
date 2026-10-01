@@ -67,12 +67,12 @@ La aplicación está desplegada en producción en Railway:
 
 | Vista | URL |
 |---|---|
-| **Menú de invitados** | `https://marcosypriscila-production.up.railway.app/e/{slug}` |
-| **Álbum colaborativo** | `https://marcosypriscila-production.up.railway.app/e/{slug}/album` |
-| **Subida de fotos** | `https://marcosypriscila-production.up.railway.app/e/{slug}/subir` |
-| **Libro de Visitas** | `https://marcosypriscila-production.up.railway.app/e/{slug}/mensajes` |
-| **Pantalla del salón** | `https://marcosypriscila-production.up.railway.app/e/{slug}/pantalla` |
-| **Panel del organizador** | `https://marcosypriscila-production.up.railway.app/admin/login` → `/admin/eventos` (Mis eventos) → `/admin/eventos/{slug}` |
+| **Menú de invitados** | `https://tu-dominio.up.railway.app/e/{slug}` |
+| **Álbum colaborativo** | `https://tu-dominio.up.railway.app/e/{slug}/album` |
+| **Subida de fotos** | `https://tu-dominio.up.railway.app/e/{slug}/subir` |
+| **Libro de Visitas** | `https://tu-dominio.up.railway.app/e/{slug}/mensajes` |
+| **Pantalla del salón** | `https://tu-dominio.up.railway.app/e/{slug}/pantalla` |
+| **Panel del organizador** | `https://tu-dominio.up.railway.app/admin/login` → `/admin/eventos` (Mis eventos) → `/admin/eventos/{slug}` |
 
 ---
 
@@ -226,7 +226,7 @@ El `SseBroadcaster` mantiene un `ConcurrentHashMap<UUID, List<SseEmitter>>` de e
 El código está organizado **por feature** (no por capa técnica). Cada paquete contiene todo lo necesario para esa funcionalidad: entidad, repositorio, servicio, controlador y DTOs.
 
 ```
-MarcosYpriscila/
+eventfoto/
 ├── Dockerfile                          # Multi-stage: Maven build + JRE runtime + libheif
 ├── docker-compose.yml                  # PostgreSQL local para desarrollo
 ├── pom.xml                             # Dependencias Maven
@@ -555,8 +555,8 @@ Todos los emojis del sistema operativo fueron reemplazados por iconos vectoriale
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/CristianBurgi/MarcosYpriscila.git
-cd MarcosYpriscila
+git clone https://github.com/CristianBurgi/eventfoto.git
+cd eventfoto
 ```
 
 ### 2. Configurar las variables de entorno
@@ -757,7 +757,7 @@ El script `scripts/load-test.js` simula el pico de actividad de los invitados du
 
 ```bash
 # Contra producción en Railway
-node scripts/load-test.js https://marcosypriscila-production.up.railway.app 25
+node scripts/load-test.js https://tu-dominio.up.railway.app 25
 
 # Contra un servidor local
 node scripts/load-test.js http://localhost:8080 30
@@ -822,7 +822,7 @@ Para las pruebas, el bucket de R2 puede tener CORS configurado con `*`. **Antes 
 
 ```json
 [{
-  "AllowedOrigins": ["https://marcosypriscila-production.up.railway.app"],
+  "AllowedOrigins": ["https://tu-dominio.up.railway.app"],
   "AllowedMethods": ["PUT"],
   "AllowedHeaders": ["Content-Type"]
 }]
@@ -835,7 +835,7 @@ Toda URL absoluta que genera la app (QR, link del panel) sale de `APP_BASE_URL`;
    ```json
    [{
      "AllowedOrigins": [
-       "https://marcosypriscila-production.up.railway.app",
+       "https://tu-dominio.up.railway.app",
        "https://eventfoto.com.ar"
      ],
      "AllowedMethods": ["PUT"],
