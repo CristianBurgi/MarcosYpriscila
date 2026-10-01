@@ -3,9 +3,9 @@ package com.tuapp.eventfoto.event;
 import java.lang.annotation.*;
 
 /**
- * Parámetro de controller de tipo {@link Event}: se resuelve desde la variable de ruta
- * {@code {slug}} y el organizador autenticado, o responde 404. Todo endpoint del panel
- * que trabaja sobre un evento lo declara así en lugar de resolver el evento por su cuenta.
+ * Parámetro de controller de tipo {@link Event}: entrega el evento que EventAccessInterceptor
+ * ya resolvió desde {@code {slug}} y autorizó para el organizador logueado. No consulta nada
+ * por su cuenta; si la ruta no pasó por el interceptor falla ruidosamente.
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)

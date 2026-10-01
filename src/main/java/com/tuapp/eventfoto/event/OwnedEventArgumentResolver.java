@@ -1,25 +1,23 @@
 package com.tuapp.eventfoto.event;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.web.servlet.HandlerMapping;
 
-import java.util.Map;
-import java.util.UUID;
-
+/**
+ * Entrega el evento que EventAccessInterceptor ya resolvió y autorizó para esta request.
+ * No consulta la base ni resuelve nada por su cuenta: si el atributo no está, es un bug de
+ * configuración (la ruta no pasó por el interceptor) y falla ruidosamente, jamás devuelve
+ * null.
+ */
+@Slf4j
 @Component
-@RequiredArgsConstructor
 public class OwnedEventArgumentResolver implements HandlerMethodArgumentResolver {
-
-    private final EventAccessService eventAccessService;
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
@@ -27,16 +25,16 @@ public class OwnedEventArgumentResolver implements HandlerMethodArgumentResolver
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-        Map<String, String> pathVariables = (Map<String, String>) webRequest.getAttribute(
-                HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
-        String slug = pathVariables != null ? pathVariables.get("slug") : null;
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        UUID organizerId = authentication != null && authentication.getPrincipal() instanceof UUID id ? id : null;
-
-        return eventAccessService.requireOwnedEvent(slug, organizerId);
+        Object event = webRequest.getAttribute(EventAccessInterceptor.EVENT_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
+        if (event instanceof Event resolved) {
+            return resolved;
+        }
+        String message = "@OwnedEvent en " + parameter.getExecutable().toGenericString()
+                + " pero la request no trae el evento resuelto: la ruta no pasó por EventAccessInterceptor "
+                + "(¿está fuera de /admin/** y /api/v1/admin/**, o el interceptor no está registrado?)";
+        log.error(message);
+        throw new IllegalStateException(message);
     }
 }

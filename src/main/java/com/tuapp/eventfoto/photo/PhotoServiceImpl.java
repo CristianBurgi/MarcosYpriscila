@@ -60,6 +60,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final PhotoPersistenceService photoPersistenceService;
     private final GuestbookPdfService guestbookPdfService;
     private final PhotoUploadClaimService photoUploadClaimService;
+    private final AlbumReader albumReader;
 
     @Override
     public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken) {
@@ -351,17 +352,16 @@ public class PhotoServiceImpl implements PhotoService {
         return storageService.generateDownloadUrl(photo.getStorageKey());
     }
 
+    /**
+     * SIN @Transactional a propósito: el ZIP puede tardar minutos (render del PDF, lectura de
+     * cada foto desde R2) y una transacción abierta sostendría una conexión del pool todo ese
+     * tiempo. Con varios organizadores bajando álbumes a la vez se agotaría el pool. La lectura
+     * de la base ocurre en AlbumReader (transacción corta, ya cerrada cuando empieza el
+     * streaming); GuestbookPdfService hace lo mismo con su lectura.
+     */
     @Override
-    @Transactional(readOnly = true)
     public void streamPhotosZip(String slug, List<UUID> photoIds, OutputStream outputStream) {
-        Event event = eventService.getEventEntityBySlug(slug);
-
-        List<Photo> photosToZip;
-        if (photoIds != null && !photoIds.isEmpty()) {
-            photosToZip = photoRepository.findByEventIdAndIdIn(event.getId(), photoIds);
-        } else {
-            photosToZip = photoRepository.findByEventId(event.getId());
-        }
+        List<AlbumReader.ZipPhoto> photosToZip = albumReader.loadPhotos(slug, photoIds);
 
         if (photosToZip.isEmpty()) {
             log.info("No se encontraron fotografías para empaquetar en el archivo ZIP del evento '{}'", slug);
@@ -390,7 +390,7 @@ public class PhotoServiceImpl implements PhotoService {
                 zos.write(guestbookPdf);
                 zos.closeEntry();
             }
-            for (Photo photo : photosToZip) {
+            for (AlbumReader.ZipPhoto photo : photosToZip) {
                 String entryName = buildZipEntryName(photo, usedEntryNames);
                 zos.putNextEntry(new ZipEntry(entryName));
                 if (!copyPhotoIntoZip(photo, zos)) {
@@ -422,10 +422,10 @@ public class PhotoServiceImpl implements PhotoService {
      *
      * @return false si hubo una falla de lectura en storage.
      */
-    private boolean copyPhotoIntoZip(Photo photo, ZipOutputStream zos) throws IOException {
+    private boolean copyPhotoIntoZip(AlbumReader.ZipPhoto photo, ZipOutputStream zos) throws IOException {
         InputStream is;
         try {
-            is = storageService.streamObject(photo.getStorageKey());
+            is = storageService.streamObject(photo.storageKey());
         } catch (Exception e) {
             reportZipStorageFailure(photo, e);
             return false;
@@ -449,25 +449,25 @@ public class PhotoServiceImpl implements PhotoService {
             try {
                 is.close();
             } catch (IOException e) {
-                log.debug("No se pudo cerrar el stream de storage de la foto {}: {}", photo.getId(), e.getMessage());
+                log.debug("No se pudo cerrar el stream de storage de la foto {}: {}", photo.id(), e.getMessage());
             }
         }
     }
 
-    private void reportZipStorageFailure(Photo photo, Exception e) {
-        log.error("Error leyendo de storage la foto ID {} ('{}') para el ZIP: {}", photo.getId(), photo.getStorageKey(), e.getMessage(), e);
+    private void reportZipStorageFailure(AlbumReader.ZipPhoto photo, Exception e) {
+        log.error("Error leyendo de storage la foto ID {} ('{}') para el ZIP: {}", photo.id(), photo.storageKey(), e.getMessage(), e);
         Sentry.captureException(e);
     }
 
-    private String buildZipEntryName(Photo photo, Set<String> usedNames) {
-        String shortId = photo.getId().toString().substring(0, 8);
-        String uploader = photo.getUploaderName() != null && !photo.getUploaderName().isBlank()
-                ? photo.getUploaderName().replaceAll("[^a-zA-Z0-9_-]", "_")
+    private String buildZipEntryName(AlbumReader.ZipPhoto photo, Set<String> usedNames) {
+        String shortId = photo.id().toString().substring(0, 8);
+        String uploader = photo.uploaderName() != null && !photo.uploaderName().isBlank()
+                ? photo.uploaderName().replaceAll("[^a-zA-Z0-9_-]", "_")
                 : "Invitado";
 
         String ext = ".jpg";
-        if (photo.getStorageKey() != null && photo.getStorageKey().contains(".")) {
-            ext = photo.getStorageKey().substring(photo.getStorageKey().lastIndexOf("."));
+        if (photo.storageKey() != null && photo.storageKey().contains(".")) {
+            ext = photo.storageKey().substring(photo.storageKey().lastIndexOf("."));
         }
 
         String baseName = String.format("%s_%s%s", shortId, uploader, ext);

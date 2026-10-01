@@ -1,9 +1,11 @@
 package com.tuapp.eventfoto.common.config;
 
+import com.tuapp.eventfoto.event.EventAccessInterceptor;
 import com.tuapp.eventfoto.event.OwnedEventArgumentResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -16,6 +18,17 @@ import java.util.List;
 public class WebConfig implements WebMvcConfigurer {
 
     private final OwnedEventArgumentResolver ownedEventArgumentResolver;
+    private final EventAccessInterceptor eventAccessInterceptor;
+
+    /**
+     * Todo el panel del organizador pasa por la resolución y autorización del evento. Las
+     * únicas rutas que quedan afuera están en AdminRouteExceptions (con su motivo).
+     * /superadmin/** tiene su propia cadena de seguridad y no se toca acá.
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(eventAccessInterceptor).addPathPatterns("/admin/**", "/api/v1/admin/**");
+    }
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {

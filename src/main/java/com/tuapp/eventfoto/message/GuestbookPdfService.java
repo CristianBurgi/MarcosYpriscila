@@ -7,7 +7,8 @@ import com.tuapp.eventfoto.pdf.PdfTextSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -39,22 +40,41 @@ public class GuestbookPdfService {
     private final MessageRepository messageRepository;
     private final PdfRenderService pdfRenderService;
     private final PdfTextSanitizer sanitizer;
+    private final PlatformTransactionManager transactionManager;
 
     public record GuestbookEntry(String author, String text, String when) {
     }
 
-    @Transactional(readOnly = true)
+    /** Lo que el PDF necesita, ya extraído de la base: nada de entidades fuera de la transacción. */
+    private record GuestbookData(String eventName, String eventDate, List<GuestbookEntry> entries) {
+    }
+
+    /**
+     * Sin @Transactional en el método: la lectura va en una transacción corta (TransactionTemplate,
+     * no un método @Transactional de este mismo bean: la autoinvocación no pasa por el proxy) y el
+     * render del PDF -- que puede tardar segundos -- corre con la transacción ya cerrada, sin
+     * sostener una conexión del pool.
+     */
     public byte[] generate(String slug) {
-        Event event = eventService.getEventEntityBySlug(slug);
-        List<GuestbookEntry> entries = messageRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtAsc(event.getId())
-                .stream()
-                .map(this::toEntry)
-                .filter(entry -> !entry.text().isEmpty())
-                .toList();
+        TransactionTemplate readOnly = new TransactionTemplate(transactionManager);
+        readOnly.setReadOnly(true);
+        GuestbookData data = readOnly.execute(status -> {
+            Event event = eventService.getEventEntityBySlug(slug);
+            List<GuestbookEntry> loaded = messageRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtAsc(event.getId())
+                    .stream()
+                    .map(this::toEntry)
+                    .filter(entry -> !entry.text().isEmpty())
+                    .toList();
+            return new GuestbookData(
+                    sanitizer.clean(event.getName()),
+                    event.getEventDate() != null ? COVER_DATE.format(event.getEventDate()) : "Fecha a confirmar",
+                    loaded);
+        });
+        List<GuestbookEntry> entries = data.entries();
 
         byte[] pdf = pdfRenderService.render("pdf/libro-de-visitas", Map.of(
-                "eventName", sanitizer.clean(event.getName()),
-                "eventDate", event.getEventDate() != null ? COVER_DATE.format(event.getEventDate()) : "Fecha a confirmar",
+                "eventName", data.eventName(),
+                "eventDate", data.eventDate(),
                 "entries", entries
         ));
         log.info("Libro de visitas generado para '{}': {} mensajes, {} bytes", slug, entries.size(), pdf.length);
