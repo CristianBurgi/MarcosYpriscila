@@ -19,6 +19,14 @@ spring:
       connection-timeout: 15000
 
   jpa:
+    # Fase 9.1 Bloque 3: open-in-view en false a propósito. Con true (el default), la sesión de
+    # Hibernate queda atada a la request entera y la primera consulta (ej. la resolución del
+    # evento en EventAccessInterceptor) toma una conexión del pool que NO se devuelve hasta que
+    # termina la request: medido con ZipConnectionPoolTest, 1 conexión retenida durante todo el
+    # streaming de un ZIP aunque ninguna transacción siga abierta. Con varios organizadores
+    # bajando álbumes a la vez agota el pool (maximum-pool-size: 20). Con false la conexión se
+    # devuelve al cerrar cada transacción; todo acceso lazy tiene que ocurrir dentro de una.
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     show-sql: false

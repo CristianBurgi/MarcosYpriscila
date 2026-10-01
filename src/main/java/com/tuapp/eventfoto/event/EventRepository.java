@@ -15,8 +15,8 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     Optional<Event> findBySlug(String slug);
 
-    /** Evento por slug, acotado al organizador: la base de {@link EventAccessService}. */
-    Optional<Event> findBySlugAndOrganizerId(String slug, UUID organizerId);
+    /** Pregunta de {@link OrganizerOwnerPolicy}: va a la base, no a la relación lazy organizer. */
+    boolean existsByIdAndOrganizerId(UUID id, UUID organizerId);
 
     boolean existsBySlug(String slug);
 
