@@ -96,6 +96,19 @@ class GuestPagesTest {
     }
 
     @Test
+    @DisplayName("La página de subida conserva cámara, galería, nombre y el botón de respaldo, sin slug fijo ni rutas relativas")
+    void uploadPageKeepsItsControls() throws Exception {
+        String html = mockMvc.perform(get("/e/" + SLUG + "/subir"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("id=\"cameraFile\"", "id=\"galleryFile\"", "id=\"uploaderName\"", "id=\"btn-submit\"", "id=\"progress-label\"");
+        assertThat(html).contains("const SLUG = window.EVENT_SLUG;");
+        assertThat(html).doesNotContain("const SLUG = '");
+        assertThat(html).contains("/api/v1/events/${SLUG}/photos/upload-url");
+    }
+
+    @Test
     @DisplayName("El JS compartido existe y deriva el slug de la URL")
     void eventContextScriptIsServed() throws Exception {
         mockMvc.perform(get("/js/event-context.js"))
