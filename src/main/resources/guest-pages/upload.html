@@ -79,11 +79,15 @@
                 <img id="image-preview" src="#" alt="Vista previa de la foto" style="max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 2px;">
             </div>
 
+            <div id="name-notice" role="status" aria-live="polite" style="display: none; border: 1px solid rgba(201, 161, 90, 0.4); background: rgba(201, 161, 90, 0.12); color: var(--gold-soft); padding: 10px 14px; border-radius: 4px; margin-top: 1.2rem; text-align: center;">Escribí tu nombre para enviar tu foto</div>
+            <div id="busy-notice" role="status" aria-live="polite" style="display: none; color: var(--cream-muted); text-align: center; font-size: .9rem; margin-top: 1rem;"></div>
+
+            <div id="progress-label" aria-live="polite" style="display: none; text-align: center; color: var(--gold-soft); font-size: .95rem; margin-top: 1.2rem;"></div>
             <div class="progress-bar-container" id="progress-box" style="display: none; width: 100%; height: 3px; background: rgba(201, 161, 90, 0.15); overflow: hidden; margin-top: 1.2rem;">
                 <div class="progress-bar-fill" id="progress-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--wine-soft), var(--gold)); transition: width 0.3s ease;"></div>
             </div>
 
-            <button type="submit" id="btn-submit" class="btn-primary-elegant" style="margin-top: 1.6rem;">
+            <button type="submit" id="btn-submit" class="btn-primary-elegant" style="margin-top: 1.6rem; display: none;">
                 Subir y Compartir Foto
             </button>
         </form>
@@ -96,6 +100,63 @@
     <script>
         const SLUG = window.EVENT_SLUG;
         let selectedFile = null;
+        // true desde que handleSubmit() arranca (incluida la compresión) hasta que el intento
+        // termina (éxito o fallo definitivo): ignora nuevos change y evita el doble envío.
+        let uploadInProgress = false;
+        let successResetTimer = null;
+        let busyNoticeTimer = null;
+
+        // El nombre se recuerda en el navegador para que desde la segunda foto sea un toque.
+        // localStorage puede fallar (modo privado, almacenamiento bloqueado): todo va en try/catch.
+        const UPLOADER_NAME_KEY = 'eventfoto_uploader_name';
+        function readSavedName() {
+            try { return (localStorage.getItem(UPLOADER_NAME_KEY) || '').trim(); } catch (e) { return ''; }
+        }
+        function saveName(name) {
+            try { localStorage.setItem(UPLOADER_NAME_KEY, name); } catch (e) { /* sin persistencia, no pasa nada */ }
+        }
+
+        // El botón "Subir y Compartir Foto" es respaldo: solo se ve si falta el nombre (o en
+        // los carteles de evento cerrado / cupo agotado, que lo usan como leyenda).
+        function setSubmitVisible(visible) {
+            const btn = document.getElementById('btn-submit');
+            if (!btn) return;
+            btn.style.display = (visible || btn.getAttribute('data-closed')) ? '' : 'none';
+        }
+
+        // Texto de progreso sobre la barra (antes se escribía en el botón, que ahora puede estar oculto).
+        function setStage(text) {
+            const label = document.getElementById('progress-label');
+            if (!label) return;
+            label.textContent = text || '';
+            label.style.display = text ? 'block' : 'none';
+        }
+
+        function showNameNotice() {
+            document.getElementById('name-notice').style.display = 'block';
+            setSubmitVisible(true);
+            document.getElementById('uploaderName').focus();
+        }
+        function hideNameNotice() {
+            document.getElementById('name-notice').style.display = 'none';
+        }
+
+        // Aviso corto que se borra solo; vive aparte de #status-message para no pisar éxito/error.
+        function showBusyNotice() {
+            const notice = document.getElementById('busy-notice');
+            notice.textContent = 'Esperá a que termine la subida actual';
+            notice.style.display = 'block';
+            clearTimeout(busyNoticeTimer);
+            busyNoticeTimer = setTimeout(() => { notice.style.display = 'none'; }, 3500);
+        }
+
+        // Al terminar el intento se vacían los inputs: elegir la misma foto de la galería
+        // después de un fallo vuelve a disparar change. (No se limpian al elegir: algunos
+        // navegadores de celular invalidan el File si se lo lee después.)
+        function clearFileInputs() {
+            document.getElementById('cameraFile').value = '';
+            document.getElementById('galleryFile').value = '';
+        }
 
         const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
         function getOrCreateGuestToken() {
@@ -113,6 +174,10 @@
             checkEventStatus();
             loadGuestQuota();
 
+            const nameInput = document.getElementById('uploaderName');
+            nameInput.value = readSavedName();
+            nameInput.addEventListener('input', () => saveName(nameInput.value.trim()));
+
             const btnCamera = document.getElementById('btn-camera');
             const btnGallery = document.getElementById('btn-gallery');
             const cameraFile = document.getElementById('cameraFile');
@@ -128,8 +193,11 @@
             });
 
             const handleFileSelected = (file) => {
-                if (!file) return;
+                if (!file) return; // cancelar en la cámara no dispara change; si algún navegador lo dispara vacío, no pasa nada
+                if (uploadInProgress) { showBusyNotice(); return; }
+                if (document.getElementById('btn-submit').getAttribute('data-closed')) return;
                 selectedFile = file;
+                document.getElementById('status-message').innerHTML = ''; // sin "Reintentar" viejo apuntando a otra foto
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -137,6 +205,14 @@
                     previewBox.style.display = 'flex';
                 };
                 reader.readAsDataURL(file);
+
+                // Subida con un toque: con nombre arranca sola; sin nombre se conserva la foto
+                // y se pide el nombre (botón o Enter).
+                if (nameInput.value.trim()) {
+                    handleSubmit();
+                } else {
+                    showNameNotice();
+                }
             };
 
             cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
@@ -292,6 +368,7 @@
         }
 
         async function handleSubmit() {
+            if (uploadInProgress) return;
             const statusDiv = document.getElementById('status-message');
             const btn = document.getElementById('btn-submit');
             const progressBox = document.getElementById('progress-box');
@@ -309,12 +386,23 @@
                 return;
             }
 
+            uploadInProgress = true;
+            clearTimeout(successResetTimer); // el reseteo diferido de un éxito anterior no debe tocar esta subida
+            hideNameNotice();
+            statusDiv.innerHTML = '';
+            setSubmitVisible(false);
             btn.disabled = true;
-            btn.innerText = 'Optimizando foto...';
+            setStage('Optimizando foto...');
             progressBox.style.display = 'block';
             progressFill.style.width = '15%';
 
-            const fileToUpload = await compressImageIfNeeded(selectedFile);
+            let fileToUpload;
+            try {
+                fileToUpload = await compressImageIfNeeded(selectedFile);
+            } catch (compressErr) {
+                handleUploadFailure(compressErr, null);
+                return;
+            }
             let contentType = fileToUpload.type || 'image/jpeg';
             if (contentType.toLowerCase() === 'image/jpg') {
                 contentType = 'image/jpeg';
@@ -335,7 +423,7 @@
         async function runUpload(state) {
             const btn = document.getElementById('btn-submit');
             const progressFill = document.getElementById('progress-fill');
-            btn.innerText = 'Iniciando subida...';
+            setStage('Iniciando subida...');
             progressFill.style.width = '30%';
 
             try {
@@ -348,7 +436,7 @@
                     // navegador/red). Sin nada subido todavía, es seguro probar el
                     // fallback garantizado por el servidor antes de rendirse.
                     try {
-                        btn.innerText = 'Enviando fotografía...';
+                        setStage('Enviando fotografía...');
                         progressFill.style.width = '70%';
                         await uploadDirectFallback(state);
                         onUploadSuccess();
@@ -365,7 +453,7 @@
         function showRetrying(attemptNumber, totalAttempts) {
             const btn = document.getElementById('btn-submit');
             const statusDiv = document.getElementById('status-message');
-            btn.innerText = `Reintentando… (${attemptNumber} de ${totalAttempts})`;
+            setStage(`Reintentando… (${attemptNumber} de ${totalAttempts})`);
             statusDiv.innerHTML = '<div class="alert-box alert-retry" style="background: rgba(201, 161, 90, 0.15); border: 1px solid rgba(201, 161, 90, 0.4); color: var(--gold-soft); padding: 10px; border-radius: 8px; margin-top: 10px;">📶 Reintentando… la señal está débil.</div>';
         }
 
@@ -374,8 +462,6 @@
             const progressBox = document.getElementById('progress-box');
             const progressFill = document.getElementById('progress-fill');
             const btn = document.getElementById('btn-submit');
-            const cameraFile = document.getElementById('cameraFile');
-            const galleryFile = document.getElementById('galleryFile');
             const previewBox = document.getElementById('preview-box');
 
             progressFill.style.width = '100%';
@@ -384,16 +470,18 @@
             loadGuestQuota();
 
             selectedFile = null;
-            cameraFile.value = '';
-            galleryFile.value = '';
+            clearFileInputs();
             previewBox.style.display = 'none';
+            setStage('');
+            uploadInProgress = false;
 
             if (!btn.getAttribute('data-closed')) {
                 btn.disabled = false;
                 btn.innerText = 'Subir y Compartir Foto';
             }
+            setSubmitVisible(false);
 
-            setTimeout(() => {
+            successResetTimer = setTimeout(() => {
                 statusDiv.innerHTML = '';
                 progressBox.style.display = 'none';
                 progressFill.style.width = '0%';
@@ -413,6 +501,9 @@
 
             progressBox.style.display = 'none';
             progressFill.style.width = '0%';
+            setStage('');
+            uploadInProgress = false;
+            clearFileInputs();
 
             const message = (err && err.message) ? err.message : 'No se pudo subir la fotografía. Intentá de nuevo.';
             const offerManualRetry = !!state && err.kind !== 'quota';
@@ -440,6 +531,7 @@
                         statusDiv.innerHTML = '';
                         progressBox.style.display = 'block';
                         btn.disabled = true;
+                        uploadInProgress = true;
                         await runUpload(state);
                     });
                 }
@@ -504,6 +596,7 @@
             if (btnSubmit) {
                 btnSubmit.disabled = true;
                 btnSubmit.setAttribute('data-closed', 'true');
+                btnSubmit.style.display = '';
                 btnSubmit.innerText = reason === 'quota' ? '🎉 Ya usaste tus 24 fotos' : '🔒 Recepción de Fotos Cerrada';
                 btnSubmit.style.opacity = '0.5';
                 btnSubmit.style.cursor = 'not-allowed';
