@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Boda de Marcos y Priscila — Rediseño elegante (páginas de invitados)
+   EventFoto — Rediseño elegante (páginas de invitados)
    Vino profundo + dorado; contornos finos, esquinas marcadas y ornamentos de
    línea en vez de bloques sólidos. Referencia visual: mockup-rediseno-elegante.html
    Importado desde menu.html, upload.html, album.html y messages.html.
@@ -39,7 +39,7 @@
     flex-shrink: 0;
 }
 
-/* Nombre de la pareja, tipografía script */
+/* Nombre del evento, tipografía script */
 .names {
     font-family: 'Alex Brush', cursive;
     font-size: 2.6rem;

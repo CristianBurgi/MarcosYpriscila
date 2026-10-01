@@ -17,7 +17,7 @@ public class EventController {
 
     /**
      * GET /api/v1/events/{slug}
-     * Devuelve los datos básicos del evento (Boda de Marcos y Priscila).
+     * Devuelve los datos básicos del evento .
      */
     @GetMapping("/{slug}")
     public ResponseEntity<EventResponseDTO> getEventBySlug(@PathVariable String slug) {

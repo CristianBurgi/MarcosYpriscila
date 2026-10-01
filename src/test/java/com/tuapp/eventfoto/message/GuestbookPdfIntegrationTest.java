@@ -64,7 +64,7 @@ class GuestbookPdfIntegrationTest {
         Organizer organizer = organizerRepository.save(Organizer.builder().email("libro-prueba@test.com").build());
         event = eventRepository.save(Event.builder()
                 .organizer(organizer)
-                .name("Boda de Marcos y Priscila")
+                .name("Evento de Prueba")
                 .slug("libro-prueba")
                 .eventDate(LocalDate.parse("2026-09-19"))
                 .uploadDeadline(Instant.parse("2026-10-04T23:59:00Z"))
@@ -74,10 +74,10 @@ class GuestbookPdfIntegrationTest {
 
         Instant t = Instant.parse("2026-09-19T21:05:00Z");
         save("Tía Marta", "¡Qué noche hermosa! Los quiero muchísimo 😘❤️💕🍾🥰🤎🩷", t);
-        save("Familia Pérez", "Toda la familia 👨‍👩‍👧 les desea lo mejor 👍🏽 ¡Viva los novios! 🇦🇷 1️⃣", t.plusSeconds(60));
+        save("Familia Pérez", "Toda la familia 👨‍👩‍👧 les desea lo mejor 👍🏽 ¡Viva los anfitriones! 🇦🇷 1️⃣", t.plusSeconds(60));
         save("Ñandú Muñoz", "Año, niño, pingüino, acción, corazón: ÁÉÍÓÚ áéíóú ñÑ ¿¡«»“”—…", t.plusSeconds(120));
-        save("Largo", ("Querida Priscila y querido Marcos, gracias por dejarnos ser parte de este día tan especial. ")
-                .repeat(11).substring(0, 1000), t.plusSeconds(180));
+        save("Largo", ("Queridos anfitriones, gracias por dejarnos ser parte de este día tan especial. ")
+                .repeat(14).substring(0, 1000), t.plusSeconds(180));
         save("Sin espacios", NO_SPACES, t.plusSeconds(240));
         save("   ", "Un mensaje sin autor, con\nsaltos de línea\n\ny un párrafo aparte.", t.plusSeconds(300));
         save("Otros alfabetos", "Ευτυχία! Счастья! こんにちは", t.plusSeconds(360));
@@ -98,7 +98,7 @@ class GuestbookPdfIntegrationTest {
             String text = new PDFTextStripper().getText(doc);
             String compact = text.replaceAll("\\s+", "");
             // Portada: la tipografía espaciada y el título partido en dos líneas se comparan sin espacios.
-            assertThat(compact).contains("LIBRODEVISITAS", "BodadeMarcosyPriscila", "19deseptiembrede2026", "7mensajesdesusinvitados");
+            assertThat(compact).contains("LIBRODEVISITAS", "EventodePrueba", "19deseptiembrede2026", "7mensajesdesusinvitados");
             assertThat(text).contains("Tía Marta", "Ñandú Muñoz", "pingüino", "ÁÉÍÓÚ", "¿¡", "— Anónimo");
             assertThat(text).contains("😘", "🍾", "🩷", "👨", "👩", "👧", "👍");
             // Hora en Argentina, calculada sobre el Instant que devuelve la base (H2 en los tests

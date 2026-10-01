@@ -8,7 +8,7 @@ public record CreateMessageRequestDTO(
     @Size(max = 150, message = "El nombre del invitado no puede superar los 150 caracteres")
     String authorName,
 
-    @NotBlank(message = "El mensaje para los novios no puede estar vacío")
+    @NotBlank(message = "El mensaje no puede estar vacío")
     @Size(max = 1000, message = "El mensaje del libro de visitas no puede superar los 1000 caracteres")
     String text,
 

@@ -23,7 +23,7 @@ public class MessageController {
 
     /**
      * POST /api/v1/events/{slug}/messages
-     * Deja un nuevo mensaje en el libro de visitas para Marcos y Priscila.
+     * Deja un nuevo mensaje en el libro de visitas del evento.
      */
     @PostMapping
     public ResponseEntity<MessageResponseDTO> addMessage(

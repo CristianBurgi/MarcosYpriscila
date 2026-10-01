@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💍 EventFoto — Boda de Marcos y Priscila
+# 📸 EventFoto
 
 **Álbum digital colaborativo en tiempo real para eventos.**  
 Los invitados escanean un QR, suben sus fotos desde el celular sin instalar nada, y las ven aparecer en la pantalla del salón al instante.
@@ -49,13 +49,13 @@ Los invitados escanean un QR, suben sus fotos desde el celular sin instalar nada
 
 ## 🎉 ¿Qué es esto?
 
-**EventFoto** es una aplicación web progresiva (PWA) construida específicamente para la boda de **Marcos y Priscila**. Permite que los invitados suban fotos desde su celular simplemente escaneando un código QR —sin descargar ninguna app, sin registrarse, sin fricción.
+**EventFoto** es una aplicación web progresiva (PWA) para eventos (bodas, cumpleaños, encuentros corporativos). Permite que los invitados suban fotos desde su celular simplemente escaneando un código QR —sin descargar ninguna app, sin registrarse, sin fricción.
 
 Las fotos se **publican al instante**: apenas se confirma la subida aparecen en el **álbum colaborativo** y en la **pantalla del salón** (conectada vía TV/proyector), todo actualizado en tiempo real gracias a Server-Sent Events. El organizador modera desde un panel privado borrando lo que no corresponda.
 
 Además del álbum, los invitados pueden:
 - **Comentar** las fotos de otros.
-- **Dejar mensajes** de felicitación para los novios en el Libro de Visitas.
+- **Dejar mensajes** de felicitación para los anfitriones en el Libro de Visitas.
 
 El proyecto nació como un caso real de uso con la idea de evolucionar a un producto **multi-tenant** que cualquier organizador pueda usar para sus propios eventos (bodas, cumpleaños, eventos corporativos).
 
@@ -83,7 +83,7 @@ La aplicación está desplegada en producción en Railway:
 - 📱 **Soporte para iPhone (HEIC)** — Las fotos en formato HEIC/HEIF se convierten automáticamente a JPEG en el servidor para compatibilidad universal.
 - 🖼️ **Álbum colaborativo** — Galería masonry con todas las fotos del evento, paginada y optimizada para conexiones móviles.
 - 💬 **Comentarios por foto** — Cada foto del álbum admite comentarios de otros invitados (los más recientes primero).
-- 💌 **Libro de Visitas** — Un muro de mensajes de texto dedicado para que los invitados le dejen buenos deseos a los novios.
+- 💌 **Libro de Visitas** — Un muro de mensajes de texto dedicado para que los invitados dejen buenos deseos.
 - 📲 **PWA instalable** — El menú se puede agregar a la pantalla de inicio del celular como una app nativa.
 
 ### Para el Organizador (Admin)
@@ -93,7 +93,7 @@ La aplicación está desplegada en producción en Railway:
 - 📦 **Descarga del Álbum (ZIP streaming & Selección)** — En la pestaña *Fotos*, el admin puede empaquetar y descargar el álbum completo o una selección personalizada en un archivo ZIP por streaming directo (eficiente en memoria RAM). También admite descargas individuales presignadas (HTTP 302).
 - 💬 **Moderación de comentarios** — Panel dedicado con miniatura de la foto, nombre del autor y texto, con botón de borrado directo.
 - 📨 **Moderación del Libro de Visitas** — Listado de mensajes con nombre de remitente y texto, con botón de borrado.
-- 📖 **Libro de visitas en PDF** — Botón "Descargar libro de visitas" en la pestaña del libro: un PDF de recuerdo para la pareja con portada y todos los mensajes publicados en orden cronológico. También va en la raíz del ZIP del álbum completo.
+- 📖 **Libro de visitas en PDF** — Botón "Descargar libro de visitas" en la pestaña del libro: un PDF de recuerdo para el organizador con portada y todos los mensajes publicados en orden cronológico. También va en la raíz del ZIP del álbum completo.
 - 📺 **Control de subidas** — El admin puede cerrar/abrir las subidas de fotos desde el panel. Cuando están cerradas, los invitados ven un mensaje informativo.
 - 🔄 **Tiempo real** — Las fotos nuevas aparecen instantáneamente en la pantalla del salón y en el álbum de todos los invitados sin recargar la página.
 - 📊 **Código QR dinámico** — El QR se genera en el servidor apuntando a `APP_BASE_URL`; se puede descargar desde el panel de admin.
@@ -520,7 +520,7 @@ Formulario para dejar un mensaje con nombre y texto. Lista de mensajes con el no
 
 ## 🎨 Tipografía e Iconografía
 
-El diseño visual sigue una estética **formal, delicada y elegante**, coherente con el contexto de una boda.
+El diseño visual sigue una estética **formal, delicada y elegante**, coherente con el contexto de un evento social.
 
 **Fuentes (Google Fonts):**
 | Rol | Fuente |
@@ -753,7 +753,7 @@ Los tests de integración usan **H2 en memoria** (no necesitan PostgreSQL ni R2 
 
 ## 🔥 Prueba de Carga Previa al Evento
 
-El script `scripts/load-test.js` simula el pico de actividad de los invitados durante la boda:
+El script `scripts/load-test.js` simula el pico de actividad de los invitados durante un evento:
 
 ```bash
 # Contra producción en Railway
@@ -863,6 +863,5 @@ Para una boda de ~200 invitados subiendo 3 fotos c/u = ~600 fotos × ~3 MB prome
 ---
 
 <div align="center">
-<sub>Construido con Spring Boot, mucho debugging, y una boda real como caso de prueba 💍<br>
-<em>Marcos y Priscila — 2026</em></sub>
+<sub>Construido con Spring Boot, mucho debugging, y una boda real como primer caso de prueba 📸</sub>
 </div>

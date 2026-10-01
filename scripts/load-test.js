@@ -1,5 +1,5 @@
 /**
- * Boda de Marcos y Priscila — Script de Prueba de Carga (Load Test)
+ * EventFoto — Script de Prueba de Carga (Load Test)
  * 
  * Simula:
  * 1. 30 Clientes SSE en paralelo escuchando eventos en tiempo real.
