@@ -13,8 +13,7 @@
     <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
     <style>
         html, body {
-            background: linear-gradient(to bottom, rgba(36, 10, 13, 0.86), rgba(16, 4, 5, 0.95)),
-                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
             background-size: cover !important;
             min-height: 100vh !important;
             margin: 0 !important;
@@ -58,9 +57,9 @@
     <!-- Header Elegante -->
     <header class="hero-header">
         <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
-        <h1 class="names" id="couple-names">&nbsp;</h1>
+        <h1 class="names" id="event-name">&nbsp;</h1>
         <div class="subtitle" id="event-date"></div>
-        <p class="welcome-subtitle">¡Bienvenidos a nuestra celebración! Elegí una opción para acompañarnos:</p>
+        <p class="welcome-subtitle">¡Bienvenidos! Elegí una opción:</p>
     </header>
 
     <!-- Menú Principal -->
@@ -82,8 +81,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="#e6cfa0" stroke-width="1.3"><path d="M12 20s-7-4.4-9.3-8.6C1.2 8 2.6 5 5.7 5c1.8 0 3.2 1 4.3 2.6C11.1 6 12.5 5 14.3 5c3.1 0 4.5 3 3 6.4C15 15.6 12 20 12 20z"/></svg>
             Libro de Visitas
         </a>
-
-        <div class="footer-note">✦ Celebrando el amor ✦</div>
     </main>
 
     <script>
@@ -116,7 +113,7 @@
                 if (!res.ok) return;
                 const eventData = await res.json();
 
-                const namesEl = document.getElementById('couple-names');
+                const namesEl = document.getElementById('event-name');
                 if (namesEl && eventData.name) {
                     namesEl.textContent = eventData.name;
                 }

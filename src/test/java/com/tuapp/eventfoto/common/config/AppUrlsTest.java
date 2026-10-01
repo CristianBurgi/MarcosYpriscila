@@ -43,7 +43,7 @@ class AppUrlsTest {
         assertThatThrownBy(() -> new AppUrls("https://tu-boda-produccion.up.railway.app", "local"))
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> new AppUrls("https://app.example.com", "r2")).isInstanceOf(IllegalStateException.class);
-        assertThat(new AppUrls("https://marcosypriscila-production.up.railway.app", "r2").baseUrl())
-                .isEqualTo("https://marcosypriscila-production.up.railway.app");
+        assertThat(new AppUrls("https://eventfoto-demo.up.railway.app", "r2").baseUrl())
+                .isEqualTo("https://eventfoto-demo.up.railway.app");
     }
 }

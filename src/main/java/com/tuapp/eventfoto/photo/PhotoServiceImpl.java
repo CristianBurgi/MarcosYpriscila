@@ -69,7 +69,7 @@ public class PhotoServiceImpl implements PhotoService {
         // 2. Validar que el evento exista por slug y esté activo
         Event event = eventService.getEventEntityBySlug(slug);
         if (!event.isActive()) {
-            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
+            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
         }
 
         // 3. Chequeo previo (no atómico) del cupo del invitado: evita gastar una presigned
@@ -93,7 +93,7 @@ public class PhotoServiceImpl implements PhotoService {
     public PhotoResponseDTO confirmUpload(String slug, ConfirmUploadRequestDTO request) {
         Event event = eventService.getEventEntityBySlug(slug);
         if (!event.isActive()) {
-            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
+            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
         }
 
         // Idempotencia (Fase 9.0 - Bloque C): el frontend puede llamar /confirm más de una
@@ -201,7 +201,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         Event event = eventService.getEventEntityBySlug(slug);
         if (!event.isActive()) {
-            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por los novios.");
+            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
         }
 
         // Chequeo previo (no atómico) del cupo del invitado: evita gastar tiempo/CPU
@@ -371,7 +371,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         // Álbum completo (sin selección): el libro de visitas va en la raíz del ZIP. Se genera
         // ANTES de empezar a escribir: si falla, el ZIP de fotos sale igual y el error va a
-        // Sentry -- un problema con el PDF no puede impedir que la pareja baje sus fotos.
+        // Sentry -- un problema con el PDF no puede impedir que el organizador baje sus fotos.
         byte[] guestbookPdf = null;
         if (photoIds == null || photoIds.isEmpty()) {
             try {

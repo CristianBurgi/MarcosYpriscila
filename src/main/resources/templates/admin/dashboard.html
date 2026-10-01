@@ -520,7 +520,7 @@
         <div class="section-header">
             <h2 class="section-title">Mensajes del Libro de Visitas</h2>
             <div class="actions-group">
-                <!-- PDF de recuerdo para la pareja (solo admin). También va dentro del ZIP del álbum completo. -->
+                <!-- PDF de recuerdo para los anfitriones (solo admin). También va dentro del ZIP del álbum completo. -->
                 <a class="btn btn-primary-action" id="btnDownloadGuestbook" style="text-decoration: none;"
                    th:href="@{'/api/v1/admin/events/' + ${slug} + '/libro-de-visitas.pdf'}" download="libro-de-visitas.pdf">
                     📖 Descargar libro de visitas
@@ -532,7 +532,7 @@
             <div class="photo-card" th:each="msg : ${messages}" th:id="'msg-card-' + ${msg.id}" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <div class="uploader-name" style="overflow-wrap: anywhere;" th:text="'✍️ ' + ${msg.authorName}">Invitado</div>
-                    <div style="font-size: 0.95rem; color: #cbd5e1; font-style: italic; margin-top: 8px; line-height: 1.4; overflow-wrap: anywhere;" th:text="'&quot;' + ${msg.text} + '&quot;'">"¡Muchas felicidades!"</div>
+                    <div style="font-size: 0.95rem; color: #cbd5e1; font-style: italic; margin-top: 8px; line-height: 1.4; overflow-wrap: anywhere;" th:text="'&quot;' + ${msg.text} + '&quot;'">"Mensaje del invitado"</div>
                 </div>
                 <div style="margin-top: 16px;">
                     <button class="btn-danger action-delete-message" th:data-id="${msg.id}" style="width: 100%;">

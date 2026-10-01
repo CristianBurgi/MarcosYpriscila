@@ -93,7 +93,7 @@ class PublicApiIntegrationTest {
 
         testEvent = Event.builder()
                 .organizer(organizer)
-                .name("Boda de Marcos y Priscila")
+                .name("Evento de Prueba")
                 .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
@@ -124,7 +124,7 @@ class PublicApiIntegrationTest {
     void shouldReturnEventDetails() throws Exception {
         mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name", is("Boda de Marcos y Priscila")))
+                .andExpect(jsonPath("$.name", is("Evento de Prueba")))
                 .andExpect(jsonPath("$.slug", is("evento-demo-k7m2xq9p")));
     }
 

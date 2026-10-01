@@ -15,7 +15,7 @@
     <artifactId>eventfoto</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>eventfoto</name>
-    <description>Sistema de compartición de fotos e interacciones en vivo para la Boda de Marcos y Priscila</description>
+    <description>Sistema de compartición de fotos e interacciones en vivo para eventos</description>
 
     <properties>
         <java.version>21</java.version>

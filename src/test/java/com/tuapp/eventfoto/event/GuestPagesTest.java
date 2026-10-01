@@ -64,7 +64,7 @@ class GuestPagesTest {
                     .andExpect(content().contentTypeCompatibleWith("text/html"))
                     .andReturn().getResponse().getContentAsString();
             assertThat(html).as(suffix).contains("/js/event-context.js");
-            assertThat(html.toLowerCase()).as(suffix).doesNotContain("priscila");
+            assertThat(html).as(suffix).doesNotContain("/images/");
             assertThat(html).as(suffix).doesNotContain("const SLUG = '");
         }
     }

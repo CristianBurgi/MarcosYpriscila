@@ -57,7 +57,7 @@ class QrCodeTest {
     @DisplayName("Endpoint GET /api/v1/events/{slug}/qr debe responder con imagen PNG")
     void shouldReturnQrCodePngFromEndpoint() throws Exception {
         UUID eventId = UUID.randomUUID();
-        EventResponseDTO eventDto = new EventResponseDTO(eventId, "Boda de Marcos y Priscila", "evento-demo-k7m2xq9p", LocalDate.now(), null, true, Instant.now());
+        EventResponseDTO eventDto = new EventResponseDTO(eventId, "Evento de Prueba", "evento-demo-k7m2xq9p", LocalDate.now(), null, true, Instant.now());
         when(eventService.getEventBySlug(anyString())).thenReturn(eventDto);
 
         mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/qr")

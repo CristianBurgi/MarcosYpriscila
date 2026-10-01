@@ -35,7 +35,7 @@
             z-index: 20;
             background: linear-gradient(to bottom, rgba(8, 7, 6, 0.95), transparent);
         }
-        .wedding-brand {
+        .event-brand {
             font-family: 'Playfair Display', 'Cormorant Garamond', serif;
             font-size: 2.2rem;
             font-weight: 600;
@@ -364,7 +364,7 @@
 <body>
 
     <header class="salon-header">
-        <div class="wedding-brand">
+        <div class="event-brand">
             <i class="fa-solid fa-gem" style="color: #e5cfb3; -webkit-text-fill-color: initial; font-size: 1.5rem;"></i> <span id="event-brand"></span>
         </div>
     </header>
@@ -388,7 +388,7 @@
 
     <div class="message-banner-overlay" id="msg-banner">
         <div class="banner-author" id="banner-author"><i class="fa-solid fa-comment-dots" style="margin-right: 6px; color: #e5cfb3;"></i> Mensaje de Invitado</div>
-        <div class="banner-text" id="banner-text">¡Les deseamos toda la felicidad!</div>
+        <div class="banner-text" id="banner-text">¡Gracias por compartir tus fotos!</div>
     </div>
 
     <!-- Zócalo Ticker de Mensajes (Loop continuo al pie) -->
@@ -445,7 +445,7 @@
         const MAX_TICKER_MESSAGES = 50;
         const DEFAULT_TICKER_MESSAGE = {
             authorName: '',
-            text: '✦ ¡Dejá tu mensaje y felicitaciones a los novios escaneando el QR en las mesas! ✦'
+            text: '✦ ¡Dejá tu mensaje y felicitaciones escaneando el QR en las mesas! ✦'
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -498,7 +498,7 @@
             if (!entry) return;
             const img = new Image();
             img.className = 'slide-img';
-            img.alt = 'Foto de la boda';
+            img.alt = 'Foto del evento';
             img.decoding = 'async';
             const record = { img, status: 'loading' };
             preloads.set(id, record);

@@ -13,8 +13,7 @@
     <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
     <style>
         html, body {
-            background: linear-gradient(to bottom, rgba(36, 10, 13, 0.86), rgba(16, 4, 5, 0.95)),
-                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
             background-size: cover !important;
             min-height: 100vh !important;
             margin: 0 !important;
@@ -238,7 +237,7 @@
     <dialog id="photo-modal" class="modal-photo">
         <article class="modal-body" style="margin: 0;">
             <header class="modal-header-custom">
-                <h4 id="modal-uploader">Foto de la boda</h4>
+                <h4 id="modal-uploader">Foto del evento</h4>
                 <button type="button" aria-label="Cerrar" id="btn-close-modal" class="btn-close-modal">✕</button>
             </header>
 
@@ -274,10 +273,6 @@
             </section>
         </article>
     </dialog>
-
-    <footer class="footer-note" style="margin-top: 2.5rem; padding-bottom: 1.5rem;">
-        <small>✦ Celebrando el amor ✦</small>
-    </footer>
 
     <script>
         const SLUG = window.EVENT_SLUG;
@@ -341,7 +336,7 @@
             card.dataset.createdAt = photo.createdAt;
             card.innerHTML = `
                 <div class="gallery-img-wrapper">
-                    <img src="${escapeHtml(imageUrl)}" alt="Foto de la boda" onerror="handleImageError(this)">
+                    <img src="${escapeHtml(imageUrl)}" alt="Foto del evento" onerror="handleImageError(this)">
                 </div>
                 <div class="gallery-card-footer">
                     <span class="badge-uploader"><i class="fa-solid fa-camera" style="font-size: 0.8rem;"></i> ${escapeHtml(photo.uploaderName || 'Invitado')}</span>
@@ -428,11 +423,12 @@
             }
         }
 
-        // Manejo elegante si una foto previa en local o dev no está en el servidor
+        // Bloque neutro (ícono de cámara) cuando una foto no carga: nunca una imagen de personas.
+        const PHOTO_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23231517'/%3E%3Cg fill='none' stroke='%237d6a5c' stroke-width='6' stroke-linejoin='round'%3E%3Crect x='130' y='100' width='140' height='100' rx='10'/%3E%3Cpath d='M170 100l8-16h44l8 16'/%3E%3Ccircle cx='200' cy='150' r='26'/%3E%3C/g%3E%3C/svg%3E";
+
         function handleImageError(imgElem) {
             imgElem.onerror = null;
-            // Usar la foto real de los novios de la boda como elegante fallback en vez de imágenes externas no deseadas
-            imgElem.src = '/images/wedding_couple.png';
+            imgElem.src = PHOTO_PLACEHOLDER;
             imgElem.style.opacity = '0.85';
         }
 
@@ -451,7 +447,7 @@
             const modalImg = document.getElementById('modal-img');
             modalImg.onerror = function() {
                 this.onerror = null;
-                this.src = '/images/wedding_couple.png';
+                this.src = PHOTO_PLACEHOLDER;
             };
             modalImg.src = imageUrl;
 

@@ -13,8 +13,7 @@
     <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
     <style>
         html, body {
-            background: linear-gradient(to bottom, rgba(36, 10, 13, 0.86), rgba(16, 4, 5, 0.95)),
-                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
             background-size: cover !important;
             min-height: 100vh !important;
             margin: 0 !important;
@@ -40,7 +39,6 @@
 
         .field-elegant { text-align: center; }
 
-        .footer-wedding { display: none; } /* reemplazado por .footer-note */
     </style>
     <script src="/js/event-context.js"></script>
 </head>
@@ -54,7 +52,7 @@
 
     <main class="card-elegant">
         <div id="event-closed-banner" style="display: none; border: 1px solid rgba(252, 165, 165, 0.5); background: rgba(252, 165, 165, 0.08); color: #fca5a5; padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
-            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por los novios.
+            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por el organizador.
         </div>
         <div id="quota-exceeded-banner" style="display: none; border: 1px solid rgba(201, 161, 90, 0.5); background: rgba(201, 161, 90, 0.08); color: var(--gold-soft); padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
             <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> Ya usaste tus 24 fotos para este evento — ¡gracias por compartir tantos momentos! 🎉
@@ -94,10 +92,6 @@
 
         <div class="footer-note" id="quota-badge" style="display: none;"></div>
     </main>
-
-    <footer class="footer-note" style="margin-top: 2.5rem;">
-        <small>✦ Celebrando el amor ✦</small>
-    </footer>
 
     <script>
         const SLUG = window.EVENT_SLUG;

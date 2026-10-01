@@ -108,7 +108,7 @@ class HeicConfirmDecisionIntegrationTest {
 
         eventRepository.save(Event.builder()
                 .organizer(organizer)
-                .name("Boda de Marcos y Priscila")
+                .name("Evento de Prueba")
                 .slug("evento-demo-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864_000))

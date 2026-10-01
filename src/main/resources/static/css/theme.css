@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Boda de Marcos y Priscila — Design System & Custom Theme
+   EventFoto — Design System & Custom Theme
    Paleta: Bordó Profundo (#4a0e1a) a Pasteles Claros (#fdf6f7, #f7e1e4)
    ========================================================================== */
 
@@ -42,13 +42,13 @@ body {
     padding: 0;
 }
 
-/* Header General de Boda */
-.wedding-header {
+/* Header general del evento */
+.event-header {
     text-align: center;
     padding: 2.5rem 1rem 1.2rem;
 }
 
-.wedding-title {
+.event-title {
     font-family: var(--font-heading);
     font-size: 2.8rem;
     font-weight: 700;
@@ -58,7 +58,7 @@ body {
     text-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-.wedding-date {
+.event-date {
     font-size: 1.1rem;
     color: var(--brand-gold-accent);
     font-weight: 600;

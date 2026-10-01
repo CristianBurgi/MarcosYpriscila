@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Libro de visitas en PDF: el recuerdo que se le entrega a la pareja con todos los
+ * Libro de visitas en PDF: el recuerdo que se le entrega al organizador con todos los
  * mensajes que les dejaron sus invitados (Fase 9.0 - Bloque D).
  *
  * Solo mensajes publicados: los que rechaza el filtro de palabras nunca se guardan y los

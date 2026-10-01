@@ -1,5 +1,5 @@
 /**
- * Boda de Marcos y Priscila — Script de Prueba de Carga (Load Test)
+ * EventFoto — Script de Prueba de Carga (Load Test)
  * 
  * Simula:
  * 1. 30 Clientes SSE en paralelo escuchando eventos en tiempo real.
@@ -11,13 +11,13 @@
  * 
  * Ejemplos:
  *   node scripts/load-test.js http://localhost:8080 25
- *   node scripts/load-test.js https://marcosypriscila-production.up.railway.app 25
+ *   node scripts/load-test.js https://tu-dominio.up.railway.app 25
  */
 
 const http = require('http');
 const https = require('https');
 
-const TARGET_URL = process.argv[2] || 'https://marcosypriscila-production.up.railway.app';
+const TARGET_URL = process.argv[2] || 'https://tu-dominio.up.railway.app';
 const SLUG = process.env.SLUG || 'evento-demo-k7m2xq9p';
 const CONCURRENCY = parseInt(process.argv[3] || '25', 10);
 

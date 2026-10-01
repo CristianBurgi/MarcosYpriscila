@@ -13,8 +13,7 @@
     <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
     <style>
         html, body {
-            background: linear-gradient(to bottom, rgba(36, 10, 13, 0.86), rgba(16, 4, 5, 0.95)),
-                        url('/images/wedding_couple.png?v=3') no-repeat center center fixed !important;
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
             background-size: cover !important;
             min-height: 100vh !important;
             margin: 0 !important;
@@ -92,7 +91,7 @@
         <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
         <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
         <h1 class="page-title">Libro de Visitas</h1>
-        <p class="page-sub">Dejá tus buenos deseos para los novios</p>
+        <p class="page-sub">Dejá tus buenos deseos</p>
     </header>
 
     <main>
@@ -103,8 +102,8 @@
                 <label for="authorName" class="field-label">Tu Nombre</label>
                 <input type="text" id="authorName" name="authorName" class="field-elegant" placeholder="Ej: Padrino Juan" required maxlength="150">
 
-                <label for="messageText" class="field-label">Mensaje para los novios</label>
-                <textarea id="messageText" name="text" rows="3" class="field-elegant" placeholder="¡Les deseamos toda la felicidad y amor en esta nueva etapa juntos!" required maxlength="1000"></textarea>
+                <label for="messageText" class="field-label">Tu mensaje</label>
+                <textarea id="messageText" name="text" rows="3" class="field-elegant" placeholder="Escribí tu mensaje…" required maxlength="1000"></textarea>
 
                 <button type="submit" id="btn-submit" class="btn-primary-elegant">
                     Enviar Mensaje
@@ -114,16 +113,12 @@
         </article>
 
         <section class="messages-section">
-            <div class="divider"><span class="l"></span>Felicitaciones de los invitados<span class="l"></span></div>
+            <div class="divider"><span class="l"></span>Mensajes de los invitados<span class="l"></span></div>
             <div id="messages-list">
                 <p style="color: var(--cream-muted); text-align: center;">Cargando mensajes del libro de visitas...</p>
             </div>
         </section>
     </main>
-
-    <footer class="footer-note" style="margin-top: 2.5rem; padding-bottom: 1.5rem;">
-        <small>✦ Celebrando el amor ✦</small>
-    </footer>
 
     <script>
         const SLUG = window.EVENT_SLUG;
@@ -154,7 +149,7 @@
                 const container = document.getElementById('messages-list');
 
                 if (!data.content || data.content.length === 0) {
-                    container.innerHTML = '<p style="color: var(--cream-muted); font-style: italic; text-align: center;">Aún no hay mensajes. ¡Sé el primero en escribir a los novios!</p>';
+                    container.innerHTML = '<p style="color: var(--cream-muted); font-style: italic; text-align: center;">Aún no hay mensajes. ¡Sé el primero en escribir!</p>';
                     return;
                 }
 
@@ -206,7 +201,7 @@
                         throw new Error(errData.message || 'Error al enviar el mensaje.');
                     }
 
-                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Mensaje enviado con éxito a los novios! <i class="fa-solid fa-heart" style="color: #f472b6;"></i></div>';
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Mensaje enviado con éxito! <i class="fa-solid fa-heart" style="color: #f472b6;"></i></div>';
                     document.getElementById('messageText').value = '';
 
                     setTimeout(() => { statusDiv.innerHTML = ''; }, 5000);

@@ -19,7 +19,7 @@ class ContentModerationServiceTest {
     @Test
     @DisplayName("Permitir mensajes limpios y positivos")
     void shouldAllowCleanText() {
-        assertTrue(moderationService.isAllowed("¡Muchas felicidades a los novios en su boda!"));
+        assertTrue(moderationService.isAllowed("¡Muchas felicidades a los anfitriones en su fiesta!"));
         assertTrue(moderationService.isAllowed("Que tengan una hermosa vida juntos. 🎉"));
     }
 

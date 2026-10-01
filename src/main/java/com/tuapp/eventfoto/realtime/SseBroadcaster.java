@@ -59,7 +59,7 @@ public class SseBroadcaster {
         try {
             emitter.send(SseEmitter.event()
                     .name("INIT")
-                    .data("Conexión exitosa a la transmisión en vivo de la boda"));
+                    .data("Conexión exitosa a la transmisión en vivo del evento"));
         } catch (IOException e) {
             log.debug("Cliente SSE desconectado antes del mensaje INIT: {}", e.getMessage());
             emitters.remove(emitter);
