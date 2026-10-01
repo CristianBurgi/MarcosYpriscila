@@ -111,6 +111,19 @@ class AdminFailClosedTest {
     }
 
     @Test
+    @DisplayName("Request bajo /admin sin controller (recurso estático / ruta inventada) -> 404 con log.warn, NO log.error (no debe llegar a Sentry)")
+    void routeWithoutControllerIsClosedWithWarnNotError() throws Exception {
+        mockMvc.perform(get("/admin/ruta-inventada.css").cookie(cookie))
+                .andExpect(status().isNotFound());
+
+        assertThat(logs.list).anySatisfy(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).contains("/admin/ruta-inventada.css");
+        });
+        assertThat(logs.list).noneMatch(event -> event.getLevel() == Level.ERROR);
+    }
+
+    @Test
     @DisplayName("@OwnedEvent sin el evento resuelto por el interceptor falla ruidosamente (IllegalStateException), nunca devuelve null")
     void ownedEventWithoutInterceptorAttributeFailsLoudly() throws Exception {
         MethodParameter parameter = new MethodParameter(

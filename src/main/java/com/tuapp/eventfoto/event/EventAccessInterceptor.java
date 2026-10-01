@@ -52,7 +52,16 @@ public class EventAccessInterceptor implements HandlerInterceptor {
                 (Map<String, String>) request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
         String slug = pathVariables != null ? pathVariables.get("slug") : null;
 
-        if (!(handler instanceof HandlerMethod) || slug == null) {
+        if (!(handler instanceof HandlerMethod)) {
+            // Recurso estático o ruta inventada bajo /admin: no es un controller nuestro, así que no es un
+            // bug de configuración (y no debe llegar a Sentry como error). Igual se cierra.
+            log.warn("Request a {} {} bajo el panel sin controller (handler {}): se responde 404.",
+                    request.getMethod(), request.getRequestURI(), handler == null ? "null" : handler.getClass().getSimpleName());
+            throw new ResourceNotFoundException(EVENT_NOT_FOUND_MESSAGE);
+        }
+
+        if (slug == null) {
+            // Un controller del panel sin {slug} y fuera de AdminRouteExceptions: eso SÍ es un bug.
             log.error("Ruta del panel sin {slug} y fuera de AdminRouteExceptions: {} {} (patrón '{}'). Se responde 404. "
                     + "Agregale {slug} a la ruta o, si de verdad no opera sobre un evento, declarala en AdminRouteExceptions con su motivo.",
                     request.getMethod(), request.getRequestURI(), pattern);
