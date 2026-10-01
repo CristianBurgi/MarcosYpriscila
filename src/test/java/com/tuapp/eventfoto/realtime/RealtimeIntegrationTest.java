@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -103,6 +104,15 @@ class RealtimeIntegrationTest {
         mockMvc.perform(get("/api/v1/events/evento-demo-k7m2xq9p/stream"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/events/{slug}/stream con un slug inexistente responde 404 JSON aunque el cliente pida text/event-stream (EventSource)")
+    void unknownSlugStreamIsNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/events/no-existe-zzzzzzzz/stream").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test

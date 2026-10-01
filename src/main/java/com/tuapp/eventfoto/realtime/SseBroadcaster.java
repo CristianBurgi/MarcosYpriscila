@@ -34,18 +34,23 @@ public class SseBroadcaster {
      * poder testear el manejo de desconexiones con emitters simulados.
      */
     SseEmitter register(UUID eventId, SseEmitter emitter) {
-        List<SseEmitter> emitters = eventEmitters.computeIfAbsent(eventId, k -> new CopyOnWriteArrayList<>());
-        emitters.add(emitter);
+        // Alta ATÓMICA: agregar el emitter y (si hace falta) crear la lista ocurren dentro de un solo
+        // compute() sobre la clave del evento. Antes era computeIfAbsent + add, y la limpieza hacía
+        // remove + isEmpty + remove(eventId) por separado: un cliente que se suscribía en esa
+        // ventana recibía la lista que la limpieza estaba por quitar del mapa y quedaba huérfano,
+        // sin recibir NUNCA un evento (pasaba con reconexiones masivas, ej. un salón que pierde señal).
+        List<SseEmitter> emitters = eventEmitters.compute(eventId, (id, current) -> {
+            List<SseEmitter> list = current != null ? current : new CopyOnWriteArrayList<>();
+            list.add(emitter);
+            return list;
+        });
 
         log.info("Nuevo cliente suscripto a SSE para evento ID: {}. Suscriptores activos para este evento: {}", eventId, emitters.size());
 
         // Limpieza automática al finalizar, expirar o fallar la conexión
         Runnable cleanup = () -> {
-            emitters.remove(emitter);
-            if (emitters.isEmpty()) {
-                eventEmitters.remove(eventId);
-            }
-            log.debug("Conexión SSE cerrada/removida para evento ID: {}. Suscriptores restantes: {}", eventId, emitters.size());
+            removeEmitter(eventId, emitter);
+            log.debug("Conexión SSE cerrada/removida para evento ID: {}. Suscriptores restantes: {}", eventId, getActiveSubscribersCount(eventId));
         };
 
         emitter.onCompletion(cleanup);
@@ -62,10 +67,18 @@ public class SseBroadcaster {
                     .data("Conexión exitosa a la transmisión en vivo del evento"));
         } catch (IOException e) {
             log.debug("Cliente SSE desconectado antes del mensaje INIT: {}", e.getMessage());
-            emitters.remove(emitter);
+            removeEmitter(eventId, emitter);
         }
 
         return emitter;
+    }
+
+    /** Baja ATÓMICA: quita el emitter y, si la lista queda vacía, la quita del mapa en el mismo paso. */
+    private void removeEmitter(UUID eventId, SseEmitter emitter) {
+        eventEmitters.computeIfPresent(eventId, (id, list) -> {
+            list.remove(emitter);
+            return list.isEmpty() ? null : list;
+        });
     }
 
     /**

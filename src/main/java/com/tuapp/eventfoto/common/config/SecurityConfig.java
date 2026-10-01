@@ -75,9 +75,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/v1/storage/local-upload").permitAll()
                 
                 // Rutas públicas de la API REST para invitados
-                .requestMatchers(
-                    "/api/v1/events/**", "/api/v1/photos/**", "/api/v1/messages/**", "/api/v1/comments/**"
-                ).permitAll()
+                // (los comentarios cuelgan de /events/{slug}/photos/{photoId}/comments; no hay rutas
+                // públicas fuera de /events/**, así que una ruta nueva sin slug nace cerrada)
+                .requestMatchers("/api/v1/events/**").permitAll()
                 
                 // Rutas de Login y Autenticación del organizador
                 .requestMatchers("/admin/login", "/api/v1/admin/auth/login").permitAll()

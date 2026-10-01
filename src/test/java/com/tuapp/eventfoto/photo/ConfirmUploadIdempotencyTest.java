@@ -91,7 +91,7 @@ class ConfirmUploadIdempotencyTest {
     @Test
     @DisplayName("Reintento secuencial (JPEG): la segunda llamada con la misma upload_key devuelve la MISMA foto, sin crear otra ni descontar cupo dos veces")
     void sequentialRetryWithSameKeyDoesNotDuplicate() {
-        String key = "photos/evento-demo-k7m2xq9p/retry-jpeg.jpg";
+        String key = key(".jpg");
         when(storageService.streamObject(key)).thenAnswer(inv -> new ByteArrayInputStream(JPEG_HEADER));
         ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key, "Invitado", null, "guest-token-retry-jpeg");
 
@@ -109,7 +109,7 @@ class ConfirmUploadIdempotencyTest {
     @Test
     @DisplayName("Reintento secuencial (HEIC): la segunda llamada NO intenta releer el objeto original ya borrado, y devuelve la foto con la key .jpg convertida")
     void sequentialRetryWithHeicConversionDoesNotDuplicate() {
-        String heicKey = "photos/evento-demo-k7m2xq9p/retry-heic.heic";
+        String heicKey = key(".heic");
         when(storageService.streamObject(heicKey)).thenAnswer(inv -> new ByteArrayInputStream(HEIC_HEADER));
         when(storageService.convertHeicToJpeg(any())).thenReturn(CONVERTED_JPEG);
         ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(heicKey, "Invitado", null, "guest-token-retry-heic");
@@ -134,7 +134,7 @@ class ConfirmUploadIdempotencyTest {
     @Test
     @DisplayName("Dos hilos reales confirmando la MISMA upload_key en paralelo: una sola foto, un solo descuento de cupo, y el perdedor falla RÁPIDO (no bloqueado hasta que el ganador termine)")
     void concurrentConfirmsWithSameKeyNeverDuplicateAndLoserFailsFast() throws Exception {
-        String key = "photos/evento-demo-k7m2xq9p/race.jpg";
+        String key = key(".jpg");
         Duration slowStorage = Duration.ofMillis(400);
         when(storageService.streamObject(key)).thenAnswer(inv -> {
             Thread.sleep(slowStorage.toMillis());
@@ -206,5 +206,10 @@ class ConfirmUploadIdempotencyTest {
         boolean succeeded() {
             return photo != null;
         }
+    }
+
+    /** Clave con el formato events/{eventId}/{uuid}.ext (el único que acepta /confirm). */
+    private String key(String extension) {
+        return "events/" + event.getId() + "/" + java.util.UUID.randomUUID() + extension;
     }
 }

@@ -108,7 +108,7 @@ class ConfirmUploadConcurrencyTest {
         List<Future<?>> futures = IntStream.range(0, CONCURRENT).<Future<?>>mapToObj(i -> pool.submit(() -> {
             try {
                 ConfirmUploadRequestDTO req = new ConfirmUploadRequestDTO(
-                        "photos/evento-demo-k7m2xq9p/concurrent-" + i + ".jpg", "Invitado " + i, null, "guest-token-" + i);
+                        key(".jpg"), "Invitado " + i, null, "guest-token-" + i);
                 photoService.confirmUpload("evento-demo-k7m2xq9p", req);
                 ok.incrementAndGet();
             } catch (Exception e) {
@@ -134,5 +134,10 @@ class ConfirmUploadConcurrencyTest {
         // Con la conversión/lectura fuera de la transacción, el tiempo total lo domina la
         // latencia de storage (~400ms) y no la contención del pool de 10 conexiones.
         assertTrue(elapsedMs < 15_000, "Tardó demasiado (" + elapsedMs + "ms): sugiere contención de conexiones");
+    }
+
+    /** Clave con el formato events/{eventId}/{uuid}.ext (el único que acepta /confirm). */
+    private String key(String extension) {
+        return "events/" + event.getId() + "/" + java.util.UUID.randomUUID() + extension;
     }
 }

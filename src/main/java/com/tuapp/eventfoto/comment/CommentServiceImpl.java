@@ -6,6 +6,8 @@ import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.common.exception.ContentModerationException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.common.moderation.ContentModerationService;
+import com.tuapp.eventfoto.event.Event;
+import com.tuapp.eventfoto.event.EventService;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
+    private final EventService eventService;
     private final PhotoRepository photoRepository;
     private final RateLimiterService rateLimiterService;
     private final ContentModerationService contentModerationService;
@@ -32,7 +35,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public CommentResponseDTO addComment(UUID photoId, CreateCommentRequestDTO request, String clientIp) {
+    public CommentResponseDTO addComment(String slug, UUID photoId, CreateCommentRequestDTO request, String clientIp) {
         // 1. Rate limiting en dos capas: por guestToken (identidad del invitado, 15/min)
         // + por IP (defensa anti-bot, 100/min). Antes solo corría la capa de IP porque
         // el DTO no llevaba guestToken y se usaba la sobrecarga deprecada de 1 argumento.
@@ -44,8 +47,10 @@ public class CommentServiceImpl implements CommentService {
             throw new ContentModerationException("Tu comentario no pudo publicarse, revisá el contenido e intentá de nuevo.");
         }
 
-        // 3. Validar que la foto exista
-        Photo photo = photoRepository.findById(photoId)
+        // 3. Validar que la foto exista Y sea de este evento (consulta acotada: una foto de otro
+        // evento es "no encontrada", igual que una inexistente)
+        Event event = eventService.getEventEntityBySlug(slug);
+        Photo photo = photoRepository.findByIdAndEventId(photoId, event.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
         // 4. Crear el comentario
@@ -64,9 +69,10 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommentResponseDTO> getPhotoComments(UUID photoId) {
-        // Validar que la foto exista
-        if (!photoRepository.existsById(photoId)) {
+    public List<CommentResponseDTO> getPhotoComments(String slug, UUID photoId) {
+        // Validar que la foto exista y sea de este evento
+        Event event = eventService.getEventEntityBySlug(slug);
+        if (!photoRepository.existsByIdAndEventId(photoId, event.getId())) {
             throw new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId);
         }
 

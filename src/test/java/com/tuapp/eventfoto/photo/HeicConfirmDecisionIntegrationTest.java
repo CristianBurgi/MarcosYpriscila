@@ -63,6 +63,7 @@ class HeicConfirmDecisionIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @Autowired private EventRepository eventRepository;
+    private Event event;
     @Autowired private PhotoRepository photoRepository;
     @Autowired private GuestQuotaRepository guestQuotaRepository;
     @Autowired private OrganizerRepository organizerRepository;
@@ -106,7 +107,7 @@ class HeicConfirmDecisionIntegrationTest {
 
         Organizer organizer = organizerRepository.save(Organizer.builder().email("heic@test.com").build());
 
-        eventRepository.save(Event.builder()
+        event = eventRepository.save(Event.builder()
                 .organizer(organizer)
                 .name("Evento de Prueba")
                 .slug("evento-demo-k7m2xq9p")
@@ -145,7 +146,7 @@ class HeicConfirmDecisionIntegrationTest {
         assertThat(FileSignatureValidator.isHeicSignature(REAL_JPEG_BYTES)).isFalse();
         assertThat(FileSignatureValidator.isValidImageSignature(REAL_JPEG_BYTES)).isTrue();
 
-        String key = "photos/evento-demo-k7m2xq9p/" + UUID.randomUUID() + extension;
+        String key = "events/" + event.getId() + "/" + UUID.randomUUID() + extension;
         bucket.put(key, REAL_JPEG_BYTES); // simula la subida del cliente vía presigned URL
 
         ConfirmUploadRequestDTO request =
@@ -174,7 +175,7 @@ class HeicConfirmDecisionIntegrationTest {
         byte[] heicBytes = realHeicHeader();
         assertThat(FileSignatureValidator.isHeicSignature(heicBytes)).isTrue();
 
-        String heicKey = "photos/evento-demo-k7m2xq9p/" + UUID.randomUUID() + ".heic";
+        String heicKey = "events/" + event.getId() + "/" + UUID.randomUUID() + ".heic";
         bucket.put(heicKey, heicBytes);
 
         ConfirmUploadRequestDTO request =

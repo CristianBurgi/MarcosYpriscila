@@ -210,7 +210,7 @@ class PublicApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/photos/{photoId}/comments - Debe agregar comentario y responder 201 Created")
+    @DisplayName("POST /api/v1/events/{slug}/photos/{photoId}/comments - Debe agregar comentario y responder 201 Created")
     void shouldAddCommentToPhoto() throws Exception {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
@@ -219,7 +219,7 @@ class PublicApiIntegrationTest {
 
         CreateCommentRequestDTO request = new CreateCommentRequestDTO("Tía Marta", "¡Qué hermosa foto!");
 
-        mockMvc.perform(post("/api/v1/photos/" + photo.getId() + "/comments")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/" + photo.getId() + "/comments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -228,7 +228,7 @@ class PublicApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/photos/{photoId}/comments - Debe rechazar comentario vacío con 400 Bad Request")
+    @DisplayName("POST /api/v1/events/{slug}/photos/{photoId}/comments - Debe rechazar comentario vacío con 400 Bad Request")
     void shouldRejectEmptyComment() throws Exception {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
@@ -237,7 +237,7 @@ class PublicApiIntegrationTest {
 
         CreateCommentRequestDTO request = new CreateCommentRequestDTO("", "");
 
-        mockMvc.perform(post("/api/v1/photos/" + photo.getId() + "/comments")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/" + photo.getId() + "/comments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -290,7 +290,7 @@ class PublicApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/photos/{photoId}/comments - Debe rechazar comentario ofensivo con 422 Unprocessable Entity")
+    @DisplayName("POST /api/v1/events/{slug}/photos/{photoId}/comments - Debe rechazar comentario ofensivo con 422 Unprocessable Entity")
     void shouldRejectProfaneCommentWith422() throws Exception {
         Photo photo = photoRepository.save(Photo.builder()
                 .event(testEvent)
@@ -299,7 +299,7 @@ class PublicApiIntegrationTest {
 
         CreateCommentRequestDTO request = new CreateCommentRequestDTO("Troll", "Sos una mierda");
 
-        mockMvc.perform(post("/api/v1/photos/" + photo.getId() + "/comments")
+        mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/" + photo.getId() + "/comments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity())
@@ -321,7 +321,7 @@ class PublicApiIntegrationTest {
     @DisplayName("GET /api/v1/events/{slug}/guest-quota - Debe decrecer tras confirmar una subida")
     void shouldDecrementQuotaAfterConfirm() throws Exception {
         String guestToken = "guest-token-quota-decrement";
-        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-decrement.jpg", "Invitado", null, guestToken);
+        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key(), "Invitado", null, guestToken);
 
         mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -340,14 +340,14 @@ class PublicApiIntegrationTest {
         String guestToken = "guest-token-quota-limit";
 
         for (int i = 1; i <= 24; i++) {
-            ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-limit-" + i + ".jpg", "Invitado", null, guestToken);
+            ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key(), "Invitado", null, guestToken);
             mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated());
         }
 
-        ConfirmUploadRequestDTO request25 = new ConfirmUploadRequestDTO("photos/quota-limit-25.jpg", "Invitado", null, guestToken);
+        ConfirmUploadRequestDTO request25 = new ConfirmUploadRequestDTO(key(), "Invitado", null, guestToken);
         mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request25)))
@@ -367,7 +367,7 @@ class PublicApiIntegrationTest {
         String guestToken = "guest-token-quota-upload-url";
 
         for (int i = 1; i <= 24; i++) {
-            ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO("photos/quota-upload-url-" + i + ".jpg", "Invitado", null, guestToken);
+            ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key(), "Invitado", null, guestToken);
             mockMvc.perform(post("/api/v1/events/evento-demo-k7m2xq9p/photos/confirm")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
@@ -395,5 +395,10 @@ class PublicApiIntegrationTest {
         mockMvc.perform(delete("/api/v1/admin/events/evento-demo-k7m2xq9p/messages/" + message.getId())
                         .header("Authorization", "Bearer " + adminJwtToken))
                 .andExpect(status().isNoContent());
+    }
+
+    /** Clave con el formato events/{eventId}/{uuid}.ext (el único que acepta /confirm). */
+    private String key() {
+        return "events/" + testEvent.getId() + "/" + java.util.UUID.randomUUID() + ".jpg";
     }
 }
