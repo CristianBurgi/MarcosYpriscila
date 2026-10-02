@@ -6,6 +6,7 @@ import com.tuapp.eventfoto.event.EventRepository;
 import com.tuapp.eventfoto.organizer.Organizer;
 import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.storage.StorageService;
+import com.tuapp.eventfoto.testsupport.TestEvents;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Fase 9.1 Bloque 4: el mismo guestToken (comparte localStorage entre eventos del mismo dominio)
  * tiene cupos INDEPENDIENTES por evento. Límite bajado a 2 para que el test sea corto.
  */
-@SpringBootTest(properties = "app.guest-quota.max-photos-per-guest=2")
+@SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class GuestQuotaIsolationTest {
@@ -69,10 +70,7 @@ class GuestQuotaIsolationTest {
     }
 
     private Event event(Organizer organizer, String slug) {
-        return eventRepository.save(Event.builder()
-                .organizer(organizer).name("Evento " + slug).slug(slug)
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID).build());
+        return TestEvents.limited(eventRepository, organizer, slug, 2);
     }
 
     private org.springframework.test.web.servlet.ResultActions upload(Event event) throws Exception {

@@ -348,6 +348,7 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | Método | Ruta | Descripción | Body/Params |
 |---|---|---|---|
 | `GET` | `/api/v1/events/{slug}` | Datos del evento (nombre, estado de subidas) | — |
+| `GET` | `/api/v1/events/{slug}/guest-quota` | Cupo del invitado: `{ unlimited, maxPhotosPerGuest, remainingPhotos }` (`null` donde no aplica) | `?token={guestToken}` |
 | `GET` | `/api/v1/events/{slug}/qr` | Genera y devuelve el código QR como PNG | `?size=400` |
 | `POST` | `/api/v1/events/{slug}/photos/upload-url` | Genera presigned URL para subida directa a R2 | `{ filename, contentType, fileSize }` |
 | `POST` | `/api/v1/events/{slug}/photos/confirm` | Confirma que la subida a R2 fue exitosa | `{ storageKey, uploaderName, caption }` |
@@ -372,6 +373,7 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | `DELETE` | `/api/v1/admin/events/{slug}/comments/{commentId}` | Borra un comentario |
 | `DELETE` | `/api/v1/admin/events/{slug}/messages/{messageId}` | Borra un mensaje |
 | `PATCH` | `/api/v1/admin/events/{slug}/toggle-status` | Abre o cierra las subidas de fotos |
+| `PUT` | `/api/v1/admin/events/{slug}/guest-photo-limit` | Límite de fotos por invitado del evento: `{ "unlimited": true|false }` (ver [Límite de fotos por invitado](#-límite-de-fotos-por-invitado-fase-95)) |
 
 ### Formato de errores
 
@@ -458,6 +460,21 @@ El archivo tiene **43 palabras bloqueadas** (una por línea) y se puede editar s
 Si el texto contiene alguna palabra bloqueada, el servidor devuelve un error `400 Bad Request` con un mensaje de contenido inapropiado.
 
 Las **fotos** no pasan por este filtro automático — se publican al confirmarse la subida y el admin modera borrando.
+
+---
+
+## 📸 Límite de fotos por invitado (Fase 9.5)
+
+El organizador elige **por evento** entre "hasta 24 fotos por invitado" y "sin límite", desde el dashboard (tarjeta *Cuántas fotos puede subir cada invitado*) y puede cambiarlo con el evento en curso.
+
+- **Dónde vive:** `events.max_photos_per_guest` (`NULL` = sin límite). La migración V14 dejó en 24 a los eventos existentes; los nuevos (de pago o sin costo del superadmin) nacen con el default de configuración. No hay `DEFAULT` en la base.
+- **Configuración vigente:** `app.guest-quota.default-max-photos-per-guest` (en `application.yml`, hoy 24). Es el único lugar donde vive ese número. La propiedad vieja `app.guest-quota.max-photos-per-guest` sigue funcionando solo como fallback y está deprecada.
+- **Cómo se aplica:** un único `UPDATE` atómico (`GuestQuotaRepository.incrementIfAllowed`) lee el límite vigente del evento con una subconsulta, así que un cambio del organizador rige desde la próxima subida aunque la request haya cargado el evento antes. Sin límite igual se cuenta por `(evento, guestToken)`, para que volver a 24 a mitad del evento sea coherente: el contador es monotónico y borrar una foto no devuelve cupo. Un invitado que ya subió más de 24 y vuelve a "24" queda bloqueado, sin errores ni contadores negativos.
+- **API pública:** `GET /api/v1/events/{slug}/guest-quota?token=...` devuelve `{ "unlimited": false, "maxPhotosPerGuest": 24, "remainingPhotos": 19 }`, o `{ "unlimited": true, "maxPhotosPerGuest": null, "remainingPhotos": null }` sin límite (sin números mágicos).
+- **API del panel:** `PUT /api/v1/admin/events/{slug}/guest-photo-limit` con `{ "unlimited": true|false }` (`@OwnedEvent`: organizador ajeno → 404). Devuelve el estado nuevo completo `{ unlimited, maxPhotosPerGuest }`.
+- **Pantalla del invitado:** `upload.html` no tiene ningún número escrito; usa el que informa la API. Sin límite no hay contador ni banner. La pantalla se entera de un cambio al volver a la pestaña, al recargar, o cuando el servidor devuelve 403 de cupo (en ese caso reconsulta antes de mostrar el banner).
+
+> **Es una regla de cortesía, no un control de seguridad:** el `guestToken` lo elige el cliente, así que quien lo rote esquiva el límite. Los frenos reales son el rate limit por IP, el tope de tamaño por archivo y el tope total de fotos por evento.
 
 ---
 
@@ -647,6 +664,7 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `JWT_SECRET` | Secreto para firmar tokens JWT (mínimo 32 caracteres) | ✅ |
 | `JWT_EXPIRATION_MS` | Duración del JWT en ms (por defecto 8 horas = `28800000`) | Opcional |
 | `APP_BASE_URL` | URL pública de la app, sin barra final. **Única fuente** de toda URL absoluta (QR, links del panel). Con `STORAGE_MODE=r2` la app no arranca si apunta a `localhost` | ✅ |
+| `APP_GUEST_QUOTA_DEFAULT_MAX_PHOTOS_PER_GUEST` | Límite de fotos por invitado de los eventos **nuevos** (por defecto 24). Reemplaza a `APP_GUEST_QUOTA_MAX_PHOTOS_PER_GUEST`, que sigue funcionando como fallback | Opcional |
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
 | `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
 | `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |

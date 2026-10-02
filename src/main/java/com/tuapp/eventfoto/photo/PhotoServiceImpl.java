@@ -78,7 +78,7 @@ public class PhotoServiceImpl implements PhotoService {
         // 3. Chequeo previo (no atómico) del cupo del invitado: evita gastar una presigned
         // URL si ya sabemos que no tiene fotos disponibles. La verdad final y atómica se
         // aplica en confirmUpload() vía GuestQuotaService.incrementUsageOrThrow().
-        guestQuotaService.assertQuotaAvailable(event.getId(), request.guestToken());
+        guestQuotaService.assertQuotaAvailable(event, request.guestToken());
 
         String contentType = request.contentType();
         String filename = request.filename();
@@ -219,7 +219,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         // Chequeo previo (no atómico) del cupo del invitado: evita gastar tiempo/CPU
         // subiendo bytes a storage si ya sabemos que no tiene fotos disponibles.
-        guestQuotaService.assertQuotaAvailable(event.getId(), guestToken);
+        guestQuotaService.assertQuotaAvailable(event, guestToken);
 
         String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {

@@ -102,7 +102,8 @@ class ModeratorTokenMigrationTest {
             assertThat(noColumnYet.getInt(1)).as("la columna no existe antes de V13").isZero();
         }
 
-        var result = Flyway.configure().dataSource(throwawayUrl, user, password).load().migrate();
+        // target 13: las migraciones posteriores (V14+) tienen sus propios tests
+        var result = Flyway.configure().dataSource(throwawayUrl, user, password).target("13").load().migrate();
         assertThat(result.migrationsExecuted).as("solo V13 estaba pendiente").isEqualTo(1);
 
         try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password); Statement st = conn.createStatement()) {

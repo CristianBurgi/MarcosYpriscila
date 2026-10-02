@@ -55,7 +55,7 @@
             <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por el organizador.
         </div>
         <div id="quota-exceeded-banner" style="display: none; border: 1px solid rgba(201, 161, 90, 0.5); background: rgba(201, 161, 90, 0.08); color: var(--gold-soft); padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
-            <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> Ya usaste tus 24 fotos para este evento — ¡gracias por compartir tantos momentos! 🎉
+            <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> <span id="quota-exceeded-text"></span>
         </div>
 
         <form id="upload-form">
@@ -168,7 +168,18 @@
             return token;
         }
         const GUEST_TOKEN = getOrCreateGuestToken();
-        const QUOTA_EXCEEDED_MESSAGE = 'Ya usaste tus 24 fotos para este evento — ¡gracias por compartir tantos momentos! 🎉';
+        // Límite del evento tal como lo informa la API (guest-quota). null = sin límite o todavía no se consultó:
+        // el número NUNCA está escrito acá, siempre viene del servidor.
+        let guestQuotaMax = null;
+
+        function quotaExceededMessage() {
+            const fotos = guestQuotaMax !== null ? `tus ${guestQuotaMax} fotos` : 'tus fotos';
+            return `Ya usaste ${fotos} para este evento — ¡gracias por compartir tantos momentos! 🎉`;
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && !uploadInProgress) loadGuestQuota();
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             checkEventStatus();
@@ -273,7 +284,7 @@
             } catch (networkErr) {
                 throw retryableError('No se pudo conectar para iniciar la subida.');
             }
-            if (res.status === 403) throw nonRetryableError(QUOTA_EXCEEDED_MESSAGE, 'quota');
+            if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
             if (res.ok) return await res.json(); // { uploadUrl, key }
             if (res.status >= 500) throw retryableError('El servidor tardó en iniciar la subida.');
             const body = await res.json().catch(() => ({}));
@@ -309,7 +320,7 @@
                 throw retryableError('No pudimos confirmar tu foto, pero ya se subió.');
             }
             if (res.ok) return await res.json();
-            if (res.status === 403) throw nonRetryableError(QUOTA_EXCEEDED_MESSAGE, 'quota');
+            if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
             // 503: otra confirmación con esta misma key está en curso (carrera o un
             // reintento propio que se cruzó) -- se resuelve sola en el próximo intento.
             if (res.status >= 500) throw retryableError('El servidor tardó en confirmar tu foto.');
@@ -360,7 +371,7 @@
             } catch (networkErr) {
                 throw nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.');
             }
-            if (res.status === 403) throw nonRetryableError(QUOTA_EXCEEDED_MESSAGE, 'quota');
+            if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 throw nonRetryableError(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.');
@@ -508,6 +519,15 @@
             const message = (err && err.message) ? err.message : 'No se pudo subir la fotografía. Intentá de nuevo.';
             const offerManualRetry = !!state && err.kind !== 'quota';
 
+            if (err && err.kind === 'quota') {
+                if (!btn.getAttribute('data-closed')) {
+                    btn.disabled = false;
+                    btn.innerText = 'Subir y Compartir Foto';
+                }
+                handleQuotaRejection(statusDiv);
+                return;
+            }
+
             statusDiv.innerHTML = `
                 <div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">
                     ${escapeHtml(message)}
@@ -517,11 +537,6 @@
             if (!btn.getAttribute('data-closed')) {
                 btn.disabled = false;
                 btn.innerText = 'Subir y Compartir Foto';
-            }
-
-            if (err && err.kind === 'quota') {
-                loadGuestQuota();
-                return;
             }
 
             if (offerManualRetry) {
@@ -538,6 +553,23 @@
             }
         }
 
+        // Un 403 de cupo puede venir de una pantalla vieja: el organizador pudo haber pasado a "sin límite" (o
+        // subido el límite) después de que se cargó la página. Se vuelve a preguntar al servidor ANTES de mostrar el
+        // banner: si ahora hay lugar, el invitado puede reintentar sin recargar.
+        async function handleQuotaRejection(statusDiv) {
+            const quota = await fetchGuestQuota();
+            if (quota) {
+                applyGuestQuota(quota);
+                if (quota.unlimited || quota.remainingPhotos > 0) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">El organizador amplió el límite de fotos. ¡Probá subir de nuevo! 📸</div>';
+                    return;
+                }
+            }
+            // sigue sin cupo: banner con el número vigente que informa la API
+            statusDiv.innerHTML = '';
+            disableUploadForm('quota');
+        }
+
         async function checkEventStatus() {
             try {
                 const res = await fetch(`/api/v1/events/${SLUG}`);
@@ -552,33 +584,57 @@
             }
         }
 
-        async function loadGuestQuota() {
+        async function fetchGuestQuota() {
             try {
                 const res = await fetch(`/api/v1/events/${SLUG}/guest-quota?token=${encodeURIComponent(GUEST_TOKEN)}`);
-                if (res.ok) {
-                    const { remainingPhotos, maxPhotosPerGuest } = await res.json();
-                    updateQuotaBadge(remainingPhotos, maxPhotosPerGuest);
-                    if (remainingPhotos <= 0) {
-                        disableUploadForm('quota');
-                    }
-                }
+                if (res.ok) return await res.json(); // { unlimited, maxPhotosPerGuest, remainingPhotos }
             } catch (err) {
                 console.warn('No se pudo verificar el cupo de fotos del invitado:', err);
             }
+            return null;
         }
 
-        function updateQuotaBadge(remaining, max) {
+        // Aplica el cupo que informa el servidor. Sin límite: no hay contador ni banner. Si el formulario había
+        // quedado bloqueado por cupo y el organizador cambió el límite, lo vuelve a habilitar.
+        function applyGuestQuota(quota) {
+            guestQuotaMax = quota.unlimited ? null : quota.maxPhotosPerGuest;
+            updateQuotaBadge(quota);
+            const exhausted = !quota.unlimited && quota.remainingPhotos <= 0;
+            if (exhausted) {
+                disableUploadForm('quota');
+            } else if (quotaLockActive) {
+                enableUploadForm();
+            }
+        }
+
+        async function loadGuestQuota() {
+            const quota = await fetchGuestQuota();
+            if (quota) applyGuestQuota(quota);
+        }
+
+        function updateQuotaBadge(quota) {
             const badge = document.getElementById('quota-badge');
             if (!badge) return;
+            if (quota.unlimited) {
+                badge.style.display = 'none';
+                badge.innerHTML = '';
+                return;
+            }
             badge.style.display = 'block';
-            badge.innerHTML = `${remaining} de ${max} fotos disponibles para vos`;
+            badge.innerHTML = `${quota.remainingPhotos} de ${quota.maxPhotosPerGuest} fotos disponibles para vos`;
         }
+
+        // true mientras el formulario está bloqueado POR CUPO (no por evento cerrado).
+        let quotaLockActive = false;
 
         function disableUploadForm(reason = 'closed') {
             const closedBanner = document.getElementById('event-closed-banner');
             const quotaBanner = document.getElementById('quota-exceeded-banner');
 
             if (reason === 'quota') {
+                quotaLockActive = true;
+                const quotaText = document.getElementById('quota-exceeded-text');
+                if (quotaText) quotaText.textContent = quotaExceededMessage();
                 if (quotaBanner) quotaBanner.style.display = 'block';
             } else {
                 if (closedBanner) closedBanner.style.display = 'block';
@@ -597,9 +653,34 @@
                 btnSubmit.disabled = true;
                 btnSubmit.setAttribute('data-closed', 'true');
                 btnSubmit.style.display = '';
-                btnSubmit.innerText = reason === 'quota' ? '🎉 Ya usaste tus 24 fotos' : '🔒 Recepción de Fotos Cerrada';
+                btnSubmit.innerText = reason === 'quota'
+                    ? (guestQuotaMax !== null ? `🎉 Ya usaste tus ${guestQuotaMax} fotos` : '🎉 Ya usaste tus fotos')
+                    : '🔒 Recepción de Fotos Cerrada';
                 btnSubmit.style.opacity = '0.5';
                 btnSubmit.style.cursor = 'not-allowed';
+            }
+        }
+
+        // Deshace SOLO el bloqueo por cupo (el organizador pasó a "sin límite" o subió el límite).
+        function enableUploadForm() {
+            quotaLockActive = false;
+            const quotaBanner = document.getElementById('quota-exceeded-banner');
+            if (quotaBanner) quotaBanner.style.display = 'none';
+
+            const nameInput = document.getElementById('uploaderName');
+            if (nameInput) nameInput.disabled = false;
+            const btnCamera = document.getElementById('btn-camera');
+            const btnGallery = document.getElementById('btn-gallery');
+            const btnSubmit = document.getElementById('btn-submit');
+            if (btnCamera) { btnCamera.disabled = false; btnCamera.style.opacity = ''; btnCamera.style.cursor = ''; }
+            if (btnGallery) { btnGallery.removeAttribute('data-disabled'); btnGallery.style.opacity = ''; btnGallery.style.cursor = ''; }
+            if (btnSubmit) {
+                btnSubmit.removeAttribute('data-closed');
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = 'Subir y Compartir Foto';
+                btnSubmit.style.opacity = '';
+                btnSubmit.style.cursor = '';
+                setSubmitVisible(!!selectedFile);
             }
         }
 
