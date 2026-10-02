@@ -42,6 +42,10 @@ public class RateLimiterService {
     private final Map<String, Queue<Long>> uploadUrlByGuestTokenBuckets = new ConcurrentHashMap<>();
     private final Map<String, Queue<Long>> uploadUrlByIpBuckets = new ConcurrentHashMap<>();
 
+    // Buckets de upload-direct (multipart por el servidor): mismos valores que upload-url, buckets propios
+    private final Map<String, Queue<Long>> uploadDirectByGuestTokenBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Queue<Long>> uploadDirectByIpBuckets = new ConcurrentHashMap<>();
+
     // Buckets para comments/messages (dos claves: guestToken e IP)
     private final Map<String, Queue<Long>> commentMessageByGuestTokenBuckets = new ConcurrentHashMap<>();
     private final Map<String, Queue<Long>> commentMessageByIpBuckets = new ConcurrentHashMap<>();
@@ -66,6 +70,21 @@ public class RateLimiterService {
         checkRateLimit(clientIp, uploadUrlByIpBuckets,
                 UPLOAD_URL_LIMIT_PER_IP_PER_MINUTE, ONE_MINUTE_IN_MS,
                 "Has superado el límite global de solicitudes desde tu IP. Por favor aguardá unos minutos.");
+    }
+
+    /**
+     * Rate limit de upload-direct: no pasa por una presigned URL, así que sin esto era el único camino de subida sin
+     * freno. Mismos valores que upload-url (30/min por guestToken, 500/min por IP) y buckets propios, para que el
+     * fallback de un invitado no le gaste el cupo de presigned URLs.
+     */
+    public void checkUploadDirectRateLimit(String clientIp, String guestToken) {
+        checkRateLimit(guestToken, uploadDirectByGuestTokenBuckets,
+                UPLOAD_URL_LIMIT_PER_GUESTTOKEN_PER_MINUTE, ONE_MINUTE_IN_MS,
+                "Has superado el límite de 30 subidas por minuto. Por favor aguardá unos segundos.");
+
+        checkRateLimit(clientIp, uploadDirectByIpBuckets,
+                UPLOAD_URL_LIMIT_PER_IP_PER_MINUTE, ONE_MINUTE_IN_MS,
+                "Has superado el límite global de subidas desde tu IP. Por favor aguardá unos minutos.");
     }
 
     /**
@@ -137,6 +156,8 @@ public class RateLimiterService {
     public void resetRateLimits() {
         uploadUrlByGuestTokenBuckets.clear();
         uploadUrlByIpBuckets.clear();
+        uploadDirectByGuestTokenBuckets.clear();
+        uploadDirectByIpBuckets.clear();
         commentMessageByGuestTokenBuckets.clear();
         commentMessageByIpBuckets.clear();
         adminLoginBuckets.clear();

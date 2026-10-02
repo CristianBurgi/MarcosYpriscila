@@ -41,9 +41,9 @@ class UploadErrorResponsesIntegrationTest {
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
     @Test
-    @DisplayName("Un archivo de más de 30MB devuelve 413 JSON con 'La foto es demasiado pesada, probá con otra'")
+    @DisplayName("Un archivo de más de 15MB (app.upload.max-file-bytes) devuelve 413 JSON con el mensaje de foto demasiado pesada")
     void oversizedFileReturnsFriendlyJson() throws Exception {
-        byte[] body = multipartBody(new byte[31 * 1024 * 1024]);
+        byte[] body = multipartBody(new byte[16 * 1024 * 1024]);
 
         HttpResponse<String> response = client.send(uploadRequest(body), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 

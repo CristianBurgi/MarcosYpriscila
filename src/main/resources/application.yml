@@ -42,13 +42,23 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 30MB
-      max-request-size: 30MB
+      # Mismo tope que /confirm (app.upload.max-file-bytes): los dos caminos de subida coinciden.
+      max-file-size: ${app.upload.max-file-bytes:15728640}
+      # Un poco más que el archivo: el request lleva además uploaderName, guestToken y el overhead multipart.
+      max-request-size: 16MB
 
 app:
   # Única fuente de URLs absolutas (QR, links del panel). En producción se setea en
   # Railway; con STORAGE_MODE=r2 la app no arranca si queda apuntando a localhost.
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  upload:
+    # Tope de tamaño por archivo (15 MB). Lo aplica /confirm (HeadObject sobre lo que el cliente subió directo a R2,
+    # antes de leer un solo byte) y /upload-direct; spring.servlet.multipart.max-file-size usa este mismo valor.
+    max-file-bytes: 15728640
+  event:
+    # Tope de SEGURIDAD de fotos por evento (no un límite de plan): frena el abuso aun con "sin límite por invitado".
+    # Cuenta las fotos persistidas (borrar libera lugar). Es un tope blando: ver GuestQuotaService.assertEventHasRoom.
+    max-photos: 5000
   guest-quota:
     # Límite de fotos por invitado de los eventos NUEVOS (cada evento guarda el suyo en events.max_photos_per_guest;
     # el organizador lo pasa a "sin límite" desde el panel). VIGENTE: default-max-photos-per-guest. La propiedad

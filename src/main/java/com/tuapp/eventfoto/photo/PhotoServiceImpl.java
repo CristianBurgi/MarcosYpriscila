@@ -5,6 +5,8 @@ import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.common.config.DeletionActor;
 import com.tuapp.eventfoto.common.exception.EventClosedException;
+import com.tuapp.eventfoto.common.exception.EventPhotoLimitReachedException;
+import com.tuapp.eventfoto.common.exception.FileTooLargeException;
 import com.tuapp.eventfoto.common.exception.GuestQuotaExceededException;
 import com.tuapp.eventfoto.common.exception.InvalidFileContentException;
 import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
@@ -23,6 +25,7 @@ import com.tuapp.eventfoto.storage.StorageService;
 import io.sentry.Sentry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +45,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
@@ -63,6 +67,10 @@ public class PhotoServiceImpl implements PhotoService {
     private final GuestbookPdfService guestbookPdfService;
     private final PhotoUploadClaimService photoUploadClaimService;
     private final AlbumReader albumReader;
+
+    /** Tope de tamaño por archivo (app.upload.max-file-bytes): lo comparten /confirm y /upload-direct. */
+    @Value("${app.upload.max-file-bytes}")
+    private long maxFileBytes;
 
     @Override
     public UploadUrlResponseDTO generateUploadUrl(String slug, UploadUrlRequestDTO request, String clientIp, String guestToken) {
@@ -107,6 +115,11 @@ public class PhotoServiceImpl implements PhotoService {
         if (!event.isActive()) {
             throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
         }
+
+        // Tope de tamaño del objeto que el cliente subió directo a R2 (el PUT presignado no tiene tope propio: un
+        // cliente malicioso puede subir cualquier tamaño). Un HeadObject, ANTES de reclamar la key, de leer un solo
+        // byte (readAllBytes más abajo carga el objeto entero en memoria) y de tocar el cupo.
+        rejectIfOversized(request.key());
 
         // Idempotencia (Fase 9.0 - Bloque C): el frontend puede llamar /confirm más de una
         // vez con la MISMA upload_key (la key de la presigned URL) si la respuesta de un
@@ -156,14 +169,15 @@ public class PhotoServiceImpl implements PhotoService {
         try {
             response = photoPersistenceService.persistConfirmedPhoto(
                     event, request.key(), finalKey, request.uploaderName(), request.caption(), request.guestToken(), publicUrl);
-        } catch (GuestQuotaExceededException e) {
-            log.warn("Cupo agotado al confirmar; eliminando objeto huérfano '{}' de storage", finalKey);
+        } catch (GuestQuotaExceededException | EventPhotoLimitReachedException e) {
+            log.warn("Subida rechazada por cupo/tope al confirmar ({}); eliminando objeto huérfano '{}' de storage", e.getClass().getSimpleName(), finalKey);
             try {
                 storageService.deleteFile(finalKey);
             } catch (Exception cleanupEx) {
                 log.error("No se pudo eliminar el objeto huérfano '{}' tras rechazo por cupo: {}", finalKey, cleanupEx.getMessage());
             }
-            photoUploadClaimService.markFailed(request.key(), HttpStatus.FORBIDDEN.value(), e.getMessage());
+            int status = e instanceof EventPhotoLimitReachedException ? HttpStatus.CONFLICT.value() : HttpStatus.FORBIDDEN.value();
+            photoUploadClaimService.markFailed(request.key(), status, e.getMessage());
             throw e;
         }
 
@@ -199,6 +213,24 @@ public class PhotoServiceImpl implements PhotoService {
         throw new UploadInProgressException("Tu foto se está procesando, esperá un instante.");
     }
 
+    /**
+     * Rechaza (413) un objeto de storage por encima del tope SIN leerlo, y lo borra para no dejar basura. Si el
+     * objeto no existe (ej. un reintento de /confirm cuya foto HEIC ya se convirtió y se borró el original) no
+     * rechaza: el resto del flujo resuelve la idempotencia o falla como siempre.
+     */
+    private void rejectIfOversized(String key) {
+        OptionalLong size = storageService.objectSize(key);
+        if (size.isPresent() && size.getAsLong() > maxFileBytes) {
+            log.warn("Confirmación rechazada: el objeto '{}' pesa {} bytes y el tope es {}. Eliminando de storage.", key, size.getAsLong(), maxFileBytes);
+            try {
+                storageService.deleteFile(key);
+            } catch (Exception e) {
+                log.error("No se pudo eliminar el objeto sobredimensionado '{}' de storage: {}", key, e.getMessage());
+            }
+            throw new FileTooLargeException("El archivo supera el tope de " + maxFileBytes + " bytes");
+        }
+    }
+
     private static int statusOf(RuntimeException e) {
         if (e instanceof InvalidFileContentException) {
             return HttpStatus.UNPROCESSABLE_ENTITY.value();
@@ -210,6 +242,9 @@ public class PhotoServiceImpl implements PhotoService {
     public PhotoResponseDTO uploadDirect(String slug, org.springframework.web.multipart.MultipartFile file, String uploaderName, String caption, String guestToken) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileFormatException("El archivo enviado está vacío.");
+        }
+        if (file.getSize() > maxFileBytes) {
+            throw new FileTooLargeException("El archivo supera el tope de " + maxFileBytes + " bytes");
         }
 
         Event event = eventService.getEventEntityBySlug(slug);
@@ -291,8 +326,8 @@ public class PhotoServiceImpl implements PhotoService {
         PhotoResponseDTO response;
         try {
             response = photoPersistenceService.persistConfirmedPhoto(event, key, key, uploaderName, caption, guestToken, publicUrl);
-        } catch (GuestQuotaExceededException e) {
-            log.warn("Cupo agotado tras subir a storage en upload-direct; eliminando objeto huérfano '{}'", key);
+        } catch (GuestQuotaExceededException | EventPhotoLimitReachedException e) {
+            log.warn("Subida rechazada por cupo/tope tras subir a storage en upload-direct ({}); eliminando objeto huérfano '{}'", e.getClass().getSimpleName(), key);
             try {
                 storageService.deleteFile(key);
             } catch (Exception cleanupEx) {

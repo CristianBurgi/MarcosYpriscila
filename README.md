@@ -387,7 +387,7 @@ Todos los errores tienen el mismo formato JSON consistente:
 }
 ```
 
-**Errores de subida (Fase 9.0):** un archivo que supera los 30 MB devuelve `413` con el mensaje *"La foto es demasiado pesada, probá con otra"*; un multipart malformado o cortado (típico con mala señal) devuelve `400` con *"Hubo un problema con la subida, intentá de nuevo"*. `upload.html` muestra ese `message` tal cual. `server.tomcat.max-swallow-size` está en 64 MB para que el 413 llegue al navegador en lugar de un corte de conexión.
+**Errores de subida (Fase 9.0):** un archivo que supera el tope de tamaño (15 MB, ver [Topes de seguridad](#topes-de-seguridad-fase-95)) devuelve `413` con el mensaje *"La foto es demasiado pesada. Probá con otra o bajale la calidad."*; un multipart malformado o cortado (típico con mala señal) devuelve `400` con *"Hubo un problema con la subida, intentá de nuevo"*. `upload.html` muestra ese `message` tal cual. `server.tomcat.max-swallow-size` está en 64 MB para que el 413 llegue al navegador en lugar de un corte de conexión.
 
 **Excepciones tipadas disponibles:** `ResourceNotFoundException` (404), `RateLimitExceededException` (429), `ContentModerationException` (400), `InvalidFileFormatException` (400), `MaxUploadLimitReachedException` (429), `EventClosedException` (403), `UnauthorizedAccessException` (401), `StorageException` (500).
 
@@ -478,6 +478,20 @@ El organizador elige **por evento** entre "hasta 24 fotos por invitado" y "sin l
 
 ---
 
+### Topes de seguridad (Fase 9.5)
+
+Sin límite por invitado el freno real son estos tres topes (el límite por invitado no es un control de seguridad: el `guestToken` lo elige el cliente).
+
+| Tope | Valor | Dónde se aplica | Qué ve el invitado |
+|---|---|---|---|
+| **Tamaño por archivo** | 15 MB — `app.upload.max-file-bytes` (único valor; `spring.servlet.multipart.max-file-size` lo usa también) | `/confirm`: un `HeadObject` sobre lo que el cliente subió directo a R2, **antes** de reclamar la key, de leer un byte y de tocar el cupo; si pasa el tope borra el objeto de R2 y responde `413`. `/upload-direct`: `413` por tamaño del multipart. El PUT presignado a R2 no tiene tope propio (un cliente malicioso puede subir cualquier tamaño), por eso el control está en `/confirm` | 413 — *"La foto es demasiado pesada. Probá con otra o bajale la calidad."* |
+| **Fotos totales por evento** | 5.000 — `app.event.max-photos` | Cuenta las fotos persistidas del evento (borrar libera lugar). Chequeo rápido en `GuestQuotaService.assertQuotaAvailable` (antes de la presigned URL / de subir) y definitivo al inicio de la transacción de persistencia. Aplica con límite por invitado y sin límite. **Es un tope blando**: sin lock del evento, con subidas concurrentes en el borde puede pasarse por unas pocas fotos | 409 — *"El álbum de este evento llegó a su máximo de fotos. Avisale a quien organiza."* |
+| **Rate limit de `/upload-direct`** | 30/min por `guestToken`, 500/min por IP (buckets propios, mismos valores que `upload-url`) | `PhotoController.uploadDirect` vía `RateLimiterService.checkUploadDirectRateLimit`. `/confirm` no lo necesita: solo opera sobre keys ya emitidas por `upload-url` | 429 |
+
+> **Pendiente (9.6, retención):** los objetos huérfanos en R2 (un PUT presignado que nunca llega a `/confirm`) quedan sin limpiar; los topes de arriba no los cubren.
+
+---
+
 ## 🚦 Rate Limiting
 
 El `RateLimiterService` implementa un **sliding window counter** (ventana deslizante de 1 minuto) por dirección IP para proteger los endpoints más sensibles.
@@ -485,6 +499,7 @@ El `RateLimiterService` implementa un **sliding window counter** (ventana desliz
 | Acción | Límite | Razón |
 |---|---|---|
 | Solicitud de Presigned URL (`upload-url`) | **30 por minuto por IP** | Permite que grupos en el mismo WiFi del salón suban fotos sin ser bloqueados |
+| Subida directa multipart (`upload-direct`) | **30 por minuto por guestToken, 500 por IP** | Era el único camino de subida sin freno (Fase 9.5) |
 | Comentarios y Mensajes | **15 por minuto por IP** | Previene spam masivo |
 
 > **Nota importante:** En una boda, varios invitados en la misma red WiFi del salón comparten la misma IP pública de salida. Los límites están calibrados para este escenario real.
@@ -773,7 +788,7 @@ mvn test
 | `QrCodeTest` | 2 | Generación del PNG de QR con URL correcta y dimensiones esperadas |
 | `RealtimeIntegrationTest` | 2 | Suscripción SSE, aislamiento de eventos por `eventId` |
 | `SseBroadcasterTest` / `PhotoDeletedSseIntegrationTest` | 4 | Un emisor que tira `IOException` se remueve sin cortar el envío al resto; borrar una foto emite `PHOTO_DELETED` |
-| `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 30 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
+| `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 15 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
 | `GlobalExceptionHandlerSentryNoiseTest` | 10 | Desconexiones de clientes (escritura de la respuesta), recursos inexistentes y errores 4xx de Spring no llegan a Sentry; fallas de R2/BD con mensajes tipo "Connection reset" sí |
 | `GuestbookPdfIntegrationTest` / `GuestbookEndpointsTest` | 5 | PDF real con emojis simples y compuestos, acentos, ñ, 1000 caracteres, palabra sin espacios y sin autor (texto extraído con PDFBox, ningún glifo fuera de la página); descarga solo admin; ZIP completo con el PDF en la raíz |
 | `ConfirmUploadIdempotencyTest` | 3 | `POST /confirm` repetido con la misma `upload_key` (secuencial y con HEIC) devuelve la misma foto sin duplicar ni cobrar cupo de más; dos hilos reales confirmando la misma key en paralelo: una sola foto, un solo descuento, y el perdedor de la carrera falla en milisegundos (mutex propio), no bloqueado hasta que el ganador termina |

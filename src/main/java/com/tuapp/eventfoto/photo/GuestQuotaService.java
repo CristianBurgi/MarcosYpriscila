@@ -1,6 +1,8 @@
 package com.tuapp.eventfoto.photo;
 
+import com.tuapp.eventfoto.common.exception.EventPhotoLimitReachedException;
 import com.tuapp.eventfoto.common.exception.GuestQuotaExceededException;
+import com.tuapp.eventfoto.common.exception.GlobalExceptionHandler;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventRepository;
 import com.tuapp.eventfoto.photo.dto.GuestPhotoLimitDTO;
@@ -35,10 +37,15 @@ public class GuestQuotaService {
 
     private final GuestQuotaRepository guestQuotaRepository;
     private final EventRepository eventRepository;
+    private final PhotoRepository photoRepository;
 
     /** Default de los eventos NUEVOS (application.yml; ahí también está el fallback a la propiedad vieja). */
     @Value("${app.guest-quota.default-max-photos-per-guest}")
     private int defaultMaxPhotosPerGuest;
+
+    /** Tope de seguridad de fotos por evento (aplica con límite por invitado y sin límite). */
+    @Value("${app.event.max-photos}")
+    private long maxPhotosPerEvent;
 
     public int getDefaultMaxPhotosPerGuest() {
         return defaultMaxPhotosPerGuest;
@@ -78,6 +85,7 @@ public class GuestQuotaService {
      * verdad final y atómica la determina incrementUsageOrThrow(), que lee el límite vigente de la base.
      */
     public void assertQuotaAvailable(Event event, String guestToken) {
+        assertEventHasRoom(event.getId());
         Integer remaining = getRemainingPhotos(event, guestToken);
         if (remaining != null && remaining <= 0) {
             throw new GuestQuotaExceededException(quotaExceededMessage(getMaxPhotosPerGuest(event)));
@@ -93,6 +101,7 @@ public class GuestQuotaService {
      */
     @Transactional
     public void incrementUsageOrThrow(Event event, String guestToken) {
+        assertEventHasRoom(event.getId());
         ensureQuotaRowExists(event, guestToken);
 
         int updatedRows = guestQuotaRepository.incrementIfAllowed(event.getId(), guestToken);
@@ -100,6 +109,22 @@ public class GuestQuotaService {
             log.warn("Cupo de fotos agotado para invitado (evento '{}', token '{}')", event.getId(), guestToken);
             Integer currentMax = eventRepository.findById(event.getId()).map(Event::getMaxPhotosPerGuest).orElse(null);
             throw new GuestQuotaExceededException(quotaExceededMessage(currentMax));
+        }
+    }
+
+    /**
+     * Tope total de fotos del evento (app.event.max-photos): cuenta las fotos persistidas (borrar libera lugar) y
+     * aplica en los dos modos. Se llama dos veces: temprano en assertQuotaAvailable (antes de gastar una presigned
+     * URL o una subida) y de forma definitiva al inicio de la transacción de persistencia.
+     *
+     * Es un tope BLANDO a propósito: el conteo y el insert no están bajo un lock del evento, así que con subidas
+     * concurrentes justo en el borde puede pasarse por unas pocas fotos. Es un freno contra el abuso, no una cuenta
+     * exacta; un lock de fila serializaría todas las subidas del evento para ganar precisión que no hace falta.
+     */
+    public void assertEventHasRoom(UUID eventId) {
+        if (photoRepository.countByEventId(eventId) >= maxPhotosPerEvent) {
+            log.warn("Tope de fotos del evento {} alcanzado ({})", eventId, maxPhotosPerEvent);
+            throw new EventPhotoLimitReachedException(GlobalExceptionHandler.EVENT_PHOTO_LIMIT_MESSAGE);
         }
     }
 

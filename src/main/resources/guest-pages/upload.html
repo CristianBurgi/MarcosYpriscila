@@ -267,6 +267,15 @@
             return err;
         }
 
+        // Rechazos definitivos del servidor con un mensaje pensado para el invitado: 413 (foto demasiado pesada) y
+        // 409 (el álbum llegó al tope de fotos del evento). Se muestra el mensaje del servidor tal cual; no se reintenta
+        // (la misma foto volvería a ser rechazada), no se prueba el fallback y no se habla de "señal débil".
+        async function rejectionError(res, fallbackMessage) {
+            if (res.status !== 413 && res.status !== 409) return null;
+            const body = await res.json().catch(() => ({}));
+            return nonRetryableError(body.message || fallbackMessage, res.status === 413 ? 'too-large' : 'album-full');
+        }
+
         function sleep(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
@@ -285,6 +294,8 @@
                 throw retryableError('No se pudo conectar para iniciar la subida.');
             }
             if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
+            const rejection = await rejectionError(res, 'No se pudo iniciar la subida.');
+            if (rejection) throw rejection;
             if (res.ok) return await res.json(); // { uploadUrl, key }
             if (res.status >= 500) throw retryableError('El servidor tardó en iniciar la subida.');
             const body = await res.json().catch(() => ({}));
@@ -321,6 +332,8 @@
             }
             if (res.ok) return await res.json();
             if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
+            const rejection = await rejectionError(res, 'No se pudo confirmar la fotografía.');
+            if (rejection) throw rejection;
             // 503: otra confirmación con esta misma key está en curso (carrera o un
             // reintento propio que se cruzó) -- se resuelve sola en el próximo intento.
             if (res.status >= 500) throw retryableError('El servidor tardó en confirmar tu foto.');
@@ -372,6 +385,8 @@
                 throw nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.');
             }
             if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
+            const rejection = await rejectionError(res, 'No se pudo enviar la fotografía.');
+            if (rejection) throw rejection;
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 throw nonRetryableError(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.');
@@ -441,7 +456,7 @@
                 await uploadWithRetries(state, (attemptNumber, totalAttempts) => showRetrying(attemptNumber, totalAttempts));
                 onUploadSuccess();
             } catch (err) {
-                if (!state.putDone && err.kind !== 'quota') {
+                if (!state.putDone && !err.kind) {
                     // El archivo NUNCA llegó a subirse a R2 (se agotaron los reintentos, o
                     // el PUT falló de forma no reintentable -- ej. bloqueado por el
                     // navegador/red). Sin nada subido todavía, es seguro probar el
@@ -517,7 +532,7 @@
             clearFileInputs();
 
             const message = (err && err.message) ? err.message : 'No se pudo subir la fotografía. Intentá de nuevo.';
-            const offerManualRetry = !!state && err.kind !== 'quota';
+            const offerManualRetry = !!state && !err.kind; // cupo / foto pesada / álbum lleno: reintentar la misma foto no sirve
 
             if (err && err.kind === 'quota') {
                 if (!btn.getAttribute('data-closed')) {
