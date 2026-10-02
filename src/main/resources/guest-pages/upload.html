@@ -642,7 +642,10 @@
 
                     canvas.toBlob((blob) => {
                         if (blob) {
-                            const compressedFile = new File([blob], file.name || 'photo.jpg', {
+                            // El blob es JPEG: el nombre lleva extensión .jpg (si no, "captura.png" viajaría como
+                            // image/jpeg y el servidor la rechazaría por incoherente).
+                            const baseName = (file.name || 'photo').replace(/\.[^./\\]*$/, '') || 'photo';
+                            const compressedFile = new File([blob], baseName + '.jpg', {
                                 type: 'image/jpeg',
                                 lastModified: Date.now()
                             });

@@ -119,10 +119,48 @@ class UploadKeyFormatTest {
     }
 
     @Test
-    @DisplayName("upload-direct rechaza un content-type que contradice la extensión (.png con image/jpeg)")
-    void uploadDirectRejectsIncoherentContentType() throws Exception {
-        direct("foto.png", "image/jpeg").andExpect(status().isBadRequest());
+    @DisplayName("upload-direct con archivos transcodificados a JPEG por el navegador (foto.png / foto.webp / IMG.HEIC + image/jpeg) -> 201, y la clave queda .jpg")
+    void uploadDirectAcceptsFilesTranscodedToJpeg() throws Exception {
+        for (String filename : new String[]{"foto.png", "foto.webp", "IMG.HEIC"}) {
+            direct(filename, "image/jpeg").andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.storageKey").value(org.hamcrest.Matchers.startsWith("events/" + event.getId() + "/")))
+                    .andExpect(jsonPath("$.storageKey").value(org.hamcrest.Matchers.endsWith(".jpg")));
+        }
+    }
+
+    @Test
+    @DisplayName("upload-direct sigue rechazando con 400 lo que no es coherente: extensión no permitida, o un tipo declarado que contradice la extensión")
+    void uploadDirectStillRejectsWhatIsNotCoherent() throws Exception {
+        direct("shell.php", "image/jpeg").andExpect(status().isBadRequest());
+        direct("shell.exe", "image/jpeg").andExpect(status().isBadRequest());
+        direct("foto.jpg", "image/png").andExpect(status().isBadRequest());   // el nombre dice JPEG y el tipo PNG
+        direct("foto.png", "image/webp").andExpect(status().isBadRequest());
         verify(storageService, never()).uploadBytes(anyString(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("upload-url con foto.png + image/jpeg (captura grande recomprimida por el cliente) -> 200 con una clave .jpg coherente con el tipo")
+    void uploadUrlAcceptsTranscodedPng() throws Exception {
+        String body = mockMvc.perform(post("/api/v1/events/" + event.getSlug() + "/photos/upload-url")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UploadUrlRequestDTO("image/jpeg", "foto.png", "token-keys-aaaa"))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        String key = objectMapper.readTree(body).get("key").asText();
+        assertThat(StorageKeys.belongsToEvent(event.getId(), key)).isTrue();
+        assertThat(key).endsWith(".jpg");
+        verify(storageService).generateUploadUrl(eq(key), eq("image/jpeg"));
+    }
+
+    @Test
+    @DisplayName("upload-url rechaza con 400 extensión no permitida y tipo incoherente (foto.jpg declarada image/png)")
+    void uploadUrlRejectsIncoherentRequests() throws Exception {
+        for (String[] bad : new String[][]{{"shell.php", "image/jpeg"}, {"foto.jpg", "image/png"}}) {
+            mockMvc.perform(post("/api/v1/events/" + event.getSlug() + "/photos/upload-url")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new UploadUrlRequestDTO(bad[1], bad[0], "token-keys-aaaa"))))
+                    .andExpect(status().isBadRequest());
+        }
     }
 
     @Test

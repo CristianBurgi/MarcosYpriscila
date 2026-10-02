@@ -70,10 +70,12 @@ public final class StorageKeys {
      * extensión permitida) y, si no, del content-type. Si el content-type declarado es de una
      * imagen y contradice la extensión, se rechaza (400).
      *
-     * Excepción documentada: ".heic"/".heif" con "image/jpeg" es coherente. El navegador de un
-     * iPhone decodifica el HEIC en un canvas y lo vuelve a codificar a JPEG conservando el nombre
-     * (ver upload.html, compressImageIfNeeded). La verdad sobre el contenido la dan los bytes
-     * (FileSignatureValidator), no esta comparación.
+     * Excepción documentada (transcodificación): cualquier extensión permitida con "image/jpeg" es
+     * coherente. El navegador recodifica a JPEG toda foto de más de 1,5 MB (PNG, WebP, HEIC...) y
+     * upload.html le pone nombre .jpg, pero un cliente que conserve el nombre original no debe fallar.
+     * En ese caso el contenido declarado es JPEG, así que la clave queda ".jpg". La extensión sigue
+     * validada contra la lista permitida (.php/.exe dan 400) y la verdad sobre el contenido la dan
+     * los bytes (FileSignatureValidator), no esta comparación.
      */
     public static String validatedExtension(String filename, String contentType) {
         String declared = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT).trim();
@@ -86,8 +88,11 @@ public final class StorageKeys {
             if (!TYPES_BY_EXTENSION.containsKey(extension)) {
                 throw new InvalidFileFormatException("El formato del archivo no está permitido. Usá JPEG, PNG, WEBP o HEIC.");
             }
-            if (declaredIsUsable && !TYPES_BY_EXTENSION.get(extension).contains(declared) && !isTranscodedHeic(extension, declared)) {
-                throw new InvalidFileFormatException("El tipo de contenido declarado no coincide con la extensión del archivo.");
+            if (declaredIsUsable && !TYPES_BY_EXTENSION.get(extension).contains(declared)) {
+                if (!isJpeg(declared)) {
+                    throw new InvalidFileFormatException("El tipo de contenido declarado no coincide con la extensión del archivo.");
+                }
+                return ".jpg"; // transcodificada a JPEG: la clave refleja el contenido declarado
             }
             return extension;
         }
@@ -102,7 +107,7 @@ public final class StorageKeys {
         return extension;
     }
 
-    private static boolean isTranscodedHeic(String extension, String declaredType) {
-        return (extension.equals(".heic") || extension.equals(".heif")) && (declaredType.equals("image/jpeg") || declaredType.equals("image/jpg"));
+    private static boolean isJpeg(String declaredType) {
+        return declaredType.equals("image/jpeg") || declaredType.equals("image/jpg");
     }
 }
