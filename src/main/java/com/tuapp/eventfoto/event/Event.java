@@ -10,7 +10,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "events", indexes = {
-    @Index(name = "idx_events_slug", columnList = "slug", unique = true)
+    @Index(name = "idx_events_slug", columnList = "slug", unique = true),
+    @Index(name = "idx_events_moderator_token", columnList = "moderator_token", unique = true)
 })
 @Getter
 @Setter
@@ -59,11 +60,22 @@ public class Event {
     @Column(name = "wizard_completed_at")
     private Instant wizardCompletedAt;
 
+    /**
+     * Credencial del link de moderador (/moderar/{token}): 32 bytes aleatorios en base64url (43 caracteres).
+     * Va en claro a propósito (el panel tiene que poder mostrar el link). Nunca se loguea; ver {@link ModeratorTokens}.
+     */
+    @Column(name = "moderator_token", nullable = false, unique = true, length = 43)
+    private String moderatorToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
+        if (moderatorToken == null) {
+            // Red de seguridad: EventCreationService lo setea siempre, esto cubre cualquier otro camino de alta.
+            moderatorToken = ModeratorTokens.generate();
+        }
         if (createdAt == null) {
             createdAt = Instant.now();
         }

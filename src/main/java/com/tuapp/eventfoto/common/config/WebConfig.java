@@ -21,13 +21,15 @@ public class WebConfig implements WebMvcConfigurer {
     private final EventAccessInterceptor eventAccessInterceptor;
 
     /**
-     * Todo el panel del organizador pasa por la resolución y autorización del evento. Las
-     * únicas rutas que quedan afuera están en AdminRouteExceptions (con su motivo).
+     * Todo el panel del organizador y todo el lado del moderador (/moderar/{token}, /api/v1/moderate/{token}/...)
+     * pasan por la resolución y autorización del evento. Las únicas rutas que quedan afuera están en
+     * AdminRouteExceptions (con su motivo).
      * /superadmin/** tiene su propia cadena de seguridad y no se toca acá.
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(eventAccessInterceptor).addPathPatterns("/admin/**", "/api/v1/admin/**");
+        registry.addInterceptor(eventAccessInterceptor)
+                .addPathPatterns("/admin/**", "/api/v1/admin/**", "/moderar/**", "/api/v1/moderate/**");
     }
 
     @Override

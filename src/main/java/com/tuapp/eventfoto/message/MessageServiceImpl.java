@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.message;
 
+import com.tuapp.eventfoto.common.config.DeletionActor;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.common.exception.ContentModerationException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
@@ -79,13 +80,19 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    @Transactional
+    @Transactional // la transaccion se abre en la entrada publica: la llamada interna (this.) no pasa por el proxy
     public void deleteMessage(UUID eventId, UUID messageId) {
+        deleteMessage(eventId, messageId, DeletionActor.ORGANIZADOR);
+    }
+
+    @Override
+    @Transactional
+    public void deleteMessage(UUID eventId, UUID messageId, DeletionActor actor) {
         Message message = messageRepository.findByIdAndEventId(messageId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró el mensaje con ID: " + messageId));
 
         messageRepository.delete(message);
-        log.info("Mensaje con ID {} eliminado exitosamente por administración", messageId);
+        log.info("Mensaje con ID {} del evento {} eliminado exitosamente por {}", messageId, eventId, actor.label());
 
         sseBroadcaster.broadcastMessageDeleted(eventId, messageId);
     }

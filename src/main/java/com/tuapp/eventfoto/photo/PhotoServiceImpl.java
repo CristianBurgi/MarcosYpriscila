@@ -3,6 +3,7 @@ package com.tuapp.eventfoto.photo;
 import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
+import com.tuapp.eventfoto.common.config.DeletionActor;
 import com.tuapp.eventfoto.common.exception.EventClosedException;
 import com.tuapp.eventfoto.common.exception.GuestQuotaExceededException;
 import com.tuapp.eventfoto.common.exception.InvalidFileContentException;
@@ -322,8 +323,14 @@ public class PhotoServiceImpl implements PhotoService {
      * la pantalla del salón la saquen al instante.
      */
     @Override
-    @Transactional
+    @Transactional // la transaccion se abre en la entrada publica: la llamada interna (this.) no pasa por el proxy
     public void deletePhoto(UUID eventId, UUID photoId) {
+        deletePhoto(eventId, photoId, DeletionActor.ORGANIZADOR);
+    }
+
+    @Override
+    @Transactional
+    public void deletePhoto(UUID eventId, UUID photoId, DeletionActor actor) {
         Photo photo = photoRepository.findByIdAndEventId(photoId, eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
 
@@ -347,7 +354,7 @@ public class PhotoServiceImpl implements PhotoService {
 
         // 2. Eliminar registro en BD (los comentarios asociados se eliminan en cascada)
         photoRepository.delete(photo);
-        log.info("Fotografía con ID {} eliminada de R2/Storage y BD por administración", photoId);
+        log.info("Fotografía con ID {} del evento {} eliminada de R2/Storage y BD por {}", photoId, eventId, actor.label());
 
         // 3. Notificar en tiempo real vía SSE
         sseBroadcaster.broadcastPhotoDeleted(eventId, photoId);

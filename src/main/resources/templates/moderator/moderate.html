@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Moderación en vivo</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e1035 100%);
+            --glass-card: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-purple: #a855f7;
+            --accent-red: #ef4444;
+            --accent-green: #22c55e;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg-gradient); min-height: 100vh; color: var(--text-main); padding-bottom: 80px; }
+        header { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border);
+                 padding: 14px 16px; position: sticky; top: 0; z-index: 10; }
+        header h1 { font-size: 1.1rem; font-weight: 700; }
+        header p { font-size: 0.85rem; color: var(--text-sub); margin-top: 2px; }
+        .live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-sub); margin-right: 6px; }
+        .live.on { background: var(--accent-green); }
+        .tabs { display: flex; gap: 8px; padding: 12px 16px 0; }
+        .tab { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); background: transparent;
+               color: var(--text-sub); font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .tab.active { color: #fff; background: rgba(168, 85, 247, 0.25); border-color: rgba(168, 85, 247, 0.5); }
+        main { padding: 16px; display: grid; gap: 14px; }
+        .card { background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; }
+        .card img { display: block; width: 100%; max-height: 70vh; object-fit: contain; background: #0b1220; }
+        .card .meta { padding: 10px 14px 0; font-size: 0.85rem; color: var(--text-sub); }
+        .card .text { padding: 12px 14px 0; font-size: 1rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .card .author { font-weight: 700; color: var(--text-main); }
+        .btn-delete { margin: 12px 14px 14px; width: calc(100% - 28px); padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+                      background: rgba(239, 68, 68, 0.15); color: #fca5a5; font-size: 1rem; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .btn-more { padding: 14px; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--glass-card); color: var(--text-main); font-size: 1rem; cursor: pointer; }
+        .empty, .notice { text-align: center; color: var(--text-sub); padding: 40px 16px; }
+        .banner { margin: 12px 16px 0; padding: 12px 14px; border-radius: 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fecaca; display: none; }
+        .banner.show { display: block; }
+        .modal { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.8); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+        .modal.show { display: flex; }
+        .modal-box { background: #1e293b; border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; width: 100%; max-width: 380px; }
+        .modal-box h2 { font-size: 1.15rem; margin-bottom: 8px; }
+        .modal-box p { color: var(--text-sub); line-height: 1.4; margin-bottom: 18px; }
+        .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .modal-actions button { padding: 14px; border-radius: 12px; border: none; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        .btn-cancel { background: rgba(255, 255, 255, 0.08); color: var(--text-main); }
+        .btn-confirm { background: var(--accent-red); color: #fff; }
+        .toast { position: fixed; left: 16px; right: 16px; bottom: 16px; padding: 14px; border-radius: 12px; background: #334155; text-align: center; display: none; z-index: 60; }
+        .toast.show { display: block; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1><span class="live" id="liveDot"></span>Moderación en vivo</h1>
+    <p th:text="${eventName}">Nombre del evento</p>
+</header>
+
+<div class="banner" id="invalidBanner">Este link ya no es válido. Pedile al organizador un link nuevo.</div>
+
+<div class="tabs">
+    <button type="button" class="tab active" id="tabPhotos">Fotos (<span id="countPhotos">0</span>)</button>
+    <button type="button" class="tab" id="tabMessages">Mensajes (<span id="countMessages">0</span>)</button>
+</div>
+
+<main id="list"></main>
+
+<div class="modal" id="confirmModal">
+    <div class="modal-box">
+        <h2 id="confirmTitle">Borrar</h2>
+        <p>Borrar es definitivo: no se puede recuperar. Va a desaparecer de todas las pantallas al instante.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" id="btnCancel">Cancelar</button>
+            <button type="button" class="btn-confirm" id="btnConfirm">Sí, borrar</button>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+    // La credencial es el token de la URL: se lee de ahí y nunca se imprime en el HTML ni se manda a otro sitio.
+    const token = location.pathname.split('/')[2];
+    const api = '/api/v1/moderate/' + encodeURIComponent(token);
+    const PAGE_SIZE = 50;
+
+    const state = {
+        tab: 'photos',
+        photos: { items: [], page: 0, hasNext: false },
+        messages: { items: [], page: 0, hasNext: false }
+    };
+    let pendingDelete = null;
+    let toastTimer = null;
+
+    const listEl = document.getElementById('list');
+    const confirmModal = document.getElementById('confirmModal');
+
+    function toast(text) {
+        const el = document.getElementById('toast');
+        el.textContent = text;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    function invalidLink() {
+        document.getElementById('invalidBanner').classList.add('show');
+        document.getElementById('liveDot').classList.remove('on');
+    }
+
+    function fmt(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return isNaN(d) ? '' : d.toLocaleString('es-AR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+    }
+
+    function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    }
+
+    function deleteButton(kind, id) {
+        const b = el('button', 'btn-delete', kind === 'photos' ? '🗑️ Borrar foto' : '🗑️ Borrar mensaje');
+        b.type = 'button';
+        b.addEventListener('click', () => askDelete(kind, id));
+        return b;
+    }
+
+    function render() {
+        document.getElementById('countPhotos').textContent = state.photos.items.length + (state.photos.hasNext ? '+' : '');
+        document.getElementById('countMessages').textContent = state.messages.items.length + (state.messages.hasNext ? '+' : '');
+        document.getElementById('tabPhotos').classList.toggle('active', state.tab === 'photos');
+        document.getElementById('tabMessages').classList.toggle('active', state.tab === 'messages');
+
+        const current = state[state.tab];
+        listEl.replaceChildren();
+        if (current.items.length === 0) {
+            listEl.append(el('div', 'empty', state.tab === 'photos' ? 'Todavía no hay fotos.' : 'Todavía no hay mensajes.'));
+            return;
+        }
+        for (const item of current.items) {
+            const card = el('div', 'card');
+            card.dataset.id = item.id;
+            if (state.tab === 'photos') {
+                const img = el('img');
+                img.src = item.url;
+                img.alt = 'Foto subida por ' + (item.uploaderName || 'un invitado');
+                img.loading = 'lazy';
+                img.referrerPolicy = 'no-referrer';
+                card.append(img, el('div', 'meta', (item.uploaderName ? item.uploaderName + ' · ' : '') + fmt(item.createdAt)));
+            } else {
+                card.append(el('div', 'meta', fmt(item.createdAt)));
+                const text = el('div', 'text');
+                text.append(el('span', 'author', item.authorName + ': '), document.createTextNode(item.text));
+                card.append(text);
+            }
+            card.append(deleteButton(state.tab, item.id));
+            listEl.append(card);
+        }
+        if (current.hasNext) {
+            const more = el('button', 'btn-more', 'Cargar más');
+            more.type = 'button';
+            more.addEventListener('click', () => loadPage(state.tab, current.page + 1));
+            listEl.append(more);
+        }
+    }
+
+    async function loadPage(kind, page) {
+        const res = await fetch(api + '/' + kind + '?page=' + page + '&size=' + PAGE_SIZE, { cache: 'no-store', referrerPolicy: 'no-referrer' });
+        if (res.status === 404) { invalidLink(); return; }
+        if (!res.ok) { toast('No se pudo cargar la lista. Reintentá en un momento.'); return; }
+        const body = await res.json();
+        const target = state[kind];
+        const known = new Set(target.items.map(i => i.id));
+        target.items = target.items.concat(body.items.filter(i => !known.has(i.id)));
+        target.page = page;
+        target.hasNext = body.hasNext;
+        render();
+    }
+
+    async function reloadAll() {
+        state.photos = { items: [], page: 0, hasNext: false };
+        state.messages = { items: [], page: 0, hasNext: false };
+        await Promise.all([loadPage('photos', 0), loadPage('messages', 0)]);
+    }
+
+    function askDelete(kind, id) {
+        pendingDelete = { kind, id };
+        document.getElementById('confirmTitle').textContent = kind === 'photos' ? 'Borrar esta foto' : 'Borrar este mensaje';
+        confirmModal.classList.add('show');
+    }
+
+    function removeLocal(kind, id) {
+        const target = state[kind];
+        const before = target.items.length;
+        target.items = target.items.filter(i => i.id !== id);
+        if (target.items.length !== before) render();
+    }
+
+    async function doDelete() {
+        const { kind, id } = pendingDelete;
+        confirmModal.classList.remove('show');
+        pendingDelete = null;
+        try {
+            const res = await fetch(api + '/' + kind + '/' + encodeURIComponent(id), { method: 'DELETE', referrerPolicy: 'no-referrer' });
+            if (res.status === 204) { removeLocal(kind, id); toast('Borrado.'); }
+            else if (res.status === 429) { toast('Demasiados borrados seguidos. Esperá un minuto.'); }
+            else if (res.status === 404) { removeLocal(kind, id); toast('Ya no estaba.'); }
+            else { toast('No se pudo borrar. Reintentá.'); }
+        } catch (e) {
+            toast('Sin conexión. Reintentá.');
+        }
+    }
+
+    function unwrap(e) {
+        try { const p = JSON.parse(e.data); return p.payload || p; } catch (err) { return null; }
+    }
+
+    function connect() {
+        const source = new EventSource(api + '/stream');
+        let opened = false;
+        source.addEventListener('INIT', () => {
+            document.getElementById('liveDot').classList.add('on');
+            if (opened) reloadAll(); // se reconectó: re-sincroniza lo que pudo perderse
+            opened = true;
+        });
+        source.addEventListener('PHOTO_PUBLISHED', e => {
+            const p = unwrap(e);
+            if (p && p.id && !state.photos.items.some(i => i.id === p.id)) {
+                state.photos.items.unshift({ id: p.id, url: p.url, uploaderName: p.uploaderName, createdAt: p.createdAt });
+                render();
+            }
+        });
+        source.addEventListener('PHOTO_DELETED', e => { const p = unwrap(e); if (p && (p.photoId || p.id)) removeLocal('photos', p.photoId || p.id); });
+        source.addEventListener('MESSAGE_CREATED', e => {
+            const p = unwrap(e);
+            if (p && p.id && !state.messages.items.some(i => i.id === p.id)) {
+                state.messages.items.unshift({ id: p.id, authorName: p.authorName, text: p.text, createdAt: p.createdAt });
+                render();
+            }
+        });
+        source.addEventListener('MESSAGE_DELETED', e => { const p = unwrap(e); if (p && p.id) removeLocal('messages', p.id); });
+        source.onerror = () => {
+            document.getElementById('liveDot').classList.remove('on');
+            // El navegador reintenta solo; si el servidor respondió 404 (link regenerado) la conexión queda cerrada.
+            if (source.readyState === EventSource.CLOSED) invalidLink();
+        };
+    }
+
+    document.getElementById('tabPhotos').addEventListener('click', () => { state.tab = 'photos'; render(); });
+    document.getElementById('tabMessages').addEventListener('click', () => { state.tab = 'messages'; render(); });
+    document.getElementById('btnCancel').addEventListener('click', () => { pendingDelete = null; confirmModal.classList.remove('show'); });
+    document.getElementById('btnConfirm').addEventListener('click', doDelete);
+
+    render();
+    reloadAll();
+    connect();
+})();
+</script>
+</body>
+</html>

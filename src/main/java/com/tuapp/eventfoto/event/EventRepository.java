@@ -20,6 +20,9 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     boolean existsBySlug(String slug);
 
+    /** Resolución del link de moderador: igualdad exacta sobre el índice único. */
+    Optional<Event> findByModeratorToken(String moderatorToken);
+
     /** "Mis eventos": solo los del organizador, con la cantidad de fotos de cada uno. */
     @Query("""
             select new com.tuapp.eventfoto.event.dto.EventSummaryDTO(

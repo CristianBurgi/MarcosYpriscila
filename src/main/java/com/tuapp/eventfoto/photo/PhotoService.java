@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.photo;
 
+import com.tuapp.eventfoto.common.config.DeletionActor;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
@@ -23,7 +24,11 @@ public interface PhotoService {
 
     Page<PhotoResponseDTO> getPhotos(String slug, Pageable pageable);
 
+    /** Borrado desde el panel del organizador. */
     void deletePhoto(UUID eventId, UUID photoId);
+
+    /** Mismo borrado (storage -> base -> SSE), indicando quién lo hace solo para el log. */
+    void deletePhoto(UUID eventId, UUID photoId, DeletionActor actor);
 
     long countTotalPhotos(String slug);
 

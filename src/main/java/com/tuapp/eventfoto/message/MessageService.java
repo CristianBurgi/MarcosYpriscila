@@ -13,5 +13,9 @@ public interface MessageService {
 
     long countTotalMessages(String slug);
 
+    /** Borrado desde el panel del organizador. */
     void deleteMessage(java.util.UUID eventId, java.util.UUID messageId);
+
+    /** Mismo borrado (base -> SSE), indicando quién lo hace solo para el log. */
+    void deleteMessage(java.util.UUID eventId, java.util.UUID messageId, com.tuapp.eventfoto.common.config.DeletionActor actor);
 }
