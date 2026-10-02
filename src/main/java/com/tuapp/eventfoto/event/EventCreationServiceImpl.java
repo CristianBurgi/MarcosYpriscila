@@ -50,6 +50,7 @@ public class EventCreationServiceImpl implements EventCreationService {
                 .uploadDeadline(now.plus(DEFAULT_UPLOAD_WINDOW))
                 .isActive(true)
                 .origin(origin)
+                .moderatorToken(ModeratorTokens.generate())
                 .originReason(origin == EventOrigin.COURTESY ? originReason.trim() : null)
                 .build();
 

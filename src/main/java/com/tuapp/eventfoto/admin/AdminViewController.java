@@ -71,6 +71,7 @@ public class AdminViewController {
         model.addAttribute("totalMessages", totalMessages);
         model.addAttribute("photos", photos);
         model.addAttribute("guestMenuUrl", appUrls.guestMenuUrl(slug));
+        model.addAttribute("moderatorLink", appUrls.moderatorUrl(ownedEvent.getModeratorToken()));
         model.addAttribute("messages", messages);
         model.addAttribute("photoComments", photoComments);
 

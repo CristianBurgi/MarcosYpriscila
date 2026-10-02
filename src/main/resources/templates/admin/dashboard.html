@@ -448,6 +448,22 @@
         </div>
     </div>
 
+    <!-- Tarjeta Moderador: beneficio, no configuración técnica -->
+    <div class="metric-card" id="moderatorCard" style="margin-bottom: 24px;">
+        <div class="title"><i class="fa-solid fa-user-shield" style="margin-right: 6px;"></i> Moderador</div>
+        <p style="color: #cbd5e1; line-height: 1.5; margin-bottom: 8px;">
+            ¿No querés estar pendiente del celular en tu fiesta? Pasale este link a alguien de confianza (el DJ, un amigo) y va a poder borrar al instante cualquier foto o mensaje que no quieras ver en la pantalla. No necesita cuenta ni contraseña.
+        </p>
+        <p style="color: #fca5a5; font-size: 0.9rem; margin-bottom: 14px;">Borrar es definitivo: la foto o el mensaje no se pueden recuperar.</p>
+        <div id="moderatorLinkText" th:text="${moderatorLink}" style="font-family: monospace; font-size: 0.82rem; color: #a855f7; word-break: break-all; background: rgba(168, 85, 247, 0.1); padding: 8px 12px; border-radius: 8px; margin-bottom: 14px;">(APP_BASE_URL)/moderar/...</div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-toggle-event" id="btnCopyModeratorLink"><i class="fa-solid fa-copy"></i> Copiar link</button>
+            <a class="btn btn-toggle-event" id="btnShareModeratorLink" target="_blank" rel="noopener noreferrer" style="text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> Compartir por WhatsApp</a>
+            <button type="button" class="btn btn-toggle-event" id="btnRegenerateModeratorLink"><i class="fa-solid fa-rotate"></i> Generar un link nuevo</button>
+        </div>
+        <div id="moderatorLinkStatus" style="color: #94a3b8; font-size: 0.88rem; margin-top: 10px; min-height: 1.2em;"></div>
+    </div>
+
     <!-- Navegación por Pestañas -->
     <div class="tabs-header">
         <button class="tab-btn active" id="tabBtnPhotos" onclick="switchTab('photos')">
@@ -829,6 +845,42 @@
             alert('Error de comunicación con el servidor.');
         }
     }
+
+    // ---- Tarjeta Moderador ----
+    (function setupModeratorCard() {
+        const linkEl = document.getElementById('moderatorLinkText');
+        const status = document.getElementById('moderatorLinkStatus');
+        if (!linkEl) return;
+
+        function refreshShare() {
+            const text = 'Link para moderar las fotos y mensajes del evento: ' + linkEl.textContent.trim();
+            document.getElementById('btnShareModeratorLink').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+        }
+        refreshShare();
+
+        document.getElementById('btnCopyModeratorLink').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(linkEl.textContent.trim());
+                status.textContent = 'Link copiado.';
+            } catch (e) {
+                status.textContent = 'No se pudo copiar automáticamente: seleccioná el link y copialo a mano.';
+            }
+        });
+
+        document.getElementById('btnRegenerateModeratorLink').addEventListener('click', async () => {
+            if (!confirm('El link anterior va a dejar de funcionar. ¿Generar un link nuevo?')) return;
+            try {
+                const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/moderator-link/regenerate`, { method: 'POST' });
+                if (!res.ok) { status.textContent = 'No se pudo generar el link nuevo. Reintentá.'; return; }
+                const body = await res.json();
+                linkEl.textContent = body.link;
+                refreshShare();
+                status.textContent = 'Listo: el link anterior ya no funciona. Compartí el nuevo.';
+            } catch (e) {
+                status.textContent = 'Error de comunicación con el servidor.';
+            }
+        });
+    })();
 
     function setupSSE() {
         if (!slug) return;

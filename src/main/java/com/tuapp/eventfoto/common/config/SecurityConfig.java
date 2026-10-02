@@ -16,7 +16,17 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.web.header.Header;
+import org.springframework.security.web.header.writers.CacheControlHeadersWriter;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -24,6 +34,12 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /** Rutas cuya URL o respuesta contienen la credencial del moderador. */
+    private static final RequestMatcher MODERATOR_SENSITIVE = new OrRequestMatcher(
+        new AntPathRequestMatcher("/moderar/**"),
+        new AntPathRequestMatcher("/api/v1/moderate/**"),
+        new AntPathRequestMatcher("/api/v1/admin/events/*/moderator-link/**"));
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -51,10 +67,19 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            // El slug del evento va en la URL y es la llave del álbum: a otros sitios solo
-            // se les manda el origen, nunca la dirección completa.
-            .headers(headers -> headers.referrerPolicy(referrer -> referrer
-                .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
+            // El slug del evento y el token de moderador van en la URL. A otros sitios, por defecto, solo se les
+            // manda el origen; en el lado del moderador y en los endpoints del panel que entregan o regeneran el link
+            // ni eso (no-referrer) y la respuesta no se cachea (no-store), tampoco la de los errores.
+            .headers(headers -> headers
+                .cacheControl(HeadersConfigurer.CacheControlConfig::disable)
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(MODERATOR_SENSITIVE,
+                    new StaticHeadersWriter(List.of(
+                        new Header("Cache-Control", "no-store"),
+                        new Header("Referrer-Policy", "no-referrer")))))
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(MODERATOR_SENSITIVE),
+                    new CacheControlHeadersWriter()))
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(MODERATOR_SENSITIVE),
+                    new ReferrerPolicyHeaderWriter(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(customAuthenticationEntryPoint())
@@ -79,6 +104,10 @@ public class SecurityConfig {
                 // públicas fuera de /events/**, así que una ruta nueva sin slug nace cerrada)
                 .requestMatchers("/api/v1/events/**").permitAll()
                 
+                // Lado del moderador: la credencial es el token de la URL; la verifica EventAccessInterceptor (ámbito
+                // MODERATOR) en cada request y responde 404 si no resuelve a un evento. Nunca un rol: no abre /admin/**.
+                .requestMatchers("/moderar/**", "/api/v1/moderate/**").permitAll()
+
                 // Rutas de Login y Autenticación del organizador
                 .requestMatchers("/admin/login", "/api/v1/admin/auth/login").permitAll()
 

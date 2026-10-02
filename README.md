@@ -335,6 +335,7 @@ erDiagram
 | `V5__create_guest_quota.sql` | Tabla `guest_quotas`: cupo de fotos por invitado y evento |
 | `V6__remove_photo_approval.sql` | Fase 9.0: publica las fotos pendientes y elimina `photos.is_approved` (publicación automática) |
 | `V7__add_upload_key_idempotency.sql` | Fase 9.0: columna `photos.upload_key` (única) + tabla `photo_upload_claims`, para que `POST /confirm` sea seguro de reintentar |
+| `V13__add_event_moderator_token.sql` | Fase 9.2: `events.moderator_token` (43 caracteres base64url, único, NOT NULL), con backfill para los eventos existentes |
 
 ---
 
@@ -387,6 +388,20 @@ Todos los errores tienen el mismo formato JSON consistente:
 **Errores de subida (Fase 9.0):** un archivo que supera los 30 MB devuelve `413` con el mensaje *"La foto es demasiado pesada, probá con otra"*; un multipart malformado o cortado (típico con mala señal) devuelve `400` con *"Hubo un problema con la subida, intentá de nuevo"*. `upload.html` muestra ese `message` tal cual. `server.tomcat.max-swallow-size` está en 64 MB para que el 413 llegue al navegador en lugar de un corte de conexión.
 
 **Excepciones tipadas disponibles:** `ResourceNotFoundException` (404), `RateLimitExceededException` (429), `ContentModerationException` (400), `InvalidFileFormatException` (400), `MaxUploadLimitReachedException` (429), `EventClosedException` (403), `UnauthorizedAccessException` (401), `StorageException` (500).
+
+---
+
+## 🛡️ Link de moderador (Fase 9.2, Bloque A)
+
+Cada evento tiene un link `/moderar/{token}` pensado para celular: quien lo tiene (el DJ, un amigo) ve las fotos y mensajes del evento, los más recientes primero, y puede **borrar** cualquiera (con confirmación). La página se actualiza sola por SSE. No necesita cuenta ni contraseña. El organizador lo copia, lo comparte por WhatsApp o genera uno nuevo desde la tarjeta "Moderador" del panel (el anterior deja de funcionar al instante y se cierran sus streams SSE).
+
+- **Qué puede el moderador:** `GET /api/v1/moderate/{token}/photos|messages|stream` y `DELETE .../photos/{id}`, `.../messages/{id}`. Nada más: sin descargas, sin configuración, sin comentarios, sin otros eventos. El borrado reusa los mismos servicios que el panel (storage → base → SSE, `findByIdAndEventId`, guarda de prefijo `events/{eventId}/`); el log dice si borró el "organizador" o el "moderador".
+- **Cómo se autoriza:** el mismo `EventAccessInterceptor` del panel resuelve el evento, ahora por dos puertas (ámbito `PANEL` con `{slug}`, ámbito `MODERATOR` con `{token}`); cada `EventAccessPolicy` concede solo en su ámbito. Una ruta bajo `/moderar/**` o `/api/v1/moderate/**` sin `{token}` se cierra con 404 y rompe `AdminRouteEnumerationTest`.
+- **404 uniforme:** token inexistente, mal formado o ajeno responden igual. 20 intentos inválidos por IP en 10 minutos → 429 (cuenta fallos, no requests); 60 borrados por minuto por token → 429. Ambos contadores expiran solos (Caffeine).
+- **El token nunca se loguea:** `TokenMasker` lo reemplaza por `{token}` en logs, cuerpos de error (`GlobalExceptionHandler`, `MaskingErrorAttributes`) y en Sentry (`SentryTokenScrubber`). Las respuestas del lado del moderador llevan `Referrer-Policy: no-referrer` y `Cache-Control: no-store`, errores incluidos.
+- **Vencimiento:** sin vencimiento por ahora (`ModeratorTokenPolicy.isModeratable`, único punto de decisión; se define en 9.6). Cerrar la recepción (`isActive=false`) no cierra la moderación. Un link filtrado puede borrar contenido para siempre hasta que el organizador genere uno nuevo.
+- **Límite conocido:** los logs HTTP del borde de Railway registran el path completo (incluido el token); la aplicación no puede enmascararlos.
+- **Pendiente (no tocado en este bloque):** los buckets de `RateLimiterService` nunca borran sus claves (crecen con cada IP/guestToken distintos); migrarlos a una estructura con expiración como `ModeratorRateLimiter`.
 
 ---
 

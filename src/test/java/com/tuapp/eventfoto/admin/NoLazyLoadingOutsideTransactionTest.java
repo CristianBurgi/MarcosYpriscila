@@ -113,4 +113,30 @@ class NoLazyLoadingOutsideTransactionTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/pdf"));
     }
+
+    @Test
+    @DisplayName("Página, listas y borrado del moderador funcionan sin sesión de Hibernate abierta")
+    void moderatorEndpointsDoNotNeedLazyLoading() throws Exception {
+        String token = eventRepository.findById(event.getId()).orElseThrow().getModeratorToken();
+        var photoId = photoRepository.findAll().get(0).getId();
+        var messageId = messageRepository.findAll().get(0).getId();
+
+        mockMvc.perform(get("/moderar/" + token))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Evento Lazy")));
+        mockMvc.perform(get("/api/v1/moderate/" + token + "/photos"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(photoId.toString()))
+                .andExpect(jsonPath("$.items[0].uploaderName").value("Ana"));
+        mockMvc.perform(get("/api/v1/moderate/" + token + "/messages"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].text").value("Hola a todos"));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/moderate/" + token + "/messages/" + messageId))
+                .andExpect(status().isNoContent());
+        // Borrar una foto con comentarios: la cascada y el broadcast corren dentro de la transacción del servicio.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/moderate/" + token + "/photos/" + photoId))
+                .andExpect(status().isNoContent());
+        org.assertj.core.api.Assertions.assertThat(photoRepository.count()).isZero();
+        org.assertj.core.api.Assertions.assertThat(commentRepository.count()).isZero();
+    }
 }

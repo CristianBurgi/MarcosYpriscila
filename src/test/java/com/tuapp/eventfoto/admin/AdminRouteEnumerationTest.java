@@ -152,6 +152,33 @@ class AdminRouteEnumerationTest {
                 || pattern.equals("/api/v1/admin") || pattern.startsWith("/api/v1/admin/");
     }
 
+    // ---------- 0. El lado del moderador: todo bajo /moderar y /api/v1/moderate lleva {token} ----------
+
+    @Test
+    @DisplayName("Cada ruta de /moderar/** y /api/v1/moderate/** lleva {token}: la resuelve EventAccessInterceptor (ámbito MODERATOR) o el build rompe")
+    void everyModeratorRouteCarriesTheToken() {
+        List<String> all = new ArrayList<>();
+        List<String> offenders = new ArrayList<>();
+        for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : handlerMapping.getHandlerMethods().entrySet()) {
+            Set<String> patterns = entry.getKey().getPathPatternsCondition() != null
+                    ? entry.getKey().getPathPatternsCondition().getPatternValues() : Set.of();
+            for (String pattern : patterns) {
+                if (pattern.equals("/moderar") || pattern.startsWith("/moderar/")
+                        || pattern.equals("/api/v1/moderate") || pattern.startsWith("/api/v1/moderate/")) {
+                    all.add(pattern);
+                    if (!pattern.contains("{token}")) {
+                        offenders.add(pattern + "  (" + entry.getValue().getShortLogMessage() + ")");
+                    }
+                }
+            }
+        }
+        assertThat(all).as("rutas del moderador encontradas").isNotEmpty();
+        assertThat(offenders)
+                .as("Rutas del moderador SIN {token}: el interceptor las cerraría con 404 (no pueden resolver el evento). "
+                        + "Qué hacer: agregales {token} a la ruta.")
+                .isEmpty();
+    }
+
     // ---------- 1. Cobertura: {slug} o excepción con motivo ----------
 
     @Test

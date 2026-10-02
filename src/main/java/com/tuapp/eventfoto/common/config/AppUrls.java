@@ -82,4 +82,9 @@ public class AppUrls {
     public String guestMenuUrl(String slug) {
         return baseUrl + "/e/" + slug;
     }
+
+    /** URL absoluta del link de moderador. Contiene la credencial: no loguearla. */
+    public String moderatorUrl(String moderatorToken) {
+        return baseUrl + "/moderar/" + moderatorToken;
+    }
 }

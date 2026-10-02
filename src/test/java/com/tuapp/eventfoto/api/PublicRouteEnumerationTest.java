@@ -7,6 +7,7 @@ import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
 import com.tuapp.eventfoto.message.Message;
+import com.tuapp.eventfoto.moderation.ModeratorRateLimiter;
 import com.tuapp.eventfoto.message.MessageRepository;
 import com.tuapp.eventfoto.organizer.Organizer;
 import com.tuapp.eventfoto.organizer.OrganizerRepository;
@@ -67,7 +68,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class PublicRouteEnumerationTest {
 
     private static final List<String> PUBLIC_PREFIXES = List.of(
-            "/api/v1/events", "/api/v1/photos", "/api/v1/messages", "/api/v1/comments", "/api/v1/storage", "/e");
+            "/api/v1/events", "/api/v1/photos", "/api/v1/messages", "/api/v1/comments", "/api/v1/storage", "/e",
+            "/api/v1/moderate", "/moderar");
 
     /** Rutas públicas con un id/key que NO llevan {slug}. Patrones exactos, cada una con su motivo. */
     private record RouteException(String pattern, String reason) {
@@ -94,6 +96,7 @@ class PublicRouteEnumerationTest {
     @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;
     @Autowired private MockMvc mockMvc;
     @Autowired private RateLimiterService rateLimiterService;
+    @Autowired private ModeratorRateLimiter moderatorRateLimiter;
     @Autowired private OrganizerRepository organizerRepository;
     @Autowired private EventRepository eventRepository;
     @Autowired private PhotoRepository photoRepository;
@@ -118,6 +121,7 @@ class PublicRouteEnumerationTest {
 
         foreignFixtures = new LinkedHashMap<>();
         foreignFixtures.put("slug", eventA.getSlug());           // la request es "desde A"...
+        foreignFixtures.put("token", eventA.getModeratorToken()); // ...o con el link de moderador de A...
         foreignFixtures.put("photoId", photoB.getId().toString()); // ...con los ids de recursos de B
         foreignFixtures.put("messageId", messageB.getId().toString());
         foreignFixtures.put("commentId", commentB.getId().toString());
@@ -208,7 +212,7 @@ class PublicRouteEnumerationTest {
     void everyPublicRouteWithAnIdHasSlugOrAnException() {
         List<String> offenders = new ArrayList<>();
         for (PublicRoute route : publicRoutes()) {
-            if (route.takesAnId() && !route.pattern().contains("{slug}") && EXCEPTIONS.stream().noneMatch(e -> e.pattern().equals(route.pattern()))) {
+            if (route.takesAnId() && !hasEventLocator(route.pattern()) && EXCEPTIONS.stream().noneMatch(e -> e.pattern().equals(route.pattern()))) {
                 offenders.add(route + "  (" + route.handler().getShortLogMessage() + ")");
             }
         }
@@ -217,6 +221,11 @@ class PublicRouteEnumerationTest {
                         + "pertenezca al evento. Qué hacer: colgalas de /api/v1/events/{slug}/... y buscá el recurso con una consulta acotada "
                         + "al evento (findByIdAndEventId) o, si no aplica, agregalas a EXCEPTIONS con su motivo y un test que lo pruebe.")
                 .isEmpty();
+    }
+
+    /** {slug} (invitado) o {token} (link de moderador): las dos variables que EventAccessInterceptor / las consultas acotan al evento. */
+    private static boolean hasEventLocator(String pattern) {
+        return pattern.contains("{slug}") || pattern.contains("{token}");
     }
 
     @Test
@@ -240,7 +249,7 @@ class PublicRouteEnumerationTest {
     void foreignIdIsIndistinguishableFromMissingOnEveryRoute() throws Exception {
         List<String> checked = new ArrayList<>();
         for (PublicRoute route : publicRoutes()) {
-            if (!route.pattern().contains("{slug}") || variablesOf(route.pattern()).stream().noneMatch(CHILD_VARIABLES::contains)) {
+            if (!hasEventLocator(route.pattern()) || variablesOf(route.pattern()).stream().noneMatch(CHILD_VARIABLES::contains)) {
                 continue;
             }
             Map<String, String> missing = new LinkedHashMap<>(foreignFixtures);
@@ -265,6 +274,7 @@ class PublicRouteEnumerationTest {
     }
 
     private MockHttpServletResponse send(PublicRoute route, Map<String, String> fixtures) throws Exception {
+        moderatorRateLimiter.reset(); // tope de borrados / intentos inválidos del moderador (por IP y por token)
         rateLimiterService.resetRateLimits(); // los POST de comentarios tienen rate limit por IP/token
         Matcher matcher = PATH_VARIABLE.matcher(route.pattern());
         StringBuilder uri = new StringBuilder();

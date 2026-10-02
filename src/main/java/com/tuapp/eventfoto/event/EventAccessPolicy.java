@@ -1,16 +1,14 @@
 package com.tuapp.eventfoto.event;
 
-import org.springframework.security.core.Authentication;
-
 /**
  * Decide si quien hace la request puede operar sobre un evento. EventAccessInterceptor
  * consulta TODAS las políticas registradas y da acceso si alguna lo concede.
  *
- * Hoy hay una sola ({@link OrganizerOwnerPolicy}: el organizador dueño). El link de
- * moderador de la 9.2 se suma como otro bean que implemente esta interfaz, sin tocar el
- * interceptor.
+ * Hay dos: {@link OrganizerOwnerPolicy} (el organizador dueño, ámbito PANEL) y
+ * {@link ModeratorTokenPolicy} (el link de moderador, ámbito MODERATOR). Cada una solo concede
+ * en su ámbito, así que una credencial de un tipo nunca abre las rutas del otro.
  */
 public interface EventAccessPolicy {
 
-    boolean canAccess(Authentication authentication, Event event);
+    boolean canAccess(AccessRequest request, Event event);
 }

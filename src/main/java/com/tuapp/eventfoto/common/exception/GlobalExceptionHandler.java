@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.common.exception;
 
+import com.tuapp.eventfoto.common.config.TokenMasker;
 import io.sentry.Sentry;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,7 +33,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value(),
                 "Unauthorized",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
@@ -44,7 +45,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         // Content-Type JSON explícito: el stream SSE (Accept: text/event-stream) no podía serializar
         // este error y un slug inexistente terminaba sin respuesta 404 limpia.
@@ -58,7 +59,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.TOO_MANY_REQUESTS.value(),
                 "Too Many Requests - Rate Limit Exceeded",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
     }
@@ -70,7 +71,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNPROCESSABLE_ENTITY.value(),
                 "Unprocessable Entity - Content Moderated",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
     }
@@ -82,7 +83,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request - Event Closed",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -94,7 +95,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request - Max Photo Limit Reached",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -106,7 +107,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request - Invalid File Format",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -118,7 +119,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request - Invalid Activation Token",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -130,7 +131,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN.value(),
                 "Forbidden - Guest Photo Quota Exceeded",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
@@ -142,7 +143,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNPROCESSABLE_ENTITY.value(),
                 "Unprocessable Entity - Invalid File Content",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
     }
@@ -158,7 +159,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request - Validation Error",
                 details,
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -170,7 +171,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error - Storage Error",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
@@ -180,12 +181,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UploadInProgressException.class)
     public ResponseEntity<ErrorResponseDTO> handleUploadInProgress(
             UploadInProgressException ex, HttpServletRequest request) {
-        log.debug("Confirmación duplicada en curso para {}: {}", request.getRequestURI(), ex.getMessage());
+        log.debug("Confirmación duplicada en curso para {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.SERVICE_UNAVAILABLE.value(),
                 "Service Unavailable - Upload In Progress",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
@@ -197,7 +198,7 @@ public class GlobalExceptionHandler {
                 ex.getStatus(),
                 "Upload Previously Failed",
                 ex.getMessage(),
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(ex.getStatus()).body(error);
     }
@@ -210,12 +211,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponseDTO> handleMaxUploadSizeExceeded(
             MaxUploadSizeExceededException ex, HttpServletRequest request) {
-        log.info("Subida rechazada por tamaño en {}: {}", request.getRequestURI(), ex.getMessage());
+        log.info("Subida rechazada por tamaño en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.PAYLOAD_TOO_LARGE.value(),
                 "Payload Too Large - Upload Size Exceeded",
                 UPLOAD_TOO_LARGE_MESSAGE,
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
     }
@@ -227,12 +228,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<ErrorResponseDTO> handleMultipartException(
             MultipartException ex, HttpServletRequest request) {
-        log.info("Subida multipart inválida o interrumpida en {}: {}", request.getRequestURI(), ex.getMessage());
+        log.info("Subida multipart inválida o interrumpida en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request - Malformed Upload",
                 UPLOAD_FAILED_MESSAGE,
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /** Un id con formato inválido en la ruta (ej. un UUID mal escrito) es un error del cliente: 400, no un 500 con aviso a Sentry. */
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponseDTO> handleArgumentTypeMismatch(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        log.info("Parámetro con formato inválido en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getName());
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                "El valor del parámetro '" + ex.getName() + "' no tiene un formato válido.",
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
@@ -244,12 +259,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleNoResourceFound(
             NoResourceFoundException ex, HttpServletRequest request) {
-        log.debug("Recurso estático inexistente: {}", request.getRequestURI());
+        log.debug("Recurso estático inexistente: {}", TokenMasker.mask(request.getRequestURI()));
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.NOT_FOUND.value(),
                 "Not Found",
                 "El recurso solicitado no existe.",
-                request.getRequestURI()
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
@@ -264,7 +279,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(AsyncRequestNotUsableException.class)
     public void handleClientDisconnected(AsyncRequestNotUsableException ex, HttpServletRequest request) {
-        log.debug("Cliente desconectado en {}: {}", request.getRequestURI(), ex.getMessage());
+        log.debug("Cliente desconectado en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
@@ -274,7 +289,7 @@ public class GlobalExceptionHandler {
             // Mismo caso que handleClientDisconnected, cuando la excepción llega sin envolver.
             // Se devuelve null (sin body): intentar escribir un JSON sobre la conexión muerta
             // solo produce otra IOException que Tomcat loguea como ERROR.
-            log.debug("Cliente desconectado en {}: {}", request.getRequestURI(), ex.getMessage());
+            log.debug("Cliente desconectado en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
             return null;
         }
         if (ex instanceof ErrorResponse errorResponse && errorResponse.getStatusCode().is4xxClientError()) {
@@ -282,22 +297,32 @@ public class GlobalExceptionHandler {
             // content-type inválido): son errores del cliente, no bugs. Se respeta su status
             // en lugar de convertirlas en un 500 que además llegaba a Sentry.
             HttpStatusCode status = errorResponse.getStatusCode();
-            log.info("Request inválida en {}: {}", request.getRequestURI(), ex.getMessage());
+            log.info("Request inválida en {}: {}", TokenMasker.mask(request.getRequestURI()), TokenMasker.mask(ex.getMessage()));
             ErrorResponseDTO error = ErrorResponseDTO.of(
                     status.value(),
                     "Client Error",
-                    errorResponse.getBody().getDetail() != null ? errorResponse.getBody().getDetail() : "Solicitud inválida.",
-                    request.getRequestURI()
+                    errorResponse.getBody().getDetail() != null ? TokenMasker.mask(errorResponse.getBody().getDetail()) : "Solicitud inválida.",
+                    TokenMasker.mask(request.getRequestURI())
             );
             return ResponseEntity.status(status).body(error);
         }
-        log.error("Excepción interna no capturada en {}: {}", request.getRequestURI(), ex.getMessage(), ex);
-        Sentry.captureException(ex);
+        String maskedPath = TokenMasker.mask(request.getRequestURI());
+        String maskedMessage = TokenMasker.mask(ex.getMessage());
+        if (TokenMasker.isModeratorPath(request.getRequestURI())) {
+            // Bajo el moderador el mensaje de la excepción original (y por lo tanto su stack trace impreso) puede traer
+            // el path con el token (ej. el de una excepción de Spring MVC): se loguea una copia con el mensaje enmascarado.
+            Exception sanitized = new RuntimeException(ex.getClass().getName() + ": " + maskedMessage);
+            sanitized.setStackTrace(ex.getStackTrace());
+            log.error("Excepción interna no capturada en {}: {}", maskedPath, maskedMessage, sanitized);
+        } else {
+            log.error("Excepción interna no capturada en {}: {}", maskedPath, ex.getMessage(), ex);
+        }
+        Sentry.captureException(ex); // la URL y los mensajes se enmascaran en SentryTokenScrubber (beforeSend)
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                ex.getMessage() != null ? ex.getMessage() : "Ocurrió un error inesperado.",
-                request.getRequestURI()
+                maskedMessage != null ? maskedMessage : "Ocurrió un error inesperado.",
+                TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
