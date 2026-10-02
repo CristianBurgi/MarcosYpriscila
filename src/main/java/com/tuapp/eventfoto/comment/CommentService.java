@@ -8,9 +8,9 @@ import java.util.UUID;
 
 public interface CommentService {
 
-    CommentResponseDTO addComment(UUID photoId, CreateCommentRequestDTO request, String clientIp);
+    CommentResponseDTO addComment(String slug, UUID photoId, CreateCommentRequestDTO request, String clientIp);
 
-    List<CommentResponseDTO> getPhotoComments(UUID photoId);
+    List<CommentResponseDTO> getPhotoComments(String slug, UUID photoId);
 
     List<CommentResponseDTO> getEventComments(String slug);
 

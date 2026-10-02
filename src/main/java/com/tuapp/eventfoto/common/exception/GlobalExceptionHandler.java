@@ -46,7 +46,9 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 request.getRequestURI()
         );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        // Content-Type JSON explícito: el stream SSE (Accept: text/event-stream) no podía serializar
+        // este error y un slug inexistente terminaba sin respuesta 404 limpia.
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).contentType(org.springframework.http.MediaType.APPLICATION_JSON).body(error);
     }
 
     @ExceptionHandler(RateLimitExceededException.class)

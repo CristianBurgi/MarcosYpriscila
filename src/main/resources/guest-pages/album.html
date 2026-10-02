@@ -461,7 +461,7 @@
             const countSpan = document.getElementById('modal-comments-count');
 
             try {
-                const res = await fetch(`/api/v1/photos/${photoId}/comments`);
+                const res = await fetch(`/api/v1/events/${SLUG}/photos/${photoId}/comments`);
                 const comments = await res.json();
 
                 const total = comments ? comments.length : 0;
@@ -506,7 +506,7 @@
                     btn.disabled = true;
                     btn.innerText = 'Enviando...';
 
-                    const res = await fetch(`/api/v1/photos/${activePhotoId}/comments`, {
+                    const res = await fetch(`/api/v1/events/${SLUG}/photos/${activePhotoId}/comments`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ authorName, text, guestToken: GUEST_TOKEN })

@@ -17,6 +17,7 @@ import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlResponseDTO;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
 import com.tuapp.eventfoto.storage.FileSignatureValidator;
+import com.tuapp.eventfoto.storage.StorageKeys;
 import com.tuapp.eventfoto.storage.StorageService;
 import io.sentry.Sentry;
 import lombok.RequiredArgsConstructor;
@@ -81,8 +82,8 @@ public class PhotoServiceImpl implements PhotoService {
         String contentType = request.contentType();
         String filename = request.filename();
 
-        String extension = getFileExtension(filename, contentType);
-        String key = String.format("photos/%s/%s%s", slug, UUID.randomUUID(), extension);
+        String extension = StorageKeys.validatedExtension(filename, contentType);
+        String key = StorageKeys.newKey(event.getId(), extension);
 
         String presignedUrl = storageService.generateUploadUrl(key, contentType);
         String publicUrl = storageService.generatePublicUrl(key);
@@ -93,6 +94,15 @@ public class PhotoServiceImpl implements PhotoService {
     @Override
     public PhotoResponseDTO confirmUpload(String slug, ConfirmUploadRequestDTO request) {
         Event event = eventService.getEventEntityBySlug(slug);
+
+        // La clave tiene que ser de ESTE evento (events/{eventId}/{uuid}.ext). Se valida ANTES de
+        // reclamarla y de tocar storage o base: así la respuesta es la misma exista o no la clave
+        // en otro evento, y una clave ajena nunca crea una reclamación ni una foto que apunte al
+        // objeto de otro evento.
+        if (!StorageKeys.belongsToEvent(event.getId(), request.key())) {
+            throw new InvalidFileFormatException("La clave de la subida no es válida para este evento.");
+        }
+
         if (!event.isActive()) {
             throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
         }
@@ -112,7 +122,7 @@ public class PhotoServiceImpl implements PhotoService {
         }
 
         if (!claimed) {
-            return resolveAlreadyClaimedConfirm(request.key());
+            return resolveAlreadyClaimedConfirm(event.getId(), request.key());
         }
 
         // Verificación de contenido real (magic bytes) del objeto ya subido a storage,
@@ -170,8 +180,9 @@ public class PhotoServiceImpl implements PhotoService {
      * (503) que el propio mecanismo de reintento del frontend resuelve en su próximo
      * intento, sin bloquear este hilo/conexión esperando a que termine.
      */
-    private PhotoResponseDTO resolveAlreadyClaimedConfirm(String uploadKey) {
-        Optional<Photo> existing = photoRepository.findByUploadKey(uploadKey);
+    PhotoResponseDTO resolveAlreadyClaimedConfirm(UUID eventId, String uploadKey) { // package-private: lo prueba un test
+        // Acotado al evento: la foto de otro evento nunca se devuelve por esta vía.
+        Optional<Photo> existing = photoRepository.findByUploadKeyAndEventId(uploadKey, eventId);
         if (existing.isPresent()) {
             Photo photo = existing.get();
             log.info("confirmUpload idempotente: la upload_key '{}' ya fue procesada, devolviendo foto {}", uploadKey, photo.getId());
@@ -218,12 +229,10 @@ public class PhotoServiceImpl implements PhotoService {
         }
 
         String originalFilename = file.getOriginalFilename();
-        String extension = ".jpg";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
-        }
+        // Extensión permitida y coherente con el content-type declarado (400 si no).
+        String extension = StorageKeys.validatedExtension(originalFilename, file.getContentType());
 
-        String key = String.format("photos/%s/%s%s", slug, UUID.randomUUID(), extension);
+        String key = StorageKeys.newKey(event.getId(), extension);
 
         // Todo el trabajo pesado (leer bytes, validar firma, convertir HEIC, subir a R2)
         // ocurre FUERA de transacción. Recién después se abre la transacción corta para
@@ -267,7 +276,7 @@ public class PhotoServiceImpl implements PhotoService {
                 throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
             }
             contentType = "image/jpeg";
-            key = String.format("photos/%s/%s.jpg", slug, UUID.randomUUID());
+            key = StorageKeys.newKey(event.getId(), ".jpg");
             log.info("Conversión HEIC->JPEG exitosa en upload-direct, nueva key: '{}'", key);
         }
 
@@ -320,12 +329,20 @@ public class PhotoServiceImpl implements PhotoService {
 
         String storageKey = photo.getStorageKey();
 
-        // 1. Eliminar primero el objeto en almacenamiento (Cloudflare R2 o local)
-        try {
-            storageService.deleteFile(storageKey);
-        } catch (Exception e) {
-            log.error("Error al eliminar objeto '{}' del storage para la foto {}: {}", storageKey, photoId, e.getMessage());
-            // No detenemos el flujo para asegurar que el registro de la BD sea limpiado si el almacenamiento responde con error
+        // 1. Eliminar primero el objeto en almacenamiento (Cloudflare R2 o local).
+        // Guarda (defensa en profundidad): solo se borra un objeto que está bajo events/{eventId}/.
+        // Si la clave apunta a otro evento no se toca el objeto (podría ser de otro organizador),
+        // se deja un WARN y se borra igual la fila de la base.
+        if (StorageKeys.hasEventPrefix(eventId, storageKey)) {
+            try {
+                storageService.deleteFile(storageKey);
+            } catch (Exception e) {
+                log.error("Error al eliminar objeto '{}' del storage para la foto {}: {}", storageKey, photoId, e.getMessage());
+                // No detenemos el flujo para asegurar que el registro de la BD sea limpiado si el almacenamiento responde con error
+            }
+        } else {
+            log.warn("La foto {} del evento {} apunta a la clave '{}', que no está bajo '{}': NO se borra el objeto de storage, solo la fila de la base",
+                    photoId, eventId, storageKey, StorageKeys.prefixOf(eventId));
         }
 
         // 2. Eliminar registro en BD (los comentarios asociados se eliminan en cascada)
@@ -572,18 +589,4 @@ public class PhotoServiceImpl implements PhotoService {
         return bytes.length > 12 ? Arrays.copyOf(bytes, 12) : bytes;
     }
 
-    private String getFileExtension(String filename, String contentType) {
-        if (filename != null && filename.contains(".")) {
-            return filename.substring(filename.lastIndexOf("."));
-        }
-        if (contentType == null) {
-            return ".jpg";
-        }
-        return switch (contentType.toLowerCase()) {
-            case "image/png" -> ".png";
-            case "image/webp" -> ".webp";
-            case "image/heic" -> ".heic";
-            default -> ".jpg";
-        };
-    }
 }

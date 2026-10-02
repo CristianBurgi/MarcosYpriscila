@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.common.exception.InvalidFileContentException;
 import com.tuapp.eventfoto.common.exception.StorageException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -20,8 +21,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * Solo existe con app.storage.mode=local (desarrollo). En producción (r2) el bean no se crea y
+ * las rutas no existen. Además exige el formato de clave events/{uuid}/{uuid}.ext.
+ */
 @Slf4j
 @RestController
+@ConditionalOnProperty(name = "app.storage.mode", havingValue = "local", matchIfMissing = true)
 @RequestMapping("/api/v1/storage")
 public class LocalStorageController {
 
@@ -43,6 +49,11 @@ public class LocalStorageController {
         if (!"local".equalsIgnoreCase(storageMode)) {
             log.warn("Intento de subida local bloqueado porque app.storage.mode es '{}'", storageMode);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        if (!StorageKeys.isValidFormat(key)) {
+            log.warn("Subida local rechazada: la clave '{}' no tiene el formato events/<eventId>/<uuid>.ext", key);
+            return ResponseEntity.badRequest().build();
         }
 
         try {
@@ -87,6 +98,10 @@ public class LocalStorageController {
      */
     @GetMapping("/files")
     public ResponseEntity<Resource> getLocalFile(@RequestParam String key) {
+        // Cinturón y tirantes: fuera del modo local no se sirve nada (en ese caso el bean ni siquiera existe).
+        if (!"local".equalsIgnoreCase(storageMode) || !StorageKeys.isValidFormat(key)) {
+            return ResponseEntity.notFound().build();
+        }
         try {
             Path baseDir = Paths.get(UPLOADS_DIR).toAbsolutePath().normalize();
             Path filePath = baseDir.resolve(key).normalize();
