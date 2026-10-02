@@ -80,6 +80,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional // la transaccion se abre en la entrada publica: la llamada interna (this.) no pasa por el proxy
     public void deleteMessage(UUID eventId, UUID messageId) {
         deleteMessage(eventId, messageId, DeletionActor.ORGANIZADOR);
     }

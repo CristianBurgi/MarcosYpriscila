@@ -323,6 +323,7 @@ public class PhotoServiceImpl implements PhotoService {
      * la pantalla del salón la saquen al instante.
      */
     @Override
+    @Transactional // la transaccion se abre en la entrada publica: la llamada interna (this.) no pasa por el proxy
     public void deletePhoto(UUID eventId, UUID photoId) {
         deletePhoto(eventId, photoId, DeletionActor.ORGANIZADOR);
     }
