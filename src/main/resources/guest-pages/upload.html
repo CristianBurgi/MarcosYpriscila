@@ -106,6 +106,67 @@
         let successResetTimer = null;
         let busyNoticeTimer = null;
 
+        // ---- Diagnóstico y copia en memoria de la foto (fix galería Android) ----
+        // En algunos Android (ej. Samsung A32 + Chrome) el File que entrega el selector de GALERÍA apunta a un content
+        // URI que deja de poder leerse un rato después de elegirlo (ERR_UPLOAD_FILE_CHANGED / acceso denegado): el PUT a
+        // R2 y el fallback, que usaban ese mismo File, se cortaban en el fetch. Por eso la foto se lee a memoria apenas
+        // se elige y de ahí en adelante se trabaja SOLO con esa copia.
+
+        // ?debug=1 muestra un recuadro con el paso a paso. Nunca imprime la presigned URL (da acceso de escritura al
+        // objeto) ni el guestToken: solo paso, nombre/tipo/tamaño de la foto, código de estado, key y err.name/err.message.
+        const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+        function debugSafe(text) {
+            // Defensa extra: si algún mensaje de error trajera una URL (puede llevar firma), no se muestra.
+            return String(text == null ? '' : text).replace(/https?:\/\/\S+/gi, '[url]');
+        }
+        function dbg(line) {
+            if (!DEBUG) return;
+            let box = document.getElementById('debug-box');
+            if (!box) {
+                box = document.createElement('pre');
+                box.id = 'debug-box';
+                box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:28vh;overflow:auto;margin:0;padding:6px 8px;'
+                    + 'background:rgba(0,0,0,0.88);color:#9be59b;font:11px/1.35 monospace;white-space:pre-wrap;word-break:break-all;z-index:9999;';
+                document.body.appendChild(box);
+            }
+            box.textContent += debugSafe(line) + '\n';
+            box.scrollTop = box.scrollHeight;
+        }
+        function describeFile(f) {
+            if (!f) return '(sin archivo)';
+            return `${f.name || '(sin nombre)'} | ${f.type || '(tipo vacío)'} | ${f.size} bytes`;
+        }
+        function describeError(err) {
+            return `${(err && err.name) || 'Error'}: ${(err && err.message) || ''}`;
+        }
+
+        const TYPE_BY_EXTENSION = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
+        // Tipo de la foto: el declarado por el navegador; si viene vacío (pasa con algunos selectores de galería), se
+        // deduce de la extensión. SUPUESTO: sin extensión conocida se asume image/jpeg. No abre nada: el servidor valida
+        // el contenido real por la firma binaria de los bytes, no por este tipo.
+        function inferImageType(file) {
+            if (file.type) return file.type;
+            const match = /\.([A-Za-z0-9]+)$/.exec(file.name || '');
+            return (match && TYPE_BY_EXTENSION[match[1].toLowerCase()]) || 'image/jpeg';
+        }
+
+        // Lee la foto entera a memoria y devuelve un File que ya no depende del selector.
+        async function copyFileToMemory(file) {
+            const buffer = await file.arrayBuffer();
+            return new File([buffer], file.name || 'photo', { type: inferImageType(file), lastModified: file.lastModified || Date.now() });
+        }
+
+        // Errores de subida etiquetados con el paso que falló, para el código discreto del mensaje y el modo debug.
+        function tagError(err, step, { cause, status } = {}) {
+            err.step = step;
+            if (cause) { err.causeName = cause.name; err.causeMessage = cause.message; }
+            if (status) err.status = status;
+            return err;
+        }
+        function errorCode(err) {
+            return `${err.step || 'subida'}-${err.causeName || err.status || err.name || 'error'}`;
+        }
+
         // El nombre se recuerda en el navegador para que desde la segunda foto sea un toque.
         // localStorage puede fallar (modo privado, almacenamiento bloqueado): todo va en try/catch.
         const UPLOADER_NAME_KEY = 'eventfoto_uploader_name';
@@ -203,12 +264,33 @@
                 galleryFile.click();
             });
 
-            const handleFileSelected = (file) => {
-                if (!file) return; // cancelar en la cámara no dispara change; si algún navegador lo dispara vacío, no pasa nada
+            let selectionSeq = 0;
+            const handleFileSelected = async (pickedFile) => {
+                if (!pickedFile) return; // cancelar en la cámara no dispara change; si algún navegador lo dispara vacío, no pasa nada
                 if (uploadInProgress) { showBusyNotice(); return; }
                 if (document.getElementById('btn-submit').getAttribute('data-closed')) return;
-                selectedFile = file;
+                const seq = ++selectionSeq;
+                selectedFile = null;
                 document.getElementById('status-message').innerHTML = ''; // sin "Reintentar" viejo apuntando a otra foto
+                dbg(`seleccion: ${describeFile(pickedFile)}`);
+
+                // Lo PRIMERO que se hace con el File del selector es leerlo entero a memoria (ver comentario de arriba).
+                // Desde acá, vista previa, compresión, PUT y fallback usan solo `file` (la copia), nunca `pickedFile`.
+                let file;
+                const t0 = Date.now();
+                try {
+                    file = await copyFileToMemory(pickedFile);
+                } catch (readErr) {
+                    dbg(`lectura: FALLÓ ${describeError(readErr)}`);
+                    if (seq !== selectionSeq) return;
+                    previewBox.style.display = 'none';
+                    clearFileInputs();
+                    showReadFailure(readErr);
+                    return;
+                }
+                if (seq !== selectionSeq) return; // se eligió otra foto mientras se leía esta
+                dbg(`lectura: ok en ${Date.now() - t0} ms -> copia en memoria: ${describeFile(file)}`);
+                selectedFile = file;
 
                 const reader = new FileReader();
                 reader.onload = (event) => {
@@ -226,6 +308,7 @@
                 }
             };
 
+            // El File se toma sincrónicamente del input: nada se espera antes de empezar a leerlo.
             cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
             galleryFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
 
@@ -276,6 +359,14 @@
             return nonRetryableError(body.message || fallbackMessage, res.status === 413 ? 'too-large' : 'album-full');
         }
 
+        // La foto no se pudo leer a memoria: no es un problema de red (no hay subida ni reintentos), así que este mensaje
+        // reemplaza a cualquier otro y nunca habla de "señal débil".
+        function showReadFailure(err) {
+            const statusDiv = document.getElementById('status-message');
+            const code = DEBUG ? '' : `<div style="margin-top: 6px; color: #9ca3af; font-size: 0.75rem;">(código: ${escapeHtml(`READ-${(err && err.name) || 'error'}`)})</div>`;
+            statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">No pudimos leer la foto. Probá sacándola con la cámara o elegí otra.${code}</div>`;
+        }
+
         function sleep(ms) {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
@@ -291,15 +382,21 @@
                     body: JSON.stringify({ contentType, filename, guestToken: GUEST_TOKEN })
                 });
             } catch (networkErr) {
-                throw retryableError('No se pudo conectar para iniciar la subida.');
+                dbg(`url: FALLÓ ${describeError(networkErr)}`);
+                throw tagError(retryableError('No se pudo conectar para iniciar la subida.'), 'url', { cause: networkErr });
             }
+            dbg(`url: HTTP ${res.status}`);
             if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
             const rejection = await rejectionError(res, 'No se pudo iniciar la subida.');
             if (rejection) throw rejection;
-            if (res.ok) return await res.json(); // { uploadUrl, key }
-            if (res.status >= 500) throw retryableError('El servidor tardó en iniciar la subida.');
+            if (res.ok) {
+                const presigned = await res.json(); // { uploadUrl, key }
+                dbg(`url: ok key=${presigned.key}`); // solo la key: la URL lleva una firma de escritura
+                return presigned;
+            }
+            if (res.status >= 500) throw tagError(retryableError('El servidor tardó en iniciar la subida.'), 'url', { status: res.status });
             const body = await res.json().catch(() => ({}));
-            throw nonRetryableError(body.message || 'No se pudo iniciar la subida.');
+            throw tagError(nonRetryableError(body.message || 'No se pudo iniciar la subida.'), 'url', { status: res.status });
         }
 
         // Paso 2: PUT directo a R2 con la presigned URL ya obtenida.
@@ -308,13 +405,15 @@
             try {
                 res = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file });
             } catch (networkErr) {
-                throw retryableError('La foto no llegó al servidor de almacenamiento.');
+                dbg(`PUT: FALLÓ ${describeError(networkErr)} (cuerpo: ${describeFile(file)})`);
+                throw tagError(retryableError('La foto no llegó al servidor de almacenamiento.'), 'PUT', { cause: networkErr });
             }
+            dbg(`PUT: HTTP ${res.status}`);
             if (res.ok) return;
-            if (res.status >= 500 || res.status === 429) throw retryableError('El almacenamiento tardó en responder.');
+            if (res.status >= 500 || res.status === 429) throw tagError(retryableError('El almacenamiento tardó en responder.'), 'PUT', { status: res.status });
             // 4xx acá (ej. URL vencida) no es un fallo de red: reintentar la MISMA url no
             // sirve. Se marca no reintentable para que el llamador pruebe el fallback.
-            throw nonRetryableError('No se pudo completar la subida al almacenamiento.');
+            throw tagError(nonRetryableError('No se pudo completar la subida al almacenamiento.'), 'PUT', { status: res.status });
         }
 
         // Paso 3: confirmar. Seguro de llamar más de una vez con la MISMA key (ver
@@ -328,17 +427,19 @@
                     body: JSON.stringify({ key, uploaderName, guestToken: GUEST_TOKEN })
                 });
             } catch (networkErr) {
-                throw retryableError('No pudimos confirmar tu foto, pero ya se subió.');
+                dbg(`confirm: FALLÓ ${describeError(networkErr)}`);
+                throw tagError(retryableError('No pudimos confirmar tu foto, pero ya se subió.'), 'confirm', { cause: networkErr });
             }
+            dbg(`confirm: HTTP ${res.status} key=${key}`);
             if (res.ok) return await res.json();
             if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
             const rejection = await rejectionError(res, 'No se pudo confirmar la fotografía.');
             if (rejection) throw rejection;
             // 503: otra confirmación con esta misma key está en curso (carrera o un
             // reintento propio que se cruzó) -- se resuelve sola en el próximo intento.
-            if (res.status >= 500) throw retryableError('El servidor tardó en confirmar tu foto.');
+            if (res.status >= 500) throw tagError(retryableError('El servidor tardó en confirmar tu foto.'), 'confirm', { status: res.status });
             const body = await res.json().catch(() => ({}));
-            throw nonRetryableError(body.message || 'No se pudo confirmar la fotografía.');
+            throw tagError(nonRetryableError(body.message || 'No se pudo confirmar la fotografía.'), 'confirm', { status: res.status });
         }
 
         // Retoma desde donde quedó `state`: si ya hay presigned URL no pide otra, si el
@@ -361,6 +462,7 @@
                 } catch (err) {
                     const exhausted = attempt === RETRY_DELAYS_MS.length;
                     if (!err.retryable || exhausted) throw err;
+                    dbg(`reintento ${attempt + 1} de ${RETRY_DELAYS_MS.length} (paso ${err.step || '?'})`);
                     onRetrying(attempt + 1, RETRY_DELAYS_MS.length);
                     await sleep(RETRY_DELAYS_MS[attempt]);
                 }
@@ -382,14 +484,16 @@
             try {
                 res = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, { method: 'POST', body: formData });
             } catch (networkErr) {
-                throw nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.');
+                dbg(`fallback: FALLÓ ${describeError(networkErr)} (cuerpo: ${describeFile(state.file)})`);
+                throw tagError(nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.'), 'fallback', { cause: networkErr });
             }
+            dbg(`fallback: HTTP ${res.status}`);
             if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
             const rejection = await rejectionError(res, 'No se pudo enviar la fotografía.');
             if (rejection) throw rejection;
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                throw nonRetryableError(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.');
+                throw tagError(nonRetryableError(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.'), 'fallback', { status: res.status });
             }
         }
 
@@ -423,12 +527,15 @@
             progressFill.style.width = '15%';
 
             let fileToUpload;
+            dbg(`comprimir: antes ${describeFile(selectedFile)}`);
             try {
                 fileToUpload = await compressImageIfNeeded(selectedFile);
             } catch (compressErr) {
+                dbg(`comprimir: FALLÓ ${describeError(compressErr)}`);
                 handleUploadFailure(compressErr, null);
                 return;
             }
+            dbg(`comprimir: después ${describeFile(fileToUpload)}`);
             let contentType = fileToUpload.type || 'image/jpeg';
             if (contentType.toLowerCase() === 'image/jpg') {
                 contentType = 'image/jpeg';
@@ -468,6 +575,7 @@
                         onUploadSuccess();
                         return;
                     } catch (fallbackErr) {
+                        fallbackErr.primaryCode = errorCode(err); // el PUT/URL que falló antes de probar el fallback
                         handleUploadFailure(fallbackErr, state);
                         return;
                     }
@@ -543,9 +651,18 @@
                 return;
             }
 
+            // Sin ?debug=1, un fallo definitivo lleva un código corto y gris (ej. "PUT-TypeError") para poder
+            // diagnosticar desde una captura. Los rechazos con mensaje propio (cupo, foto pesada, álbum lleno) no lo llevan.
+            let codeHtml = '';
+            if (!DEBUG && !err.kind) {
+                const codes = [err.primaryCode, errorCode(err)].filter(Boolean).join(' + ');
+                codeHtml = `<div style="margin-top: 6px; color: #9ca3af; font-size: 0.75rem;">(código: ${escapeHtml(codes)})</div>`;
+            }
+            dbg(`FALLO DEFINITIVO: ${errorCode(err)}${err.primaryCode ? ' (antes ' + err.primaryCode + ')' : ''} -> ${describeError(err)}`);
+
             statusDiv.innerHTML = `
                 <div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">
-                    ${escapeHtml(message)}
+                    ${escapeHtml(message)}${codeHtml}
                     ${offerManualRetry ? '<div style="margin-top: 10px;"><button type="button" id="btn-manual-retry" class="btn-primary-elegant" style="padding: 8px 16px; font-size: 0.95rem;">Reintentar</button></div>' : ''}
                 </div>`;
 
@@ -751,7 +868,13 @@
                         }
                     }, 'image/jpeg', 0.85);
                 };
-                img.onerror = () => resolve(file);
+                // Si no se puede decodificar, se devuelve `file`: la COPIA EN MEMORIA que recibe esta función (handleSubmit
+                // le pasa selectedFile, que ya no es el File del selector), nunca el original de la galería.
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    dbg('comprimir: no se pudo decodificar la imagen -> se sube la copia en memoria sin comprimir');
+                    resolve(file);
+                };
                 img.src = url;
             });
         }
