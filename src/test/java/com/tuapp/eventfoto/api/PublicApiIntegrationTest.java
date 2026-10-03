@@ -99,6 +99,7 @@ class PublicApiIntegrationTest {
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
                 .origin(EventOrigin.PAID)
+                .maxPhotosPerGuest(24) // explícito: sin valor, el evento quedaría "sin límite"
                 .build();
 
         eventRepository.save(testEvent);
@@ -314,7 +315,8 @@ class PublicApiIntegrationTest {
                         .param("token", "guest-token-quota-fresh"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.remainingPhotos", is(24)))
-                .andExpect(jsonPath("$.maxPhotosPerGuest", is(24)));
+                .andExpect(jsonPath("$.maxPhotosPerGuest", is(24)))
+                .andExpect(jsonPath("$.unlimited", is(false)));
     }
 
     @Test

@@ -464,6 +464,23 @@
         <div id="moderatorLinkStatus" style="color: #94a3b8; font-size: 0.88rem; margin-top: 10px; min-height: 1.2em;"></div>
     </div>
 
+    <!-- Tarjeta: cuántas fotos puede subir cada invitado -->
+    <div class="metric-card" id="guestLimitCard" style="margin-bottom: 24px;">
+        <div class="title"><i class="fa-solid fa-images" style="margin-right: 6px;"></i> Cuántas fotos puede subir cada invitado</div>
+        <label style="display: block; color: #e2e8f0; margin-bottom: 4px; cursor: pointer;">
+            <input type="radio" name="guestPhotoLimit" id="guestLimitLimited" value="limited" th:checked="${!guestPhotoLimit.unlimited}">
+            <strong th:text="'Hasta ' + ${guestPhotoLimitOption} + ' fotos por invitado'">Hasta 24 fotos por invitado</strong>
+        </label>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 12px 22px;" th:text="'Cada persona puede subir hasta ' + ${guestPhotoLimitOption} + ' fotos. Es lo recomendado: evita que alguien llene el álbum.'">Cada persona puede subir hasta 24 fotos. Es lo recomendado: evita que alguien llene el álbum.</p>
+        <label style="display: block; color: #e2e8f0; margin-bottom: 4px; cursor: pointer;">
+            <input type="radio" name="guestPhotoLimit" id="guestLimitUnlimited" value="unlimited" th:checked="${guestPhotoLimit.unlimited}">
+            <strong>Sin límite</strong>
+        </label>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 12px 22px;">Cada persona puede subir todas las fotos que quiera.</p>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 6px;">Podés cambiarlo cuando quieras, incluso durante el evento. Si pasás de "sin límite" a un límite, quienes ya subieron más fotos no podrán subir más, pero sus fotos se mantienen.</p>
+        <div id="guestLimitStatus" role="status" style="color: #94a3b8; font-size: 0.88rem; min-height: 1.2em;"></div>
+    </div>
+
     <!-- Navegación por Pestañas -->
     <div class="tabs-header">
         <button class="tab-btn active" id="tabBtnPhotos" onclick="switchTab('photos')">
@@ -845,6 +862,40 @@
             alert('Error de comunicación con el servidor.');
         }
     }
+
+    // ---- Tarjeta: límite de fotos por invitado ----
+    (function setupGuestLimitCard() {
+        const radios = document.querySelectorAll('input[name="guestPhotoLimit"]');
+        const status = document.getElementById('guestLimitStatus');
+        if (!radios.length) return;
+
+        radios.forEach((radio) => radio.addEventListener('change', async () => {
+            const previous = radio.value === 'unlimited' ? 'guestLimitLimited' : 'guestLimitUnlimited';
+            status.style.color = '#94a3b8';
+            status.textContent = 'Guardando…';
+            radios.forEach((r) => r.disabled = true);
+            try {
+                const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/guest-photo-limit`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unlimited: radio.value === 'unlimited' })
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const saved = await res.json(); // { unlimited, maxPhotosPerGuest }
+                document.getElementById('guestLimitUnlimited').checked = saved.unlimited;
+                document.getElementById('guestLimitLimited').checked = !saved.unlimited;
+                status.style.color = '#86efac';
+                status.textContent = 'Listo, guardamos tu cambio.';
+            } catch (e) {
+                console.error(e);
+                document.getElementById(previous).checked = true; // vuelve a lo que había
+                status.style.color = '#fca5a5';
+                status.textContent = 'No pudimos guardar el cambio. Probá de nuevo.';
+            } finally {
+                radios.forEach((r) => r.disabled = false);
+            }
+        }));
+    })();
 
     // ---- Tarjeta Moderador ----
     (function setupModeratorCard() {

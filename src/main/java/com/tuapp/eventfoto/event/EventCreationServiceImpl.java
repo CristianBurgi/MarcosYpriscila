@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.event;
 
 import com.tuapp.eventfoto.event.util.SlugGenerator;
 import com.tuapp.eventfoto.organizer.Organizer;
+import com.tuapp.eventfoto.photo.GuestQuotaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class EventCreationServiceImpl implements EventCreationService {
 
     private final EventRepository eventRepository;
     private final SlugGenerator slugGenerator;
+    private final GuestQuotaService guestQuotaService;
 
     @Override
     @Transactional
@@ -51,6 +53,7 @@ public class EventCreationServiceImpl implements EventCreationService {
                 .isActive(true)
                 .origin(origin)
                 .moderatorToken(ModeratorTokens.generate())
+                .maxPhotosPerGuest(guestQuotaService.getDefaultMaxPhotosPerGuest())
                 .originReason(origin == EventOrigin.COURTESY ? originReason.trim() : null)
                 .build();
 

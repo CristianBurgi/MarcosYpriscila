@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.photo;
 
 import com.tuapp.eventfoto.common.config.ClientIpResolver;
+import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
@@ -22,6 +23,7 @@ public class PhotoController {
 
     private final PhotoService photoService;
     private final ClientIpResolver clientIpResolver;
+    private final RateLimiterService rateLimiterService;
 
     /**
      * POST /api/v1/events/{slug}/photos/upload-url
@@ -62,8 +64,12 @@ public class PhotoController {
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
             @RequestParam("uploaderName") String uploaderName,
             @RequestParam(value = "caption", required = false) String caption,
-            @RequestParam("guestToken") String guestToken) {
+            @RequestParam("guestToken") String guestToken,
+            HttpServletRequest servletRequest) {
 
+        // Mismo freno que upload-url (30/min por token, 500/min por IP). /confirm no lo necesita: solo opera sobre
+        // keys ya emitidas por upload-url, que sí pasó por el limitador.
+        rateLimiterService.checkUploadDirectRateLimit(clientIpResolver.resolve(servletRequest), guestToken);
         PhotoResponseDTO response = photoService.uploadDirect(slug, file, uploaderName, caption, guestToken);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

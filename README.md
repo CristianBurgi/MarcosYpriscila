@@ -348,6 +348,7 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | Método | Ruta | Descripción | Body/Params |
 |---|---|---|---|
 | `GET` | `/api/v1/events/{slug}` | Datos del evento (nombre, estado de subidas) | — |
+| `GET` | `/api/v1/events/{slug}/guest-quota` | Cupo del invitado: `{ unlimited, maxPhotosPerGuest, remainingPhotos }` (`null` donde no aplica) | `?token={guestToken}` |
 | `GET` | `/api/v1/events/{slug}/qr` | Genera y devuelve el código QR como PNG | `?size=400` |
 | `POST` | `/api/v1/events/{slug}/photos/upload-url` | Genera presigned URL para subida directa a R2 | `{ filename, contentType, fileSize }` |
 | `POST` | `/api/v1/events/{slug}/photos/confirm` | Confirma que la subida a R2 fue exitosa | `{ storageKey, uploaderName, caption }` |
@@ -372,6 +373,7 @@ Todos los endpoints públicos están bajo el prefijo `/api/v1`. Los de administr
 | `DELETE` | `/api/v1/admin/events/{slug}/comments/{commentId}` | Borra un comentario |
 | `DELETE` | `/api/v1/admin/events/{slug}/messages/{messageId}` | Borra un mensaje |
 | `PATCH` | `/api/v1/admin/events/{slug}/toggle-status` | Abre o cierra las subidas de fotos |
+| `PUT` | `/api/v1/admin/events/{slug}/guest-photo-limit` | Límite de fotos por invitado del evento: `{ "unlimited": true|false }` (ver [Límite de fotos por invitado](#-límite-de-fotos-por-invitado-fase-95)) |
 
 ### Formato de errores
 
@@ -385,7 +387,7 @@ Todos los errores tienen el mismo formato JSON consistente:
 }
 ```
 
-**Errores de subida (Fase 9.0):** un archivo que supera los 30 MB devuelve `413` con el mensaje *"La foto es demasiado pesada, probá con otra"*; un multipart malformado o cortado (típico con mala señal) devuelve `400` con *"Hubo un problema con la subida, intentá de nuevo"*. `upload.html` muestra ese `message` tal cual. `server.tomcat.max-swallow-size` está en 64 MB para que el 413 llegue al navegador en lugar de un corte de conexión.
+**Errores de subida (Fase 9.0):** un archivo que supera el tope de tamaño (15 MB, ver [Topes de seguridad](#topes-de-seguridad-fase-95)) devuelve `413` con el mensaje *"La foto es demasiado pesada. Probá con otra o bajale la calidad."*; un multipart malformado o cortado (típico con mala señal) devuelve `400` con *"Hubo un problema con la subida, intentá de nuevo"*. `upload.html` muestra ese `message` tal cual. `server.tomcat.max-swallow-size` está en 64 MB para que el 413 llegue al navegador en lugar de un corte de conexión.
 
 **Excepciones tipadas disponibles:** `ResourceNotFoundException` (404), `RateLimitExceededException` (429), `ContentModerationException` (400), `InvalidFileFormatException` (400), `MaxUploadLimitReachedException` (429), `EventClosedException` (403), `UnauthorizedAccessException` (401), `StorageException` (500).
 
@@ -461,6 +463,35 @@ Las **fotos** no pasan por este filtro automático — se publican al confirmars
 
 ---
 
+## 📸 Límite de fotos por invitado (Fase 9.5)
+
+El organizador elige **por evento** entre "hasta 24 fotos por invitado" y "sin límite", desde el dashboard (tarjeta *Cuántas fotos puede subir cada invitado*) y puede cambiarlo con el evento en curso.
+
+- **Dónde vive:** `events.max_photos_per_guest` (`NULL` = sin límite). La migración V14 dejó en 24 a los eventos existentes; los nuevos (de pago o sin costo del superadmin) nacen con el default de configuración. No hay `DEFAULT` en la base.
+- **Configuración vigente:** `app.guest-quota.default-max-photos-per-guest` (en `application.yml`, hoy 24). Es el único lugar donde vive ese número. La propiedad vieja `app.guest-quota.max-photos-per-guest` sigue funcionando solo como fallback y está deprecada.
+- **Cómo se aplica:** un único `UPDATE` atómico (`GuestQuotaRepository.incrementIfAllowed`) lee el límite vigente del evento con una subconsulta, así que un cambio del organizador rige desde la próxima subida aunque la request haya cargado el evento antes. Sin límite igual se cuenta por `(evento, guestToken)`, para que volver a 24 a mitad del evento sea coherente: el contador es monotónico y borrar una foto no devuelve cupo. Un invitado que ya subió más de 24 y vuelve a "24" queda bloqueado, sin errores ni contadores negativos.
+- **API pública:** `GET /api/v1/events/{slug}/guest-quota?token=...` devuelve `{ "unlimited": false, "maxPhotosPerGuest": 24, "remainingPhotos": 19 }`, o `{ "unlimited": true, "maxPhotosPerGuest": null, "remainingPhotos": null }` sin límite (sin números mágicos).
+- **API del panel:** `PUT /api/v1/admin/events/{slug}/guest-photo-limit` con `{ "unlimited": true|false }` (`@OwnedEvent`: organizador ajeno → 404). Devuelve el estado nuevo completo `{ unlimited, maxPhotosPerGuest }`.
+- **Pantalla del invitado:** `upload.html` no tiene ningún número escrito; usa el que informa la API. Sin límite no hay contador ni banner. La pantalla se entera de un cambio al volver a la pestaña, al recargar, o cuando el servidor devuelve 403 de cupo (en ese caso reconsulta antes de mostrar el banner).
+
+> **Es una regla de cortesía, no un control de seguridad:** el `guestToken` lo elige el cliente, así que quien lo rote esquiva el límite. Los frenos reales son el rate limit por IP, el tope de tamaño por archivo y el tope total de fotos por evento.
+
+---
+
+### Topes de seguridad (Fase 9.5)
+
+Sin límite por invitado el freno real son estos tres topes (el límite por invitado no es un control de seguridad: el `guestToken` lo elige el cliente).
+
+| Tope | Valor | Dónde se aplica | Qué ve el invitado |
+|---|---|---|---|
+| **Tamaño por archivo** | 15 MB — `app.upload.max-file-bytes` (único valor; `spring.servlet.multipart.max-file-size` lo usa también) | `/confirm`: un `HeadObject` sobre lo que el cliente subió directo a R2, **antes** de reclamar la key, de leer un byte y de tocar el cupo; si pasa el tope borra el objeto de R2 y responde `413`. `/upload-direct`: `413` por tamaño del multipart. El PUT presignado a R2 no tiene tope propio (un cliente malicioso puede subir cualquier tamaño), por eso el control está en `/confirm` | 413 — *"La foto es demasiado pesada. Probá con otra o bajale la calidad."* |
+| **Fotos totales por evento** | 5.000 — `app.event.max-photos` | Cuenta las fotos persistidas del evento (borrar libera lugar). Chequeo rápido en `GuestQuotaService.assertQuotaAvailable` (antes de la presigned URL / de subir) y definitivo al inicio de la transacción de persistencia. Aplica con límite por invitado y sin límite. **Es un tope blando**: sin lock del evento, con subidas concurrentes en el borde puede pasarse por unas pocas fotos | 409 — *"El álbum de este evento llegó a su máximo de fotos. Avisale a quien organiza."* |
+| **Rate limit de `/upload-direct`** | 30/min por `guestToken`, 500/min por IP (buckets propios, mismos valores que `upload-url`) | `PhotoController.uploadDirect` vía `RateLimiterService.checkUploadDirectRateLimit`. `/confirm` no lo necesita: solo opera sobre keys ya emitidas por `upload-url` | 429 |
+
+> **Pendiente (9.6, retención):** los objetos huérfanos en R2 (un PUT presignado que nunca llega a `/confirm`) quedan sin limpiar; los topes de arriba no los cubren.
+
+---
+
 ## 🚦 Rate Limiting
 
 El `RateLimiterService` implementa un **sliding window counter** (ventana deslizante de 1 minuto) por dirección IP para proteger los endpoints más sensibles.
@@ -468,6 +499,7 @@ El `RateLimiterService` implementa un **sliding window counter** (ventana desliz
 | Acción | Límite | Razón |
 |---|---|---|
 | Solicitud de Presigned URL (`upload-url`) | **30 por minuto por IP** | Permite que grupos en el mismo WiFi del salón suban fotos sin ser bloqueados |
+| Subida directa multipart (`upload-direct`) | **30 por minuto por guestToken, 500 por IP** | Era el único camino de subida sin freno (Fase 9.5) |
 | Comentarios y Mensajes | **15 por minuto por IP** | Previene spam masivo |
 
 > **Nota importante:** En una boda, varios invitados en la misma red WiFi del salón comparten la misma IP pública de salida. Los límites están calibrados para este escenario real.
@@ -647,6 +679,7 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `JWT_SECRET` | Secreto para firmar tokens JWT (mínimo 32 caracteres) | ✅ |
 | `JWT_EXPIRATION_MS` | Duración del JWT en ms (por defecto 8 horas = `28800000`) | Opcional |
 | `APP_BASE_URL` | URL pública de la app, sin barra final. **Única fuente** de toda URL absoluta (QR, links del panel). Con `STORAGE_MODE=r2` la app no arranca si apunta a `localhost` | ✅ |
+| `APP_GUEST_QUOTA_DEFAULT_MAX_PHOTOS_PER_GUEST` | Límite de fotos por invitado de los eventos **nuevos** (por defecto 24). Reemplaza a `APP_GUEST_QUOTA_MAX_PHOTOS_PER_GUEST`, que sigue funcionando como fallback | Opcional |
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
 | `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
 | `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |
@@ -755,7 +788,7 @@ mvn test
 | `QrCodeTest` | 2 | Generación del PNG de QR con URL correcta y dimensiones esperadas |
 | `RealtimeIntegrationTest` | 2 | Suscripción SSE, aislamiento de eventos por `eventId` |
 | `SseBroadcasterTest` / `PhotoDeletedSseIntegrationTest` | 4 | Un emisor que tira `IOException` se remueve sin cortar el envío al resto; borrar una foto emite `PHOTO_DELETED` |
-| `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 30 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
+| `UploadErrorResponsesIntegrationTest` | 2 | Contra Tomcat real: archivo > 15 MB → 413 y multipart malformado → 400, ambos con JSON para el invitado |
 | `GlobalExceptionHandlerSentryNoiseTest` | 10 | Desconexiones de clientes (escritura de la respuesta), recursos inexistentes y errores 4xx de Spring no llegan a Sentry; fallas de R2/BD con mensajes tipo "Connection reset" sí |
 | `GuestbookPdfIntegrationTest` / `GuestbookEndpointsTest` | 5 | PDF real con emojis simples y compuestos, acentos, ñ, 1000 caracteres, palabra sin espacios y sin autor (texto extraído con PDFBox, ningún glifo fuera de la página); descarga solo admin; ZIP completo con el PDF en la raíz |
 | `ConfirmUploadIdempotencyTest` | 3 | `POST /confirm` repetido con la misma `upload_key` (secuencial y con HEIC) devuelve la misma foto sin duplicar ni cobrar cupo de más; dos hilos reales confirmando la misma key en paralelo: una sola foto, un solo descuento, y el perdedor de la carrera falla en milisegundos (mutex propio), no bloqueado hasta que el ganador termina |

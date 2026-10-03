@@ -67,6 +67,14 @@ public class Event {
     @Column(name = "moderator_token", nullable = false, unique = true, length = 43)
     private String moderatorToken;
 
+    /**
+     * Tope de fotos por invitado en este evento; {@code null} = sin límite. Sin default en el builder
+     * a propósito: el valor de los eventos nuevos lo pone EventCreationServiceImpl desde la configuración
+     * (app.guest-quota.default-max-photos-per-guest). Ver GuestQuotaService.
+     */
+    @Column(name = "max_photos_per_guest")
+    private Integer maxPhotosPerGuest;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

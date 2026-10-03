@@ -10,6 +10,8 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -25,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.OptionalLong;
 import java.util.Set;
 
 @Slf4j
@@ -178,6 +181,33 @@ public class R2StorageService implements StorageService {
         } catch (Exception e) {
             log.error("Error al eliminar el archivo con clave '{}' de Cloudflare R2: {}", key, e.getMessage(), e);
             throw new StorageException("Error al eliminar el archivo de Cloudflare R2", e);
+        }
+    }
+
+    @Override
+    public OptionalLong objectSize(String key) {
+        if (key == null || key.isBlank()) {
+            return OptionalLong.empty();
+        }
+
+        if (isLocalDevMode()) {
+            String cleanKey = key.startsWith("/") ? key.substring(1) : key;
+            Path localPath = Paths.get("uploads", cleanKey);
+            try {
+                return Files.exists(localPath) ? OptionalLong.of(Files.size(localPath)) : OptionalLong.empty();
+            } catch (IOException e) {
+                throw new StorageException("Error al leer el tamaño del archivo local: " + localPath, e);
+            }
+        }
+
+        try {
+            Long length = s3Client.headObject(HeadObjectRequest.builder().bucket(bucketName).key(key).build()).contentLength();
+            return length == null ? OptionalLong.empty() : OptionalLong.of(length);
+        } catch (NoSuchKeyException e) {
+            return OptionalLong.empty();
+        } catch (Exception e) {
+            log.error("Error al consultar el tamaño del objeto '{}' en Cloudflare R2: {}", key, e.getMessage(), e);
+            throw new StorageException("No se pudo verificar el archivo subido", e);
         }
     }
 

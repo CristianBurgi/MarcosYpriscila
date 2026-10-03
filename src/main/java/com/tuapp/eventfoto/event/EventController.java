@@ -28,14 +28,14 @@ public class EventController {
     /**
      * GET /api/v1/events/{slug}/guest-quota?token={guestToken}
      * Devuelve cuántas fotos le quedan a un invitado anónimo (identificado por su
-     * guestToken de localStorage) en este evento. Endpoint público, sin auth.
+     * guestToken de localStorage) en este evento, o {@code unlimited: true} (con los números en null)
+     * si el organizador eligió "sin límite". Endpoint público, sin auth.
      */
     @GetMapping("/{slug}/guest-quota")
     public ResponseEntity<GuestQuotaResponseDTO> getGuestQuota(
             @PathVariable String slug,
             @RequestParam String token) {
         Event event = eventService.getEventEntityBySlug(slug);
-        int remaining = guestQuotaService.getRemainingPhotos(event.getId(), token);
-        return ResponseEntity.ok(new GuestQuotaResponseDTO(remaining, guestQuotaService.getMaxPhotosPerGuest()));
+        return ResponseEntity.ok(guestQuotaService.getQuota(event, token));
     }
 }

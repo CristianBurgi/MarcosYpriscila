@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.storage;
 
 import java.io.InputStream;
+import java.util.OptionalLong;
 
 public interface StorageService {
 
@@ -48,6 +49,13 @@ public interface StorageService {
     byte[] convertHeicToJpeg(byte[] heicBytes);
 
     /**
+     * Tamaño en bytes del objeto, SIN leerlo (HeadObject en R2, tamaño del archivo en modo local).
+     *
+     * @param key Clave del objeto
+     * @return el tamaño, o vacío si el objeto no existe
+     */
+    OptionalLong objectSize(String key);
+
     /**
      * Elimina de forma permanente un objeto del almacenamiento (Cloudflare R2 o disco local).
      *

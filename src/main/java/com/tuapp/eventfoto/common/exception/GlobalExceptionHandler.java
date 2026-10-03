@@ -88,18 +88,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
-    @ExceptionHandler(MaxUploadLimitReachedException.class)
-    public ResponseEntity<ErrorResponseDTO> handleMaxUploadLimit(
-            MaxUploadLimitReachedException ex, HttpServletRequest request) {
-        ErrorResponseDTO error = ErrorResponseDTO.of(
-                HttpStatus.BAD_REQUEST.value(),
-                "Bad Request - Max Photo Limit Reached",
-                ex.getMessage(),
-                TokenMasker.mask(request.getRequestURI())
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
     @ExceptionHandler(InvalidFileFormatException.class)
     public ResponseEntity<ErrorResponseDTO> handleInvalidFileFormat(
             InvalidFileFormatException ex, HttpServletRequest request) {
@@ -205,8 +193,36 @@ public class GlobalExceptionHandler {
 
     // --- Fase 9.0: errores de subida con mensaje para el invitado (no un 500 técnico) ---
 
-    public static final String UPLOAD_TOO_LARGE_MESSAGE = "La foto es demasiado pesada, probá con otra";
+    public static final String UPLOAD_TOO_LARGE_MESSAGE = "La foto es demasiado pesada. Probá con otra o bajale la calidad.";
     public static final String UPLOAD_FAILED_MESSAGE = "Hubo un problema con la subida, intentá de nuevo";
+
+    public static final String EVENT_PHOTO_LIMIT_MESSAGE = "El álbum de este evento llegó a su máximo de fotos. Avisale a quien organiza.";
+
+    /** Archivo por encima de app.upload.max-file-bytes detectado por la aplicación (el multipart de Spring tiene su propio handler abajo). */
+    @ExceptionHandler(FileTooLargeException.class)
+    public ResponseEntity<ErrorResponseDTO> handleFileTooLarge(
+            FileTooLargeException ex, HttpServletRequest request) {
+        log.info("Subida rechazada por tamaño en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                "Payload Too Large - Upload Size Exceeded",
+                UPLOAD_TOO_LARGE_MESSAGE,
+                TokenMasker.mask(request.getRequestURI())
+        );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
+    }
+
+    @ExceptionHandler(EventPhotoLimitReachedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEventPhotoLimitReached(
+            EventPhotoLimitReachedException ex, HttpServletRequest request) {
+        ErrorResponseDTO error = ErrorResponseDTO.of(
+                HttpStatus.CONFLICT.value(),
+                "Conflict - Event Photo Limit Reached",
+                ex.getMessage(),
+                TokenMasker.mask(request.getRequestURI())
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponseDTO> handleMaxUploadSizeExceeded(

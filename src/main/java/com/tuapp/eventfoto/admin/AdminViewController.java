@@ -9,7 +9,9 @@ import com.tuapp.eventfoto.event.OwnedEvent;
 import com.tuapp.eventfoto.event.dto.EventResponseDTO;
 import com.tuapp.eventfoto.message.MessageService;
 import com.tuapp.eventfoto.message.dto.MessageResponseDTO;
+import com.tuapp.eventfoto.photo.GuestQuotaService;
 import com.tuapp.eventfoto.photo.PhotoService;
+import com.tuapp.eventfoto.photo.dto.GuestPhotoLimitDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +39,7 @@ public class AdminViewController {
     private final CommentService commentService;
     private final EventAccessService eventAccessService;
     private final AppUrls appUrls;
+    private final GuestQuotaService guestQuotaService;
 
     @GetMapping("/login")
     public String loginPage() {
@@ -71,6 +74,10 @@ public class AdminViewController {
         model.addAttribute("totalMessages", totalMessages);
         model.addAttribute("photos", photos);
         model.addAttribute("guestMenuUrl", appUrls.guestMenuUrl(slug));
+        // Estado inicial del selector de límite de fotos por invitado: el que tiene el evento hoy.
+        Integer guestLimit = ownedEvent.getMaxPhotosPerGuest();
+        model.addAttribute("guestPhotoLimit", new GuestPhotoLimitDTO(guestLimit == null, guestLimit));
+        model.addAttribute("guestPhotoLimitOption", guestLimit != null ? guestLimit : guestQuotaService.getDefaultMaxPhotosPerGuest());
         model.addAttribute("moderatorLink", appUrls.moderatorUrl(ownedEvent.getModeratorToken()));
         model.addAttribute("messages", messages);
         model.addAttribute("photoComments", photoComments);
