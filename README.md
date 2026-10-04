@@ -680,6 +680,9 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `JWT_EXPIRATION_MS` | Duración del JWT en ms (por defecto 8 horas = `28800000`) | Opcional |
 | `APP_BASE_URL` | URL pública de la app, sin barra final. **Única fuente** de toda URL absoluta (QR, links del panel). Con `STORAGE_MODE=r2` la app no arranca si apunta a `localhost` | ✅ |
 | `APP_GUEST_QUOTA_DEFAULT_MAX_PHOTOS_PER_GUEST` | Límite de fotos por invitado de los eventos **nuevos** (por defecto 24). Reemplaza a `APP_GUEST_QUOTA_MAX_PHOTOS_PER_GUEST`, que sigue funcionando como fallback | Opcional |
+| `CHECKOUT_ENABLED` | Fase 9.3: prende la compra con Mercado Pago (`/comprar`, botón "Crear nuevo evento"). Por defecto `false`: sin rutas (404) y sin credenciales requeridas | Opcional |
+| `MP_ACCESS_TOKEN` | Access token de Mercado Pago. **Solo de PRUEBA hasta la L6.** Obligatorio si `CHECKOUT_ENABLED=true` (si falta, la app no arranca). Nunca se loguea | ✅ (si `CHECKOUT_ENABLED=true`) |
+| `CHECKOUT_PRICE_ARS` | Precio del evento en ARS (por defecto `50000`). Tiene que ser > 0. Única fuente del monto: el cliente no lo manda | Opcional |
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
 | `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
 | `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |

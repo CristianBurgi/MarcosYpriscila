@@ -35,6 +35,9 @@ public class RateLimiterService {
     // === RATE LIMIT PARA ADMIN (sin guestToken) ===
     private static final int ADMIN_LOGIN_LIMIT_PER_15_MINUTES = 5;
 
+    // === CHECKOUT (fase 9.3): buckets propios, no comparten cupo con el login ===
+    private static final int CHECKOUT_LIMIT_PER_15_MINUTES = 10;
+
     private static final long ONE_MINUTE_IN_MS = 60_000L;
     private static final long FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000L;
 
@@ -55,6 +58,10 @@ public class RateLimiterService {
 
     // Bucket separado para login de superadmin (mismo mecanismo, aislado del de organizador)
     private final Map<String, Queue<Long>> superadminLoginBuckets = new ConcurrentHashMap<>();
+
+    // Checkout público (por IP) y recompra del organizador (por organizerId)
+    private final Map<String, Queue<Long>> checkoutBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Queue<Long>> adminCheckoutBuckets = new ConcurrentHashMap<>();
 
     /**
      * Chequea rate limit para presigned URLs de foto.
@@ -121,6 +128,18 @@ public class RateLimiterService {
                 "Has superado el límite de 5 intentos de inicio de sesión en 15 minutos. Por favor intentá más tarde.");
     }
 
+    /** POST /api/v1/checkout (público): 10 intentos por IP cada 15 minutos. */
+    public void checkCheckoutRateLimit(String clientIp) {
+        checkRateLimit(clientIp, checkoutBuckets, CHECKOUT_LIMIT_PER_15_MINUTES, FIFTEEN_MINUTES_IN_MS,
+                "Hiciste demasiados intentos de compra en poco tiempo. Por favor probá de nuevo en unos minutos.");
+    }
+
+    /** POST /api/v1/admin/checkout: 10 intentos por organizador cada 15 minutos. */
+    public void checkAdminCheckoutRateLimit(String organizerId) {
+        checkRateLimit(organizerId, adminCheckoutBuckets, CHECKOUT_LIMIT_PER_15_MINUTES, FIFTEEN_MINUTES_IN_MS,
+                "Hiciste demasiados intentos de compra en poco tiempo. Por favor probá de nuevo en unos minutos.");
+    }
+
     // === DEPRECATED: Métodos antiguos que solo usan IP ===
     // Mantenerlos para compatibilidad si algo aún los usa
     @Deprecated
@@ -162,6 +181,8 @@ public class RateLimiterService {
         commentMessageByIpBuckets.clear();
         adminLoginBuckets.clear();
         superadminLoginBuckets.clear();
+        checkoutBuckets.clear();
+        adminCheckoutBuckets.clear();
     }
 }
 

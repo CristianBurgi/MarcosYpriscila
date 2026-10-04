@@ -95,7 +95,7 @@ class GuestPhotoLimitMigrationTest {
             assertThat(noColumnYet.getInt(1)).as("la columna no existe antes de V14").isZero();
         }
 
-        var result = Flyway.configure().dataSource(throwawayUrl, user, password).load().migrate();
+        var result = Flyway.configure().dataSource(throwawayUrl, user, password).target("14").load().migrate();
         assertThat(result.migrationsExecuted).as("solo V14 estaba pendiente").isEqualTo(1);
 
         try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password); Statement st = conn.createStatement()) {

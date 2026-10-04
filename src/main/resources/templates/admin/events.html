@@ -58,6 +58,20 @@
         }
         .empty i { font-size: 2.2rem; color: var(--accent-purple); margin-bottom: 12px; }
         .empty h2 { color: var(--text-main); font-size: 1.2rem; margin-bottom: 6px; }
+        .btn-new {
+            background: linear-gradient(135deg, #f472b6, #a855f7); border: 0; color: #fff; padding: 10px 18px;
+            border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
+        }
+        .header-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        .header-row .subtitle { margin-bottom: 0; }
+        dialog { background: #1e293b; color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; width: min(420px, 92vw); }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+        dialog h2 { font-size: 1.2rem; margin-bottom: 6px; }
+        dialog p { color: var(--text-sub); margin-bottom: 14px; font-size: 0.9rem; }
+        dialog input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.8); color: var(--text-main); font-size: 1rem; }
+        .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+        .btn-secondary { background: transparent; border: 1px solid var(--glass-border); color: var(--text-sub); padding: 10px 16px; border-radius: 10px; cursor: pointer; }
+        .dialog-error { color: #fca5a5; font-size: 0.9rem; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
@@ -68,8 +82,13 @@
 </nav>
 
 <div class="container">
-    <h1>Mis eventos</h1>
-    <p class="subtitle">Elegí un evento para ver su álbum, moderar y descargar el material.</p>
+    <div class="header-row">
+        <div>
+            <h1>Mis eventos</h1>
+            <p class="subtitle">Elegí un evento para ver su álbum, moderar y descargar el material.</p>
+        </div>
+        <button class="btn-new" id="btnNewEvent" th:if="${checkoutEnabled}"><i class="fa-solid fa-plus"></i> Crear nuevo evento</button>
+    </div>
 
     <div class="events-list" th:if="${!events.isEmpty()}">
         <a class="event-card" th:each="ev : ${events}" th:href="@{'/admin/eventos/' + ${ev.slug()}}">
@@ -97,11 +116,58 @@
     </div>
 </div>
 
+<dialog id="newEventDialog" th:if="${checkoutEnabled}">
+    <form id="newEventForm" novalidate>
+        <h2>Crear nuevo evento</h2>
+        <p>Ponele un nombre y pasás al pago con Mercado Pago.</p>
+        <input id="newEventName" type="text" maxlength="100" placeholder="Nombre del evento" required>
+        <div class="dialog-error" id="newEventError" role="alert"></div>
+        <div class="dialog-actions">
+            <button type="button" class="btn-secondary" id="newEventCancel">Cancelar</button>
+            <button type="submit" class="btn-new" id="newEventSubmit">Ir a pagar</button>
+        </div>
+    </form>
+</dialog>
+
 <script>
     document.getElementById('btnLogout').addEventListener('click', async () => {
         await fetch('/api/v1/admin/auth/logout', { method: 'POST' });
         window.location.href = '/admin/login';
     });
+
+</script>
+
+<script th:if="${checkoutEnabled}">
+    const btnNew = document.getElementById('btnNewEvent');
+    if (btnNew) {
+        const dialog = document.getElementById('newEventDialog');
+        const nameInput = document.getElementById('newEventName');
+        const errorBox = document.getElementById('newEventError');
+        const submit = document.getElementById('newEventSubmit');
+        btnNew.addEventListener('click', () => { errorBox.style.display = 'none'; dialog.showModal(); nameInput.focus(); });
+        document.getElementById('newEventCancel').addEventListener('click', () => dialog.close());
+        document.getElementById('newEventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = nameInput.value.trim();
+            if (!name) { errorBox.textContent = 'Ingresá el nombre del evento'; errorBox.style.display = 'block'; return; }
+            submit.disabled = true;           // un solo clic: dos clics serían dos compras pendientes
+            errorBox.style.display = 'none';
+            try {
+                const response = await fetch('/api/v1/admin/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eventName: name })
+                });
+                const body = await response.json().catch(() => ({}));
+                if (response.ok && body.redirectUrl) { window.location.href = body.redirectUrl; return; }
+                errorBox.textContent = body.message || 'No pudimos procesar tu pedido. Probá de nuevo en unos minutos.';
+            } catch (err) {
+                errorBox.textContent = 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo.';
+            }
+            errorBox.style.display = 'block';
+            submit.disabled = false;
+        });
+    }
 </script>
 </body>
 </html>

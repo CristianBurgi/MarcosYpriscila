@@ -25,6 +25,8 @@ public final class AdminRouteExceptions {
                     "Logout: borra la cookie de sesión, no opera sobre ningún evento."),
             new Entry("/admin/eventos",
                     "\"Mis eventos\": no es un evento puntual; la consulta ya viene filtrada por el organizador logueado (findSummariesByOrganizerId)."),
+            new Entry("/api/v1/admin/checkout",
+                    "Compra de un evento nuevo (\"Crear nuevo evento\"): no opera sobre un evento existente; el organizer_id sale del principal autenticado, nunca del body. Solo existe con app.checkout.enabled=true."),
             new Entry("/admin",
                     "Solo redirige a /admin/eventos."),
             new Entry("/admin/",

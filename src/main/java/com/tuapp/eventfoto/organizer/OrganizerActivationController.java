@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.organizer;
 
 import com.tuapp.eventfoto.organizer.dto.ActivateAccountRequestDTO;
+import com.tuapp.eventfoto.common.exception.InvalidPasswordException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,10 @@ public class OrganizerActivationController {
     @PostMapping("/activate")
     @Transactional
     public ResponseEntity<Map<String, String>> activate(@Valid @RequestBody ActivateAccountRequestDTO request) {
+        // Antes de consumir el token: una contraseña rechazada no gasta el link de un solo uso.
+        PasswordPolicy.violation(request.password(), null).ifPresent(message -> {
+            throw new InvalidPasswordException(message);
+        });
         Organizer organizer = organizerTokenService.consume(request.token(), OrganizerTokenPurpose.ACCOUNT_ACTIVATION);
         organizer.setPasswordHash(passwordEncoder.encode(request.password()));
         organizerRepository.save(organizer);
