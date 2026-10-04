@@ -14,6 +14,12 @@ spring:
     enabled: false
 
 app:
+  checkout:
+    # Prendido en los tests para que las rutas del checkout entren en AdminRouteEnumerationTest y los tests de
+    # aislamiento del panel; los tests del interruptor apagado lo pisan. El token es falso: el cliente de MP se mockea.
+    enabled: true
+    price-ars: 50000
+    mp-access-token: TEST-token-falso-solo-para-tests
   storage:
     mode: local
 

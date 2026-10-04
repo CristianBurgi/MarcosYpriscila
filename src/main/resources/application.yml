@@ -64,7 +64,13 @@ app:
     # el organizador lo pasa a "sin límite" desde el panel). VIGENTE: default-max-photos-per-guest. La propiedad
     # vieja max-photos-per-guest sigue funcionando como fallback, pero está deprecada. Es el único lugar donde vive el 24.
     default-max-photos-per-guest: ${app.guest-quota.max-photos-per-guest:24}
-  storage:    
+  checkout:
+    # Fase 9.3: compra con Mercado Pago (Checkout Pro). Apagado por defecto: sin rutas y sin credenciales requeridas.
+    # Prendido, exige MP_ACCESS_TOKEN y un precio > 0 (si no, la app no arranca). Credenciales de PRUEBA hasta la L6.
+    enabled: ${CHECKOUT_ENABLED:false}
+    price-ars: ${CHECKOUT_PRICE_ARS:50000}
+    mp-access-token: ${MP_ACCESS_TOKEN:}
+  storage:
     mode: ${STORAGE_MODE:local} # 'local' para desarrollo local en disco, 'r2' para producción en Railway
 
 cloudflare:

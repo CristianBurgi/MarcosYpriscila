@@ -268,6 +268,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidPassword(InvalidPasswordException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(), "Bad Request - Validation Error", ex.getMessage(),
+                TokenMasker.mask(request.getRequestURI())));
+    }
+
+    @ExceptionHandler(com.tuapp.eventfoto.checkout.InvalidCheckoutRequestException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidCheckout(
+            com.tuapp.eventfoto.checkout.InvalidCheckoutRequestException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(), "Bad Request - Validation Error", ex.getMessage(),
+                TokenMasker.mask(request.getRequestURI())));
+    }
+
+    @ExceptionHandler(com.tuapp.eventfoto.checkout.EmailAlreadyRegisteredException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEmailAlreadyRegistered(
+            com.tuapp.eventfoto.checkout.EmailAlreadyRegisteredException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponseDTO.of(
+                HttpStatus.CONFLICT.value(), "Conflict", ex.getMessage(), TokenMasker.mask(request.getRequestURI())));
+    }
+
+    /** Sin log del cuerpo de MP ni de la causa: la pasarela ya registró el tipo de error y el status. */
+    @ExceptionHandler(com.tuapp.eventfoto.checkout.PaymentGatewayException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePaymentGateway(
+            com.tuapp.eventfoto.checkout.PaymentGatewayException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ErrorResponseDTO.of(
+                HttpStatus.BAD_GATEWAY.value(), "Bad Gateway", ex.getMessage(), TokenMasker.mask(request.getRequestURI())));
+    }
+
     /**
      * Recursos estáticos inexistentes (favicon de navegadores viejos, bots escaneando rutas):
      * un 404 normal, no un error a reportar.

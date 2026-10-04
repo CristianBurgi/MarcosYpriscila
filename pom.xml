@@ -25,6 +25,7 @@
         <sentry.version>8.16.0</sentry.version>
         <openhtmltopdf.version>1.1.86</openhtmltopdf.version>
         <jsoup.version>1.23.2</jsoup.version>
+        <mercadopago.version>3.7.0</mercadopago.version>
     </properties>
 
     <dependencies>
@@ -93,6 +94,13 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Mercado Pago (Checkout Pro): fase 9.3 -->
+        <dependency>
+            <groupId>com.mercadopago</groupId>
+            <artifactId>sdk-java</artifactId>
+            <version>${mercadopago.version}</version>
         </dependency>
 
         <!-- Cloudflare R2 / S3 Storage -->

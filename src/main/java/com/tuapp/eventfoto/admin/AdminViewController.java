@@ -41,6 +41,10 @@ public class AdminViewController {
     private final AppUrls appUrls;
     private final GuestQuotaService guestQuotaService;
 
+    /** Con el checkout apagado no aparece el botón "Crear nuevo evento". */
+    @org.springframework.beans.factory.annotation.Value("${app.checkout.enabled:false}")
+    private boolean checkoutEnabled;
+
     @GetMapping("/login")
     public String loginPage() {
         return "admin/login";
@@ -54,6 +58,7 @@ public class AdminViewController {
     @GetMapping("/eventos")
     public String myEvents(@AuthenticationPrincipal UUID organizerId, Model model) {
         model.addAttribute("events", eventAccessService.listOwnedEvents(organizerId));
+        model.addAttribute("checkoutEnabled", checkoutEnabled);
         return "admin/events";
     }
 

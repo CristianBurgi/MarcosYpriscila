@@ -83,6 +83,11 @@ public class AppUrls {
         return baseUrl + "/e/" + slug;
     }
 
+    /** A donde vuelve Mercado Pago después del pago (back_urls). Trae el external_reference en la query: no loguearla. */
+    public String checkoutReturnUrl() {
+        return baseUrl + "/compra/retorno";
+    }
+
     /** URL absoluta del link de moderador. Contiene la credencial: no loguearla. */
     public String moderatorUrl(String moderatorToken) {
         return baseUrl + "/moderar/" + moderatorToken;

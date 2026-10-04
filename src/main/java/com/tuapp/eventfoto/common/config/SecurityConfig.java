@@ -39,7 +39,9 @@ public class SecurityConfig {
     private static final RequestMatcher MODERATOR_SENSITIVE = new OrRequestMatcher(
         new AntPathRequestMatcher("/moderar/**"),
         new AntPathRequestMatcher("/api/v1/moderate/**"),
-        new AntPathRequestMatcher("/api/v1/admin/events/*/moderator-link/**"));
+        new AntPathRequestMatcher("/api/v1/admin/events/*/moderator-link/**"),
+        // /compra/retorno: la URL trae el external_reference de la compra (fase 9.3)
+        new AntPathRequestMatcher("/compra/**"));
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -114,6 +116,11 @@ public class SecurityConfig {
                 // Activación de cuenta del organizador (link de un solo uso, público hasta que se consume)
                 .requestMatchers(HttpMethod.GET, "/activar-cuenta").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/organizer/activate").permitAll()
+
+                // Checkout (fase 9.3), rutas exactas. Solo existen con app.checkout.enabled=true; apagado, no hay handler y dan 404.
+                // /api/v1/admin/checkout NO va acá: es del organizador y cae en /api/v1/admin/** (hasRole ORGANIZER).
+                .requestMatchers(HttpMethod.GET, "/comprar", "/compra/retorno").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/checkout").permitAll()
 
                 // Rutas protegidas que requieren rol ORGANIZER
                 .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ORGANIZER")
