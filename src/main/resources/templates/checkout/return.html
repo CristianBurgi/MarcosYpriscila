@@ -29,6 +29,14 @@
         <a class="button" href="/admin/login">Iniciar sesión</a>
     </section>
 
+    <!-- Volvió de MP con la referencia pero sin un payment_id válido (ausente o "null"): salió sin pagar. -->
+    <section class="state" id="state-incomplete">
+        <h1>No completaste el pago</h1>
+        <p>No se hizo ningún cobro.</p>
+        <a class="button" id="incompleteRetryLink" href="/comprar">Intentar de nuevo</a>
+        <p>Si ya pagaste, en unos minutos vas a poder iniciar sesión.</p>
+    </section>
+
     <section class="state" id="state-pending">
         <h1>Estamos confirmando tu pago…</h1>
         <p>Esto suele tardar unos segundos. No hace falta que hagas nada.</p>
@@ -126,6 +134,7 @@
                 const response = await post('/api/v1/checkout/status', { externalReference: reference });
                 if (!response.ok) return false;
                 const status = await response.json();
+                document.getElementById('incompleteRetryLink').href = status.repurchase ? '/admin/eventos' : '/comprar';
                 if (status.state === 'CREATED') {
                     document.getElementById('eventName').textContent = status.eventName || '';
                     document.getElementById('created-new').style.display = status.repurchase ? 'none' : 'block';
@@ -148,13 +157,15 @@
             return false;
         }
 
-        async function poll() {
-            show('state-pending');
+        // background: la persona ve "No completaste el pago" y se consulta igual por si el pago llega por otro lado
+        // (otra pestaña, el webhook). Solo cambia la pantalla si el estado es final; al terminar, la deja como está.
+        async function poll(background) {
+            if (!background) show('state-pending');
             for (let i = 0; i < MAX_ROUNDS; i++) {
                 if (await round()) return;
                 await new Promise(resolve => setTimeout(resolve, INTERVAL_MS));
             }
-            show('state-slow');
+            if (!background) show('state-slow');
         }
 
         const retryButton = document.getElementById('retryButton');
@@ -167,8 +178,11 @@
             if (!done) show('state-slow');
         });
 
-        if (validReference) {
-            poll();
+        if (validReference && validPaymentId) {
+            poll(false);
+        } else if (validReference) {
+            show('state-incomplete');
+            poll(true);
         }
     })();
 </script>
