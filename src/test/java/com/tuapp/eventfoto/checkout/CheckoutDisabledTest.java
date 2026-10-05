@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@TestPropertySource(properties = {"app.checkout.enabled=false", "app.checkout.mp-access-token="})
+@TestPropertySource(properties = {"app.checkout.enabled=false", "app.checkout.mp-access-token=", "app.checkout.mp-webhook-secret="})
 class CheckoutDisabledTest {
 
     @Autowired private MockMvc mockMvc;
@@ -50,6 +50,9 @@ class CheckoutDisabledTest {
         assertThat(context.getBeansOfType(CheckoutViewController.class)).isEmpty();
         assertThat(context.getBeansOfType(PaymentPreferenceGateway.class)).isEmpty();
         assertThat(context.getBeansOfType(PendingPurchaseCleanupJob.class)).isEmpty();
+        assertThat(context.getBeansOfType(PurchaseConfirmationService.class)).isEmpty();
+        assertThat(context.getBeansOfType(PurchaseConfirmationController.class)).isEmpty();
+        assertThat(context.getBeansOfType(PaymentLookupGateway.class)).isEmpty();
     }
 
     @Test
@@ -58,6 +61,10 @@ class CheckoutDisabledTest {
         mockMvc.perform(get("/comprar")).andExpect(status().isNotFound());
         mockMvc.perform(get("/compra/retorno")).andExpect(status().isNotFound());
         mockMvc.perform(post("/api/v1/checkout").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
+        // Fase 9.4
+        mockMvc.perform(post("/api/v1/checkout/webhook").queryParam("data.id", "1").queryParam("type", "payment")).andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v1/checkout/confirm").contentType(MediaType.APPLICATION_JSON).content("{\"paymentId\":\"1\"}")).andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v1/checkout/status").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNotFound());
     }
 
     @Test

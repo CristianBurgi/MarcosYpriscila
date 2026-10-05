@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * V15 (fase 9.3): pending_purchase. El CHECK "o organizer_id, o email + password_hash, nunca ambos ni ninguno" vive en
  * la base y por eso se prueba contra Postgres real (H2 de los otros tests se arma desde las entidades, sin CHECK).
  * En CI lo provee el service container; en local se omite si no hay uno; en CI sin Postgres FALLA.
+ * V16 (fase 9.4): el modo XOR aplica solo sin procesar; procesada, sin datos personales y con el pago asociado.
  */
 class PendingPurchaseMigrationTest {
 
@@ -63,7 +64,11 @@ class PendingPurchaseMigrationTest {
             throw new IllegalArgumentException("No se pudo parsear DB_URL");
         }
         throwawayUrl = m.group(1) + throwawayDb + m.group(3);
-        Flyway.configure().dataSource(throwawayUrl, user, password).load().migrate();
+    }
+
+    private void migrate(String target) {
+        var config = Flyway.configure().dataSource(throwawayUrl, user, password);
+        (target == null ? config : config.target(target)).load().migrate();
     }
 
     @AfterEach
@@ -82,6 +87,7 @@ class PendingPurchaseMigrationTest {
     @Test
     @DisplayName("CHECK: cliente existente o cliente nuevo sí; ambos modos, ninguno, o un modo a medias, fallan")
     void checkConstraintAcceptsExactlyOneMode() throws SQLException {
+        migrate(null);
         try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password); Statement st = conn.createStatement()) {
             st.execute("INSERT INTO organizer (id, email) VALUES ('11111111-1111-4111-8111-111111111111', 'existente@test.com')");
             String org = "'11111111-1111-4111-8111-111111111111'";
@@ -105,6 +111,7 @@ class PendingPurchaseMigrationTest {
     @Test
     @DisplayName("El monto tiene que ser > 0, el organizer_id tiene que existir y un mp_payment_id no se repite (UNIQUE parcial)")
     void amountForeignKeyAndPaymentIdUniqueness() throws SQLException {
+        migrate(null);
         try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password); Statement st = conn.createStatement()) {
             assertThatThrownBy(() -> st.execute(String.format(INSERT, "NULL", "'a@test.com'", "'$2a$hash'", "0", "NULL")))
                     .as("monto 0").isInstanceOf(SQLException.class);
@@ -117,6 +124,53 @@ class PendingPurchaseMigrationTest {
             // Varias compras sin pago asociado son lo normal
             st.execute(String.format(INSERT, "NULL", "'p3@test.com'", "'$2a$hash'", "50000", "NULL"));
             st.execute(String.format(INSERT, "NULL", "'p4@test.com'", "'$2a$hash'", "50000", "NULL"));
+        }
+    }
+
+    private static final String UPDATE_PROCESSED = "UPDATE pending_purchase SET processed_at = now(), %s WHERE id = '%s'";
+
+    @Test
+    @DisplayName("V16 sobre filas existentes de V15: procesada solo con organizer_id + mp_payment_id y SIN email ni hash; sin procesar, el XOR de siempre")
+    void v16ProcessedRowsCarryNoPersonalData() throws SQLException {
+        migrate("15");
+        String org = "'33333333-3333-4333-8333-333333333333'";
+        String nueva = "44444444-4444-4444-8444-444444444444";
+        String recompra = "55555555-5555-4555-8555-555555555555";
+        try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password); Statement st = conn.createStatement()) {
+            st.execute("INSERT INTO organizer (id, email) VALUES (" + org + ", 'existente@test.com')");
+            st.execute("INSERT INTO pending_purchase (id, email, password_hash, event_name, amount) VALUES ('" + nueva + "', 'nueva@test.com', '$2a$hash', 'E', 50000)");
+            st.execute("INSERT INTO pending_purchase (id, organizer_id, event_name, amount) VALUES ('" + recompra + "', " + org + ", 'E', 50000)");
+        }
+
+        var result = Flyway.configure().dataSource(throwawayUrl, user, password).load().migrate();
+        assertThat(result.migrationsExecuted).as("V16 corre sobre las filas existentes").isGreaterThanOrEqualTo(1);
+
+        try (Connection conn = DriverManager.getConnection(throwawayUrl, user, password); Statement st = conn.createStatement()) {
+            // Procesada sin borrar email/hash, sin pago o sin organizer: no
+            assertThatThrownBy(() -> st.execute(String.format(UPDATE_PROCESSED, "mp_payment_id = '1', organizer_id = " + org, nueva)))
+                    .as("procesada con email y hash").isInstanceOf(SQLException.class);
+            assertThatThrownBy(() -> st.execute(String.format(UPDATE_PROCESSED, "organizer_id = " + org + ", email = NULL, password_hash = NULL", nueva)))
+                    .as("procesada sin mp_payment_id").isInstanceOf(SQLException.class);
+            assertThatThrownBy(() -> st.execute(String.format(UPDATE_PROCESSED, "mp_payment_id = '1', email = NULL, password_hash = NULL", nueva)))
+                    .as("procesada sin organizer_id").isInstanceOf(SQLException.class);
+
+            // Incidente de "email ya registrado": sin procesar, con email + hash y con el pago guardado: sí
+            st.execute("UPDATE pending_purchase SET mp_payment_id = '2' WHERE id = '" + nueva + "'");
+            // Procesada como corresponde (compra nueva minimizada / recompra): sí
+            st.execute(String.format(UPDATE_PROCESSED, "mp_payment_id = '3', organizer_id = " + org + ", email = NULL, password_hash = NULL, created_organizer = true", nueva));
+            st.execute(String.format(UPDATE_PROCESSED, "mp_payment_id = '4', created_organizer = false", recompra));
+
+            // Sin procesar sigue valiendo el XOR
+            assertThatThrownBy(() -> st.execute("INSERT INTO pending_purchase (id, event_name, amount) VALUES (gen_random_uuid(), 'E', 50000)"))
+                    .as("ningún modo").isInstanceOf(SQLException.class);
+            assertThatThrownBy(() -> st.execute("INSERT INTO pending_purchase (id, organizer_id, email, password_hash, event_name, amount) VALUES (gen_random_uuid(), " + org + ", 'x@test.com', 'h', 'E', 50000)"))
+                    .as("ambos modos").isInstanceOf(SQLException.class);
+
+            // payment_incident: uno por payment_id, con resolved_at para la 9.7
+            st.execute("INSERT INTO payment_incident (id, payment_id, external_reference, reason) VALUES (gen_random_uuid(), '99', 'ref', 'UNKNOWN_REFERENCE')");
+            assertThatThrownBy(() -> st.execute("INSERT INTO payment_incident (id, payment_id, external_reference, reason) VALUES (gen_random_uuid(), '99', 'ref', 'AMOUNT_MISMATCH')"))
+                    .isInstanceOf(SQLException.class);
+            st.execute("UPDATE payment_incident SET resolved_at = now() WHERE payment_id = '99'");
         }
     }
 }

@@ -52,21 +52,22 @@ class CheckoutPagesTest {
         String reference = "0b8f6a52-1c3e-4d0a-9d52-6a2f6e0c7b11";
         try (LogCapture logs = LogCapture.start()) {
             var result = mockMvc.perform(get("/compra/retorno")
-                            .param("external_reference", reference).param("status", "approved")
-                            .param("collection_status", "approved").param("payment_id", "1234567890"))
+                            .param("external_reference", reference).param("status", "valor-reflejado-status")
+                            .param("collection_status", "valor-reflejado-collection").param("payment_id", "1234567890"))
                     .andExpect(status().isOk())
                     .andExpect(header().string("Cache-Control", containsString("no-store")))
                     .andExpect(header().string("Referrer-Policy", "no-referrer"))
                     .andExpect(content().string(containsString("Estamos confirmando tu pago")))
                     .andReturn();
             String body = result.getResponse().getContentAsString();
-            assertThat(body).doesNotContain(reference).doesNotContain("approved").doesNotContain("1234567890");
+            assertThat(body).doesNotContain(reference).doesNotContain("valor-reflejado").doesNotContain("1234567890");
+            assertThat(result.getResponse().getHeader("Set-Cookie")).as("sin login automático: ninguna cookie").isNull();
             assertThat(logs.text()).doesNotContain(reference).doesNotContain("1234567890");
         }
-        mockMvc.perform(get("/compra/retorno").param("status", "rejected").param("collection_status", "rejected"))
+        mockMvc.perform(get("/compra/retorno").param("status", "valor-reflejado-2").param("collection_status", "valor-reflejado-3"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Estamos confirmando tu pago")))
-                .andExpect(content().string(not(containsString("rejected"))));
+                .andExpect(content().string(not(containsString("valor-reflejado"))));
     }
 
     @Test

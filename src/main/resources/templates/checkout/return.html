@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,15 +9,141 @@
     <style>
         * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
         body { margin: 0; background: #f8fafc; color: #0f172a; }
-        main { max-width: 440px; margin: 72px auto; padding: 0 20px; text-align: center; }
+        main { max-width: 460px; margin: 72px auto; padding: 0 20px; text-align: center; }
         h1 { font-size: 1.5rem; }
-        p { color: #475569; }
+        p { color: #475569; line-height: 1.5; }
+        .state { display: none; }
+        .state.visible { display: block; }
+        .button { display: inline-block; margin-top: 12px; padding: 12px 20px; border-radius: 8px; border: 0; background: #4f46e5; color: #fff; font-size: 1rem; font-weight: 600; text-decoration: none; cursor: pointer; }
+        .button:disabled { background: #94a3b8; cursor: wait; }
+        .link { color: #4f46e5; font-weight: 600; }
     </style>
 </head>
 <body>
 <main>
-    <h1>Estamos confirmando tu pago</h1>
-    <p>Esto puede tardar unos minutos. Cuando esté listo, vas a poder entrar a tu evento. No hace falta que hagas nada más.</p>
+    <section class="state visible" id="state-pending">
+        <h1>Estamos confirmando tu pago…</h1>
+        <p>Esto suele tardar unos segundos. No hace falta que hagas nada.</p>
+    </section>
+
+    <section class="state" id="state-slow">
+        <h1>Todavía no tenemos la confirmación</h1>
+        <p>A veces Mercado Pago tarda un poco más. Podés volver a consultar en un rato.</p>
+        <button class="button" id="retryButton" type="button">Volver a consultar</button>
+    </section>
+
+    <section class="state" id="state-created">
+        <h1>¡Listo! Tu evento «<span id="eventName"></span>» ya está creado.</h1>
+        <div id="created-new">
+            <p>Ya podés iniciar sesión con el email y la contraseña que elegiste.</p>
+            <a class="button" href="/admin/login">Iniciar sesión</a>
+        </div>
+        <div id="created-repurchase" style="display:none">
+            <p>Ya está en Mis eventos.</p>
+            <a class="button" href="/admin/eventos">Ir a Mis eventos</a>
+        </div>
+    </section>
+
+    <section class="state" id="state-rejected">
+        <h1>El pago no se aprobó</h1>
+        <p>No se hizo ningún cobro. Podés intentarlo de nuevo.</p>
+        <a class="button" id="retryPurchaseLink" href="/comprar">Intentar de nuevo</a>
+    </section>
+
+    <section class="state" id="state-incident">
+        <h1>Recibimos tu pago, pero necesitamos revisarlo</h1>
+        <p>Antes de crear tu evento tenemos que revisar algo de la compra. No vuelvas a pagar.</p>
+        <p th:if="${supportWhatsappUrl != null}">Escribinos por WhatsApp y lo resolvemos:
+            <a class="link" th:href="${supportWhatsappUrl}" href="#" target="_blank" rel="noopener noreferrer">abrir WhatsApp</a></p>
+        <p th:if="${supportWhatsappUrl == null}">Te vamos a contactar para resolverlo.</p>
+    </section>
 </main>
+
+<script>
+    (function () {
+        // Los parámetros que agrega Mercado Pago se leen acá y se sacan de la barra (y del historial). El servidor no los
+        // lee ni los loguea; viajan por POST.
+        const params = new URLSearchParams(window.location.search);
+        const paymentId = params.get('payment_id');
+        const reference = params.get('external_reference');
+        if (window.location.search) {
+            history.replaceState(null, '', window.location.pathname);
+        }
+
+        const INTERVAL_MS = 3000;
+        const MAX_ROUNDS = 30; // 90 s: después, un botón (una ronda por clic), nunca un loop infinito
+        const validPaymentId = paymentId && /^\d{1,18}$/.test(paymentId);
+        const validReference = reference && /^[0-9a-fA-F-]{36}$/.test(reference);
+
+        function show(id) {
+            document.querySelectorAll('.state').forEach(el => el.classList.remove('visible'));
+            document.getElementById(id).classList.add('visible');
+        }
+
+        async function post(url, body) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return response;
+        }
+
+        // Una ronda: pedir la confirmación (si MP notificó antes de que el pago fuera consultable, esto lo cubre) y
+        // consultar el estado. Devuelve true si el estado es final.
+        async function round() {
+            try {
+                if (validPaymentId) {
+                    await post('/api/v1/checkout/confirm', { paymentId: paymentId });
+                }
+                const response = await post('/api/v1/checkout/status', { externalReference: reference });
+                if (!response.ok) return false;
+                const status = await response.json();
+                if (status.state === 'CREATED') {
+                    document.getElementById('eventName').textContent = status.eventName || '';
+                    document.getElementById('created-new').style.display = status.repurchase ? 'none' : 'block';
+                    document.getElementById('created-repurchase').style.display = status.repurchase ? 'block' : 'none';
+                    show('state-created');
+                    return true;
+                }
+                if (status.state === 'REJECTED') {
+                    document.getElementById('retryPurchaseLink').href = status.repurchase ? '/admin/eventos' : '/comprar';
+                    show('state-rejected');
+                    return true;
+                }
+                if (status.state === 'INCIDENT') {
+                    show('state-incident');
+                    return true;
+                }
+            } catch (e) {
+                // sin conexión o MP lento: se sigue mostrando "confirmando"
+            }
+            return false;
+        }
+
+        async function poll() {
+            show('state-pending');
+            for (let i = 0; i < MAX_ROUNDS; i++) {
+                if (await round()) return;
+                await new Promise(resolve => setTimeout(resolve, INTERVAL_MS));
+            }
+            show('state-slow');
+        }
+
+        const retryButton = document.getElementById('retryButton');
+        retryButton.addEventListener('click', async () => {
+            retryButton.disabled = true;
+            retryButton.textContent = 'Consultando…';
+            const done = await round();
+            retryButton.disabled = false;
+            retryButton.textContent = 'Volver a consultar';
+            if (!done) show('state-slow');
+        });
+
+        if (validReference) {
+            poll();
+        }
+    })();
+</script>
 </body>
 </html>

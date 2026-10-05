@@ -683,11 +683,15 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `CHECKOUT_ENABLED` | Fase 9.3: prende la compra con Mercado Pago (`/comprar`, botón "Crear nuevo evento"). Por defecto `false`: sin rutas (404) y sin credenciales requeridas | Opcional |
 | `MP_ACCESS_TOKEN` | Access token de Mercado Pago. **Solo de PRUEBA hasta la L6.** Obligatorio si `CHECKOUT_ENABLED=true` (si falta, la app no arranca). Nunca se loguea | ✅ (si `CHECKOUT_ENABLED=true`) |
 | `CHECKOUT_PRICE_ARS` | Precio del evento en ARS (por defecto `50000`). Tiene que ser > 0. Única fuente del monto: el cliente no lo manda | Opcional |
+| `MP_WEBHOOK_SECRET` | Fase 9.4: clave secreta de Webhooks del panel de Mercado Pago (Tus integraciones → tu app → Webhooks). Valida la firma `x-signature` de las notificaciones. **La de PRUEBA hasta la L6.** Obligatoria si `CHECKOUT_ENABLED=true`. Nunca se loguea | ✅ (si `CHECKOUT_ENABLED=true`) |
+| `SUPPORT_WHATSAPP` | WhatsApp de contacto (solo dígitos, con código de país) que muestra la página de retorno cuando un pago queda en revisión manual | Opcional |
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
 | `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
 | `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |
 
 > Ver [`.env.example`](.env.example) para la plantilla completa.
+
+> **Checklist L6 (pasar Mercado Pago a producción).** Cambian **dos** valores, no uno: `MP_ACCESS_TOKEN` (credenciales productivas) y `MP_WEBHOOK_SECRET` (la clave secreta de Webhooks del modo producción, que es otro valor que la de prueba). Configurar también la URL del webhook en el modo producción del panel. La confirmación del pago no compara `collector_id`: con nuestro access token la API solo devuelve pagos de nuestra cuenta.
 
 > **Producción no arranca con valores de ejemplo.** Con `STORAGE_MODE=r2`, la app se niega a arrancar si `ADMIN_PASSWORD`, `JWT_SECRET`, `DB_PASSWORD`, `R2_ACCESS_KEY` o `R2_SECRET_KEY` coinciden con algún valor de ejemplo publicado en el repo (defaults de `application.yml`, `.env.example`, `application-test.yml`, `docker-compose.yml`), si están vacías, o si `JWT_SECRET` tiene menos de 32 caracteres. Lo mismo si `APP_BASE_URL` parece un ejemplo (`tu-boda`, `example`, `placeholder`...). El error nombra la variable, nunca el valor. En modo `local` no se valida.
 

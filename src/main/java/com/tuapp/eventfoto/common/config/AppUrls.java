@@ -88,6 +88,16 @@ public class AppUrls {
         return baseUrl + "/compra/retorno";
     }
 
+    /** notification_url de la preferencia: el webhook de Mercado Pago (fase 9.4). */
+    public String checkoutWebhookUrl() {
+        return baseUrl + "/api/v1/checkout/webhook";
+    }
+
+    /** Login del organizador (botón de la página de retorno y mail "tu evento está listo"). */
+    public String loginUrl() {
+        return baseUrl + "/admin/login";
+    }
+
     /** URL absoluta del link de moderador. Contiene la credencial: no loguearla. */
     public String moderatorUrl(String moderatorToken) {
         return baseUrl + "/moderar/" + moderatorToken;
