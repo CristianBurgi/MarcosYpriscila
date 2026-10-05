@@ -20,6 +20,8 @@ app:
     enabled: true
     price-ars: 50000
     mp-access-token: TEST-token-falso-solo-para-tests
+    mp-webhook-secret: secreto-webhook-falso-solo-para-tests
+    webhook-unknown-payment-retry-ms: 10
   storage:
     mode: local
 

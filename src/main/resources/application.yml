@@ -70,6 +70,11 @@ app:
     enabled: ${CHECKOUT_ENABLED:false}
     price-ars: ${CHECKOUT_PRICE_ARS:50000}
     mp-access-token: ${MP_ACCESS_TOKEN:}
+    # Fase 9.4: clave secreta de Webhooks del panel de MP (valida x-signature). Obligatoria con el checkout prendido.
+    mp-webhook-secret: ${MP_WEBHOOK_SECRET:}
+  support:
+    # WhatsApp de contacto para la página de retorno cuando un pago queda en revisión (solo dígitos, con código de país).
+    whatsapp: ${SUPPORT_WHATSAPP:}
   storage:
     mode: ${STORAGE_MODE:local} # 'local' para desarrollo local en disco, 'r2' para producción en Railway
 

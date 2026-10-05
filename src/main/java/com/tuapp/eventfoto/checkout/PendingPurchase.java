@@ -50,6 +50,27 @@ public class PendingPurchase {
     @Column(name = "mp_payment_id")
     private String mpPaymentId;
 
+    /** Fase 9.4 (V16): evento creado al confirmar el pago. */
+    @Column(name = "event_id")
+    private UUID eventId;
+
+    /** Fase 9.4 (V16): true si la confirmación creó la cuenta, false si fue una recompra. */
+    @Column(name = "created_organizer")
+    private Boolean createdOrganizer;
+
+    /** Fase 9.4 (V16): reserva del mail de confirmación (uno solo por compra). */
+    @Column(name = "confirmation_email_sent_at")
+    private Instant confirmationEmailSentAt;
+
+    /** Fase 9.4 (V16): último estado de un pago no aprobado (rejected, cancelled...). */
+    @Column(name = "last_payment_status")
+    private String lastPaymentStatus;
+
+    /** Recompra (o compra ya procesada de una cuenta existente): sin email propio en la compra. */
+    public boolean isRepurchase() {
+        return processedAt != null ? Boolean.FALSE.equals(createdOrganizer) : organizerId != null;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

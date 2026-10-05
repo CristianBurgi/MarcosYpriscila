@@ -303,8 +303,8 @@ class CheckoutFlowTest {
     @DisplayName("Con el interruptor prendido, el access token no sale en el log del arranque de la configuración")
     void settingsNeverLogTheAccessToken() {
         try (LogCapture logs = LogCapture.start()) {
-            new CheckoutSettings(true, "50000", "APP_USR-token-super-secreto-123");
-            assertThat(logs.text()).doesNotContain("APP_USR-token-super-secreto-123");
+            new CheckoutSettings(true, "50000", "APP_USR-token-super-secreto-123", "secreto-de-webhook-super-secreto");
+            assertThat(logs.text()).doesNotContain("APP_USR-token-super-secreto-123").doesNotContain("secreto-de-webhook-super-secreto");
         }
     }
 

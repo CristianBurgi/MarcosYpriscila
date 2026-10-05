@@ -57,7 +57,11 @@ public class MercadoPagoPreferenceGateway implements PaymentPreferenceGateway {
     public Preference createPreference(UUID externalReference, BigDecimal amount, Instant expiresAt) {
         OffsetDateTime from = OffsetDateTime.now(ARGENTINA).truncatedTo(ChronoUnit.MILLIS);
         OffsetDateTime to = expiresAt.atZone(ARGENTINA).toOffsetDateTime().truncatedTo(ChronoUnit.MILLIS);
-        PreferenceRequest request = buildRequest(externalReference, amount, from, to, appUrls.checkoutReturnUrl());
+        // MP rechaza auto_return (y no puede llegar a un webhook) con una URL que no es https pública: en desarrollo
+        // local (http://localhost) la preferencia sale sin las dos cosas.
+        boolean publicHttps = appUrls.baseUrl().startsWith("https://");
+        PreferenceRequest request = buildRequest(externalReference, amount, from, to, appUrls.checkoutReturnUrl(),
+                publicHttps ? appUrls.checkoutWebhookUrl() : null, publicHttps);
         MPRequestOptions options = MPRequestOptions.builder()
                 .accessToken(settings.accessToken())
                 .connectionTimeout(CONNECTION_TIMEOUT_MS)
@@ -83,13 +87,17 @@ public class MercadoPagoPreferenceGateway implements PaymentPreferenceGateway {
     }
 
     /**
-     * La preferencia completa. Lo que NO lleva, a propósito: notification_url (el webhook es de la 9.4: sin esa URL MP
-     * no llama a nada), datos del pagador (ni el email) y el nombre del evento. Pública de paquete para testearla.
+     * La preferencia completa. Lo que NO lleva, a propósito: datos del pagador (ni el email) y el nombre del evento.
+     * notification_url apunta al webhook (fase 9.4) y auto_return=approved trae a la persona de vuelta sola después
+     * de un pago aprobado. Pública de paquete para testearla.
      */
     static PreferenceRequest buildRequest(UUID externalReference, BigDecimal amount,
-                                          OffsetDateTime expirationFrom, OffsetDateTime expirationTo, String returnUrl) {
+                                          OffsetDateTime expirationFrom, OffsetDateTime expirationTo, String returnUrl,
+                                          String notificationUrl, boolean autoReturnApproved) {
         return PreferenceRequest.builder()
                 .externalReference(externalReference.toString())
+                .notificationUrl(notificationUrl)
+                .autoReturn(autoReturnApproved ? "approved" : null)
                 .items(List.of(PreferenceItemRequest.builder()
                         .id(ITEM_ID)
                         .title(ITEM_TITLE)

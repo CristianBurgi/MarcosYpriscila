@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tu evento está listo</title>
+</head>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+<table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px;">
+    <tr><td>
+        <h1 style="font-size:22px;margin:0 0 12px;">¡Tu evento está listo!</h1>
+        <p style="font-size:16px;line-height:1.5;margin:0 0 12px;">
+            Recibimos tu pago y ya creamos <strong th:text="${eventName}">el evento</strong>.
+        </p>
+        <p th:if="${!repurchase}" style="font-size:16px;line-height:1.5;margin:0 0 20px;">
+            Entrá con el email y la contraseña que elegiste al comprar.
+        </p>
+        <p th:if="${repurchase}" style="font-size:16px;line-height:1.5;margin:0 0 20px;">
+            Ya lo vas a ver en "Mis eventos".
+        </p>
+        <a th:href="${loginUrl}" href="#"
+           style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;">Iniciar sesión</a>
+    </td></tr>
+</table>
+</body>
+</html>

@@ -17,7 +17,8 @@ class MercadoPagoPreferenceRequestTest {
     private final OffsetDateTime from = OffsetDateTime.parse("2026-10-04T10:00:00.000-03:00");
     private final OffsetDateTime to = from.plusHours(24);
     private final PreferenceRequest request =
-            MercadoPagoPreferenceGateway.buildRequest(reference, new BigDecimal("50000.00"), from, to, "https://event-foto.up.railway.app/compra/retorno");
+            MercadoPagoPreferenceGateway.buildRequest(reference, new BigDecimal("50000.00"), from, to, "https://event-foto.up.railway.app/compra/retorno",
+                    "https://event-foto.up.railway.app/api/v1/checkout/webhook", true);
 
     @Test
     @DisplayName("external_reference = id de la compra; un ítem de monto configurado, ARS, título fijo")
@@ -32,12 +33,33 @@ class MercadoPagoPreferenceRequestTest {
     }
 
     @Test
-    @DisplayName("back_urls apuntan a /compra/retorno; SIN notification_url (el webhook es de la 9.4)")
+    @DisplayName("back_urls apuntan a /compra/retorno; notification_url al webhook y auto_return=approved (fase 9.4)")
     void backUrlsAndNoNotificationUrl() {
         assertThat(request.getBackUrls().getSuccess()).isEqualTo("https://event-foto.up.railway.app/compra/retorno");
         assertThat(request.getBackUrls().getFailure()).isEqualTo("https://event-foto.up.railway.app/compra/retorno");
         assertThat(request.getBackUrls().getPending()).isEqualTo("https://event-foto.up.railway.app/compra/retorno");
-        assertThat(request.getNotificationUrl()).isNull();
+        assertThat(request.getNotificationUrl()).isEqualTo("https://event-foto.up.railway.app/api/v1/checkout/webhook");
+        assertThat(request.getAutoReturn()).isEqualTo("approved");
+    }
+
+    @Test
+    @DisplayName("La notification_url de AppUrls pide solo Webhooks (source_news=webhooks): sin el IPN viejo, que llega sin firma")
+    void notificationUrlAsksForWebhooksOnly() {
+        String webhookUrl = new com.tuapp.eventfoto.common.config.AppUrls("https://event-foto.up.railway.app", "r2").checkoutWebhookUrl();
+        assertThat(webhookUrl).isEqualTo("https://event-foto.up.railway.app/api/v1/checkout/webhook?source_news=webhooks");
+
+        PreferenceRequest withAppUrls = MercadoPagoPreferenceGateway.buildRequest(reference, new BigDecimal("50000.00"), from, to,
+                "https://event-foto.up.railway.app/compra/retorno", webhookUrl, true);
+        assertThat(withAppUrls.getNotificationUrl()).endsWith("?source_news=webhooks");
+    }
+
+    @Test
+    @DisplayName("Sin https pública (desarrollo local): ni notification_url ni auto_return, que MP rechazaría")
+    void localDevelopmentHasNoWebhookNorAutoReturn() {
+        PreferenceRequest local = MercadoPagoPreferenceGateway.buildRequest(reference, new BigDecimal("50000.00"), from, to,
+                "http://localhost:8080/compra/retorno", null, false);
+        assertThat(local.getNotificationUrl()).isNull();
+        assertThat(local.getAutoReturn()).isNull();
     }
 
     @Test

@@ -37,6 +37,9 @@ public class RateLimiterService {
 
     // === CHECKOUT (fase 9.3): buckets propios, no comparten cupo con el login ===
     private static final int CHECKOUT_LIMIT_PER_15_MINUTES = 10;
+    // Página de retorno (fase 9.4): confirma y consulta cada 3 s durante 90 s (~30 rondas, 20/min); 40/min deja margen
+    // para dos pestañas o un "Volver a consultar".
+    private static final int CHECKOUT_RETURN_LIMIT_PER_MINUTE = 40;
 
     private static final long ONE_MINUTE_IN_MS = 60_000L;
     private static final long FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000L;
@@ -62,6 +65,9 @@ public class RateLimiterService {
     // Checkout público (por IP) y recompra del organizador (por organizerId)
     private final Map<String, Queue<Long>> checkoutBuckets = new ConcurrentHashMap<>();
     private final Map<String, Queue<Long>> adminCheckoutBuckets = new ConcurrentHashMap<>();
+    // Página de retorno: confirmar el pago y consultar el estado, cada uno con su bucket por IP
+    private final Map<String, Queue<Long>> checkoutConfirmBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Queue<Long>> checkoutStatusBuckets = new ConcurrentHashMap<>();
 
     /**
      * Chequea rate limit para presigned URLs de foto.
@@ -140,6 +146,18 @@ public class RateLimiterService {
                 "Hiciste demasiados intentos de compra en poco tiempo. Por favor probá de nuevo en unos minutos.");
     }
 
+    /** POST /api/v1/checkout/confirm (página de retorno): 40 por IP por minuto. */
+    public void checkCheckoutConfirmRateLimit(String clientIp) {
+        checkRateLimit(clientIp, checkoutConfirmBuckets, CHECKOUT_RETURN_LIMIT_PER_MINUTE, ONE_MINUTE_IN_MS,
+                "Demasiadas consultas seguidas. Esperá un momento y volvé a intentar.");
+    }
+
+    /** POST /api/v1/checkout/status (página de retorno): 40 por IP por minuto. */
+    public void checkCheckoutStatusRateLimit(String clientIp) {
+        checkRateLimit(clientIp, checkoutStatusBuckets, CHECKOUT_RETURN_LIMIT_PER_MINUTE, ONE_MINUTE_IN_MS,
+                "Demasiadas consultas seguidas. Esperá un momento y volvé a intentar.");
+    }
+
     // === DEPRECATED: Métodos antiguos que solo usan IP ===
     // Mantenerlos para compatibilidad si algo aún los usa
     @Deprecated
@@ -183,6 +201,8 @@ public class RateLimiterService {
         superadminLoginBuckets.clear();
         checkoutBuckets.clear();
         adminCheckoutBuckets.clear();
+        checkoutConfirmBuckets.clear();
+        checkoutStatusBuckets.clear();
     }
 }
 

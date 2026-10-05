@@ -88,6 +88,20 @@ public class AppUrls {
         return baseUrl + "/compra/retorno";
     }
 
+    /**
+     * notification_url de la preferencia: el webhook de Mercado Pago (fase 9.4). Con notification_url en la preferencia,
+     * MP manda por cada pago un Webhook firmado (?data.id=…&type=payment) y además el IPN viejo (?id=…&topic=payment,
+     * sin x-signature), que recibiría 401 y MP reintentaría durante días. source_news=webhooks pide solo el primero.
+     */
+    public String checkoutWebhookUrl() {
+        return baseUrl + "/api/v1/checkout/webhook?source_news=webhooks";
+    }
+
+    /** Login del organizador (botón de la página de retorno y mail "tu evento está listo"). */
+    public String loginUrl() {
+        return baseUrl + "/admin/login";
+    }
+
     /** URL absoluta del link de moderador. Contiene la credencial: no loguearla. */
     public String moderatorUrl(String moderatorToken) {
         return baseUrl + "/moderar/" + moderatorToken;

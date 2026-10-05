@@ -41,7 +41,10 @@ public class SecurityConfig {
         new AntPathRequestMatcher("/api/v1/moderate/**"),
         new AntPathRequestMatcher("/api/v1/admin/events/*/moderator-link/**"),
         // /compra/retorno: la URL trae el external_reference de la compra (fase 9.3)
-        new AntPathRequestMatcher("/compra/**"));
+        new AntPathRequestMatcher("/compra/**"),
+        // Confirmación y estado de la compra (fase 9.4): ni cache ni referrer
+        new AntPathRequestMatcher("/api/v1/checkout/confirm"),
+        new AntPathRequestMatcher("/api/v1/checkout/status"));
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -121,6 +124,9 @@ public class SecurityConfig {
                 // /api/v1/admin/checkout NO va acá: es del organizador y cae en /api/v1/admin/** (hasRole ORGANIZER).
                 .requestMatchers(HttpMethod.GET, "/comprar", "/compra/retorno").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/checkout").permitAll()
+                // Fase 9.4: webhook de MP (lo autentica la firma x-signature, no una sesión) y los dos endpoints de la
+                // página de retorno (sin sesión ni cookies: la referencia ya no da acceso a nada). Rutas exactas.
+                .requestMatchers(HttpMethod.POST, "/api/v1/checkout/webhook", "/api/v1/checkout/confirm", "/api/v1/checkout/status").permitAll()
 
                 // Rutas protegidas que requieren rol ORGANIZER
                 .requestMatchers("/admin/**", "/api/v1/admin/**").hasRole("ORGANIZER")
