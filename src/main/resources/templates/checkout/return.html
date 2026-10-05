@@ -21,7 +21,15 @@
 </head>
 <body>
 <main>
-    <section class="state visible" id="state-pending">
+    <!-- Visible por defecto: sin referencia (ni en la URL ni guardada en la pestaña) no hay nada que consultar, y
+         "confirmando" quedaría trabado para siempre. -->
+    <section class="state visible" id="state-none">
+        <h1>Gracias por tu compra</h1>
+        <p>Si ya pagaste, en unos minutos vas a poder iniciar sesión con el email y la contraseña que elegiste.</p>
+        <a class="button" href="/admin/login">Iniciar sesión</a>
+    </section>
+
+    <section class="state" id="state-pending">
         <h1>Estamos confirmando tu pago…</h1>
         <p>Esto suele tardar unos segundos. No hace falta que hagas nada.</p>
     </section>
@@ -62,10 +70,29 @@
 <script>
     (function () {
         // Los parámetros que agrega Mercado Pago se leen acá y se sacan de la barra (y del historial). El servidor no los
-        // lee ni los loguea; viajan por POST.
+        // lee ni los loguea; viajan por POST. Antes de sacarlos se guardan en sessionStorage (por pestaña, se borra al
+        // cerrarla): si la persona recarga, o el celular recarga la pestaña al volver, la URL ya no los trae.
+        const STORAGE_KEY = 'eventfoto.checkoutReturn';
         const params = new URLSearchParams(window.location.search);
-        const paymentId = params.get('payment_id');
-        const reference = params.get('external_reference');
+        let paymentId = params.get('payment_id');
+        let reference = params.get('external_reference');
+        if (reference) {
+            try {
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ paymentId: paymentId, reference: reference }));
+            } catch (e) {
+                // sin sessionStorage (modo privado, bloqueado): funciona igual mientras no se recargue
+            }
+        } else {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
+                if (saved && saved.reference) {
+                    paymentId = saved.paymentId;
+                    reference = saved.reference;
+                }
+            } catch (e) {
+                // nada guardado o ilegible: queda el estado neutro
+            }
+        }
         if (window.location.search) {
             history.replaceState(null, '', window.location.pathname);
         }

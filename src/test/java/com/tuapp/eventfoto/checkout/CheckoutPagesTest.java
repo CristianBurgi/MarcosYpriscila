@@ -39,6 +39,16 @@ class CheckoutPagesTest {
     }
 
     @Test
+    @DisplayName("/compra/retorno: estado neutro visible por defecto (sin referencia no queda 'confirmando' trabado) y recuerda la referencia en sessionStorage")
+    void returnPageSurvivesAReload() throws Exception {
+        String body = mockMvc.perform(get("/compra/retorno")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(body).contains("class=\"state visible\" id=\"state-none\"")
+                .contains("Si ya pagaste, en unos minutos vas a poder iniciar sesión")
+                .contains("class=\"state\" id=\"state-pending\"")
+                .contains("sessionStorage.setItem").contains("sessionStorage.getItem");
+    }
+
+    @Test
     @DisplayName("/comprar es pública y trae el formulario")
     void buyPageIsPublic() throws Exception {
         mockMvc.perform(get("/comprar")).andExpect(status().isOk())

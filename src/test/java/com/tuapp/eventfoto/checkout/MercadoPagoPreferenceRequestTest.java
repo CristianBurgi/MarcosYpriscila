@@ -43,6 +43,17 @@ class MercadoPagoPreferenceRequestTest {
     }
 
     @Test
+    @DisplayName("La notification_url de AppUrls pide solo Webhooks (source_news=webhooks): sin el IPN viejo, que llega sin firma")
+    void notificationUrlAsksForWebhooksOnly() {
+        String webhookUrl = new com.tuapp.eventfoto.common.config.AppUrls("https://event-foto.up.railway.app", "r2").checkoutWebhookUrl();
+        assertThat(webhookUrl).isEqualTo("https://event-foto.up.railway.app/api/v1/checkout/webhook?source_news=webhooks");
+
+        PreferenceRequest withAppUrls = MercadoPagoPreferenceGateway.buildRequest(reference, new BigDecimal("50000.00"), from, to,
+                "https://event-foto.up.railway.app/compra/retorno", webhookUrl, true);
+        assertThat(withAppUrls.getNotificationUrl()).endsWith("?source_news=webhooks");
+    }
+
+    @Test
     @DisplayName("Sin https pública (desarrollo local): ni notification_url ni auto_return, que MP rechazaría")
     void localDevelopmentHasNoWebhookNorAutoReturn() {
         PreferenceRequest local = MercadoPagoPreferenceGateway.buildRequest(reference, new BigDecimal("50000.00"), from, to,
