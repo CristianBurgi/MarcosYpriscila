@@ -1,6 +1,9 @@
 package com.tuapp.eventfoto.event;
 
+import com.tuapp.eventfoto.storage.StorageKeys;
+import com.tuapp.eventfoto.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -11,6 +14,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
 /**
@@ -32,7 +38,11 @@ public class GuestPageController {
     /** Formato del SlugGenerator (minúsculas, dígitos y guiones); descarta todo lo demás antes de redirigir. */
     private static final Pattern SLUG_FORMAT = Pattern.compile("[a-z0-9-]{1,100}");
 
+    /** Color de la paleta cuando hay imagen de fondo pero no color: el vino de la app. */
+    static final String DEFAULT_COLOR = "#3a0f14";
+
     private final EventService eventService;
+    private final StorageService storageService;
 
     @GetMapping("/e/{slug}")
     public ResponseEntity<Resource> menu(@PathVariable String slug) {
@@ -94,10 +104,55 @@ public class GuestPageController {
     }
 
     private ResponseEntity<Resource> page(String slug, String name) {
-        eventService.getEventEntityBySlug(slug); // 404 si no existe
+        Event event = eventService.getEventEntityBySlug(slug); // 404 si no existe
+        Resource html = new ClassPathResource("guest-pages/" + name + ".html");
+        if (!name.equals("screen") && (event.getBackgroundColor() != null || event.getBackgroundImageKey() != null)) {
+            html = withBranding(html, event);
+        }
         return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_HTML)
                 .cacheControl(CacheControl.noCache())
-                .body(new ClassPathResource("guest-pages/" + name + ".html"));
+                .body(html);
+    }
+
+    /**
+     * Personalización del evento (Fase 9.5): agrega antes de {@code </head>} la hoja /css/event-branding.css y
+     * las variables de la paleta. Va del lado del servidor para que la página no aparezca un instante con los
+     * colores por defecto. Sin personalización no se llama: la página sale byte a byte como está en el classpath.
+     * La pantalla del salón no se personaliza todavía (9.8).
+     */
+    private Resource withBranding(Resource page, Event event) {
+        EventPalette palette = EventPalette.derive(event.getBackgroundColor() != null ? event.getBackgroundColor() : DEFAULT_COLOR);
+        StringBuilder vars = new StringBuilder(":root{")
+                .append("--brand-primary:").append(palette.primary()).append(';')
+                .append("--brand-primary-deep:").append(palette.primaryDeep()).append(';')
+                .append("--brand-primary-light:").append(palette.primaryLight()).append(';')
+                .append("--brand-secondary:").append(palette.secondary()).append(';')
+                .append("--brand-on-primary:").append(palette.textOnPrimary()).append(';')
+                .append("--brand-on-secondary:").append(palette.textOnSecondary()).append(';')
+                .append("--gold:").append(palette.primaryLight()).append(';')
+                .append("--gold-soft:").append(palette.primaryLight()).append(';')
+                .append("--accent-rgb:").append(EventPalette.rgbTriplet(palette.primaryLight())).append(';');
+        String imageKey = event.getBackgroundImageKey();
+        // La URL sale solo de una clave generada por nosotros con el formato exacto (UUID), nunca de un input;
+        // igual se valida y se escapa para el string CSS.
+        if (imageKey != null && StorageKeys.isBrandingKeyOf(event.getId(), imageKey)) {
+            String url = storageService.generatePublicUrl(imageKey).replace("\\", "\\\\").replace("\"", "\\\"");
+            vars.append("--brand-bg:url(\"").append(url).append("\") center/cover no-repeat;");
+        } else {
+            vars.append("--brand-bg:linear-gradient(165deg,").append(palette.primaryLight()).append(" 0%,")
+                    .append(palette.primary()).append(" 55%,").append(palette.primaryDeep()).append(" 100%);");
+        }
+        vars.append('}');
+
+        String injected = "<link rel=\"stylesheet\" href=\"/css/event-branding.css?v=1\">\n"
+                + "<style id=\"event-palette\">" + vars + "</style>\n";
+        try {
+            String html = page.getContentAsString(StandardCharsets.UTF_8);
+            int head = html.indexOf("</head>");
+            return new ByteArrayResource((html.substring(0, head) + injected + html.substring(head)).getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

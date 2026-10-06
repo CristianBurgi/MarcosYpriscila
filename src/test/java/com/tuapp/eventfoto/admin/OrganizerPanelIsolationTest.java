@@ -93,7 +93,7 @@ class OrganizerPanelIsolationTest {
                 .organizer(organizer).name(name).slug(slug)
                 .eventDate(LocalDate.now().plusDays(3))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID).build());
+                .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
     }
 
     private Cookie cookieOf(Organizer organizer) {

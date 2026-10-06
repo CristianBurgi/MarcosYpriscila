@@ -63,7 +63,7 @@ class NoLazyLoadingOutsideTransactionTest {
         event = eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento Lazy").slug("evento-lazy-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID).build());
+                .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
         Photo photo = photoRepository.save(Photo.builder().event(event).storageKey("photos/lazy/1.jpg").uploaderName("Ana").build());
         commentRepository.save(Comment.builder().photo(photo).authorName("Beto").text("Linda foto").build());
         messageRepository.save(Message.builder().event(event).authorName("Carla").text("Hola a todos").build());

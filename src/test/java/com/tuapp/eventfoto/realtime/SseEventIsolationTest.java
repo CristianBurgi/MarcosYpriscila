@@ -104,7 +104,7 @@ class SseEventIsolationTest {
         return eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
                 .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID).build());
+                .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
     }
 
     private String bearer(Organizer organizer) {

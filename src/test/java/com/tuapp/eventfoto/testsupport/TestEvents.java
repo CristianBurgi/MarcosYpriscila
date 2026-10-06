@@ -23,7 +23,8 @@ public final class TestEvents {
         return Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
                 .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID);
+                .isActive(true).origin(EventOrigin.PAID)
+                .wizardCompletedAt(Instant.now()); // wizard hecho: el panel responde (ver EventAccessInterceptor)
     }
 
     public static Event limited(EventRepository repo, Organizer organizer, String slug, int maxPhotosPerGuest) {

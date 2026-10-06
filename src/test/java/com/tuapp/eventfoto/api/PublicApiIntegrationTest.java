@@ -98,7 +98,7 @@ class PublicApiIntegrationTest {
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
-                .origin(EventOrigin.PAID)
+                .origin(EventOrigin.PAID).wizardCompletedAt(Instant.now())
                 .maxPhotosPerGuest(24) // explícito: sin valor, el evento quedaría "sin límite"
                 .build();
 

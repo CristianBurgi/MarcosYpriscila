@@ -19,7 +19,7 @@ import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlResponseDTO;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
-import com.tuapp.eventfoto.storage.FileSignatureValidator;
+import com.tuapp.eventfoto.storage.ImageContent;
 import com.tuapp.eventfoto.storage.StorageKeys;
 import com.tuapp.eventfoto.storage.StorageService;
 import io.sentry.Sentry;
@@ -67,6 +67,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final GuestbookPdfService guestbookPdfService;
     private final PhotoUploadClaimService photoUploadClaimService;
     private final AlbumReader albumReader;
+    private final ImageContent imageContent;
 
     /** Tope de tamaño por archivo (app.upload.max-file-bytes): lo comparten /confirm y /upload-direct. */
     @Value("${app.upload.max-file-bytes}")
@@ -281,39 +282,14 @@ public class PhotoServiceImpl implements PhotoService {
             throw new StorageException("Error al procesar la imagen en el servidor", e);
         }
 
-        // Verificación de contenido real (magic bytes) antes de subir a storage:
+        // Contenido real (magic bytes) y HEIC/HEIF -> JPEG sobre los BYTES, antes de subir a storage:
         // el Content-Type multipart declarado por el cliente puede mentir.
-        if (!FileSignatureValidator.isValidImageSignature(headerOf(bytes))) {
-            log.warn("Subida directa rechazada: la firma binaria del archivo no corresponde a una imagen válida (Content-Type declarado: '{}')", contentType);
-            throw new InvalidFileContentException(
-                    "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
-            );
-        }
-
-        // Fase 8 - Test 5: convertir HEIC/HEIF a JPEG antes de guardar -- la gran
-        // mayoría de navegadores (todo menos Safari/iOS) no pueden decodificar HEIC
-        // como <img>, la foto quedaría rota para casi todos los invitados.
-        //
-        // La decisión se toma sobre los BYTES REALES ya leídos para la validación de
-        // firma (arriba), no sobre la extensión del filename ni el Content-Type
-        // declarado: un iPhone puede mandar un .heic cuyo contenido real ya es JPEG
-        // (HEIC nombrado pero transcodificado), y en ese caso no hay que convertir nada.
-        boolean heicByBytes = FileSignatureValidator.isHeicSignature(headerOf(bytes));
-        // Diagnóstico HEIC (19/09) en nivel debug -- ver comentario equivalente en validateAndConvertIfNeeded.
-        log.debug("[HEIC-DECISION][uploadDirect] originalFilename='{}' contentTypeDeclarado='{}' isHeicSignature={} bytes={} primeros12={} -> {}",
-                originalFilename, contentType, heicByBytes, bytes.length, java.util.Arrays.toString(headerOf(bytes)),
-                heicByBytes ? "se convierte con heif-convert" : "ya es imagen navegable (JPEG/PNG/WEBP), se guarda tal cual");
-        if (heicByBytes) {
-            log.info("Detectada subida directa HEIC/HEIF: iniciando conversión a JPEG antes de guardar");
-            try {
-                bytes = storageService.convertHeicToJpeg(bytes);
-            } catch (Exception e) {
-                log.error("Falló la conversión HEIC->JPEG en upload-direct: {}", e.getMessage());
-                throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
-            }
+        ImageContent.Normalized image = imageContent.validateAndConvert(bytes,
+                "uploadDirect originalFilename='" + originalFilename + "' contentTypeDeclarado='" + contentType + "'");
+        bytes = image.bytes();
+        if (image.convertedFromHeic()) {
             contentType = "image/jpeg";
             key = StorageKeys.newKey(event.getId(), ".jpg");
-            log.info("Conversión HEIC->JPEG exitosa en upload-direct, nueva key: '{}'", key);
         }
 
         storageService.uploadBytes(key, bytes, contentType);
@@ -563,45 +539,22 @@ public class PhotoServiceImpl implements PhotoService {
             throw new StorageException("No se pudo leer el archivo subido para validar su contenido", e);
         }
 
-        if (!FileSignatureValidator.isValidImageSignature(headerOf(fullBytes))) {
-            log.warn("Confirmación rechazada: la firma binaria del objeto '{}' no corresponde a una imagen válida. Eliminando de storage.", key);
-            try {
-                storageService.deleteFile(key);
-            } catch (Exception e) {
-                log.error("No se pudo eliminar el objeto inválido '{}' del storage tras rechazar su firma: {}", key, e.getMessage());
-            }
-            throw new InvalidFileContentException(
-                    "El archivo subido no corresponde a una imagen válida (JPEG, PNG, WEBP o HEIC). La subida fue rechazada."
-            );
-        }
-
-        // Decisión sobre el CONTENIDO REAL ya leído (fullBytes), no sobre la extensión
-        // de la key: si el objeto que subió el iPhone se llama .heic pero sus bytes ya
-        // son JPEG/PNG/WEBP válidos, isValidImageSignature() lo aceptó arriba y acá lo
-        // dejamos pasar tal cual -- no se invoca heif-convert sobre algo que no es HEIC.
-        boolean heicByBytes = FileSignatureValidator.isHeicSignature(headerOf(fullBytes));
-        // Diagnóstico HEIC (19/09) -- deja rastro explícito de por qué camino pasó cada
-        // foto. En debug desde la Fase 9.0: activarlo con logging.level.com.tuapp.eventfoto.photo=DEBUG.
-        log.debug("[HEIC-DECISION][confirmUpload] key='{}' isHeicSignature={} bytesLeidos={} primeros12={} -> {}",
-                key, heicByBytes, fullBytes.length, java.util.Arrays.toString(headerOf(fullBytes)),
-                heicByBytes ? "se convierte con heif-convert" : "ya es imagen navegable (JPEG/PNG/WEBP), se guarda tal cual");
-        if (!heicByBytes) {
-            return key;
-        }
-
-        log.info("Detectado contenido HEIC/HEIF real en '{}': iniciando conversión a JPEG antes de confirmar la foto", key);
-        byte[] jpegBytes;
+        ImageContent.Normalized image;
         try {
-            jpegBytes = storageService.convertHeicToJpeg(fullBytes);
-        } catch (Exception e) {
-            log.error("Falló la conversión HEIC->JPEG para '{}': {}", key, e.getMessage());
+            image = imageContent.validateAndConvert(fullBytes, "confirmUpload key='" + key + "'");
+        } catch (InvalidFileContentException | StorageException e) {
+            // Firma inválida o HEIC que no se pudo convertir: el objeto no queda en storage.
             try {
                 storageService.deleteFile(key);
             } catch (Exception cleanupEx) {
-                log.error("No se pudo eliminar el objeto HEIC '{}' tras fallar la conversión: {}", key, cleanupEx.getMessage());
+                log.error("No se pudo eliminar el objeto rechazado '{}' del storage: {}", key, cleanupEx.getMessage());
             }
-            throw new StorageException("No se pudo procesar la foto HEIC subida. Por favor, intentá subirla nuevamente.", e);
+            throw e;
         }
+        if (!image.convertedFromHeic()) {
+            return key;
+        }
+        byte[] jpegBytes = image.bytes();
 
         String jpegKey = siblingJpegKey(key);
         storageService.uploadBytes(jpegKey, jpegBytes, "image/jpeg");
@@ -625,10 +578,6 @@ public class PhotoServiceImpl implements PhotoService {
         int lastSlash = heicKey.lastIndexOf('/');
         String prefix = lastSlash >= 0 ? heicKey.substring(0, lastSlash + 1) : "";
         return prefix + UUID.randomUUID() + ".jpg";
-    }
-
-    private byte[] headerOf(byte[] bytes) {
-        return bytes.length > 12 ? Arrays.copyOf(bytes, 12) : bytes;
     }
 
 }

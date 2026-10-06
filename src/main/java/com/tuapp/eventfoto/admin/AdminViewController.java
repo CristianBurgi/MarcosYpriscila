@@ -5,6 +5,8 @@ import com.tuapp.eventfoto.comment.dto.CommentResponseDTO;
 import com.tuapp.eventfoto.common.config.AppUrls;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventAccessService;
+import com.tuapp.eventfoto.event.EventSettingsService;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.event.OwnedEvent;
 import com.tuapp.eventfoto.event.dto.EventResponseDTO;
 import com.tuapp.eventfoto.message.MessageService;
@@ -40,6 +42,8 @@ public class AdminViewController {
     private final EventAccessService eventAccessService;
     private final AppUrls appUrls;
     private final GuestQuotaService guestQuotaService;
+    private final EventSettingsService eventSettingsService;
+    private final UploadWindow uploadWindow;
 
     /** Con el checkout apagado no aparece el botón "Crear nuevo evento". */
     @org.springframework.beans.factory.annotation.Value("${app.checkout.enabled:false}")
@@ -86,7 +90,30 @@ public class AdminViewController {
         model.addAttribute("moderatorLink", appUrls.moderatorUrl(ownedEvent.getModeratorToken()));
         model.addAttribute("messages", messages);
         model.addAttribute("photoComments", photoComments);
+        addSettings(ownedEvent, model);
 
         return "admin/dashboard";
+    }
+
+    /**
+     * Wizard de onboarding (Fase 9.5). Mientras no esté completo, EventAccessInterceptor manda acá toda vista
+     * del panel de este evento. Completo, el wizard ya no tiene nada que hacer: se edita desde "Personalización".
+     */
+    @GetMapping("/eventos/{slug}/wizard")
+    public String wizard(@OwnedEvent Event ownedEvent, Model model) {
+        if (ownedEvent.getWizardCompletedAt() != null) {
+            return "redirect:/admin/eventos/" + ownedEvent.getSlug();
+        }
+        model.addAttribute("slug", ownedEvent.getSlug());
+        model.addAttribute("eventName", ownedEvent.getName());
+        addSettings(ownedEvent, model);
+        return "admin/wizard";
+    }
+
+    /** Fecha y personalización actuales, y el rango de fechas que acepta el servidor (hora de Argentina). */
+    private void addSettings(Event event, Model model) {
+        model.addAttribute("settings", eventSettingsService.view(event.getId()));
+        model.addAttribute("minDate", uploadWindow.today());
+        model.addAttribute("maxDate", uploadWindow.today().plusYears(2));
     }
 }

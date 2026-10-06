@@ -130,7 +130,8 @@
 
         function formatEventDateForDisplay(isoDate) {
             try {
-                const date = new Date(isoDate);
+                // "2026-12-12" sola se lee como medianoche UTC (el 11 a la noche en Argentina): se fija la hora local.
+                const date = new Date(isoDate + 'T00:00:00');
                 const day = date.getDate();
                 const month = date.toLocaleDateString('es-AR', { month: 'long' });
                 const year = date.getFullYear();

@@ -198,6 +198,15 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <!-- Los tests corren con la JVM en UTC, como Railway: nada puede depender de la zona del servidor
+                     (las fechas del evento se calculan con America/Argentina/Buenos_Aires explícita, ver UploadWindow). -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Duser.timezone=UTC</argLine>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

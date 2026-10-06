@@ -39,7 +39,7 @@
 
         .gallery-card {
             background: rgba(90, 26, 32, 0.18);
-            border: 1px solid rgba(201, 161, 90, 0.35);
+            border: 1px solid rgba(var(--accent-rgb), 0.35);
             border-radius: 2px;
             overflow: hidden;
             cursor: pointer;
@@ -84,7 +84,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid rgba(201, 161, 90, 0.25);
+            border-top: 1px solid rgba(var(--accent-rgb), 0.25);
             font-size: 0.9rem;
         }
 
@@ -110,7 +110,7 @@
             max-width: 780px;
             width: 92vw;
             border-radius: 4px;
-            border: 1px solid rgba(201, 161, 90, 0.4);
+            border: 1px solid rgba(var(--accent-rgb), 0.4);
             background: linear-gradient(180deg, var(--wine) 0%, var(--wine-deep) 100%);
             color: var(--cream);
             padding: 0;
@@ -135,7 +135,7 @@
             align-items: center;
             padding-bottom: 0.8rem;
             margin-bottom: 1rem;
-            border-bottom: 1px solid rgba(201, 161, 90, 0.25);
+            border-bottom: 1px solid rgba(var(--accent-rgb), 0.25);
         }
 
         .modal-header-custom h4 {
@@ -150,7 +150,7 @@
         .btn-close-modal {
             background: transparent;
             color: var(--gold-soft);
-            border: 1px solid rgba(201, 161, 90, 0.5);
+            border: 1px solid rgba(var(--accent-rgb), 0.5);
             width: 32px;
             height: 32px;
             border-radius: 50%;
@@ -171,7 +171,7 @@
             width: 100%;
             max-height: 480px;
             background: rgba(10, 2, 3, 0.85);
-            border: 1px solid rgba(201, 161, 90, 0.25);
+            border: 1px solid rgba(var(--accent-rgb), 0.25);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -186,7 +186,7 @@
         }
 
         .comment-item {
-            background: rgba(201, 161, 90, 0.05);
+            background: rgba(var(--accent-rgb), 0.05);
             border-left: 2px solid var(--gold);
             padding: 0.7rem 1rem;
             margin-bottom: 0.7rem;
@@ -247,7 +247,7 @@
 
             <section style="margin-top: 1.2rem;">
                 <!-- Formulario para publicar comentario (arriba) -->
-                <form id="comment-form" class="comment-form-elegant" style="margin-bottom: 1.4rem; border: 1px solid rgba(201, 161, 90, 0.25); padding: 1rem 1.2rem;">
+                <form id="comment-form" class="comment-form-elegant" style="margin-bottom: 1.4rem; border: 1px solid rgba(var(--accent-rgb), 0.25); padding: 1rem 1.2rem;">
                     <div class="divider" style="margin: 0 0 1rem;"><span class="l"></span>Dejá tu comentario<span class="l"></span></div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">

@@ -41,6 +41,7 @@
 
     </style>
     <script src="/js/event-context.js"></script>
+    <script src="/js/image-compress.js"></script>
 </head>
 <body>
     <header class="header-section">
@@ -54,7 +55,7 @@
         <div id="event-closed-banner" style="display: none; border: 1px solid rgba(252, 165, 165, 0.5); background: rgba(252, 165, 165, 0.08); color: #fca5a5; padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
             <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por el organizador.
         </div>
-        <div id="quota-exceeded-banner" style="display: none; border: 1px solid rgba(201, 161, 90, 0.5); background: rgba(201, 161, 90, 0.08); color: var(--gold-soft); padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
+        <div id="quota-exceeded-banner" style="display: none; border: 1px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.08); color: var(--gold-soft); padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
             <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> <span id="quota-exceeded-text"></span>
         </div>
 
@@ -75,15 +76,15 @@
             <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;">
             <input type="file" id="galleryFile" accept="image/*" style="display: none;">
 
-            <div class="preview-container" id="preview-box" style="display: none; width: 100%; max-height: 340px; align-items: center; justify-content: center; margin: 1.4rem 0; overflow: hidden; border: 1px solid rgba(201, 161, 90, 0.4); border-radius: 4px; padding: 8px; box-sizing: border-box;">
+            <div class="preview-container" id="preview-box" style="display: none; width: 100%; max-height: 340px; align-items: center; justify-content: center; margin: 1.4rem 0; overflow: hidden; border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 4px; padding: 8px; box-sizing: border-box;">
                 <img id="image-preview" src="#" alt="Vista previa de la foto" style="max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 2px;">
             </div>
 
-            <div id="name-notice" role="status" aria-live="polite" style="display: none; border: 1px solid rgba(201, 161, 90, 0.4); background: rgba(201, 161, 90, 0.12); color: var(--gold-soft); padding: 10px 14px; border-radius: 4px; margin-top: 1.2rem; text-align: center;">Escribí tu nombre para enviar tu foto</div>
+            <div id="name-notice" role="status" aria-live="polite" style="display: none; border: 1px solid rgba(var(--accent-rgb), 0.4); background: rgba(var(--accent-rgb), 0.12); color: var(--gold-soft); padding: 10px 14px; border-radius: 4px; margin-top: 1.2rem; text-align: center;">Escribí tu nombre para enviar tu foto</div>
             <div id="busy-notice" role="status" aria-live="polite" style="display: none; color: var(--cream-muted); text-align: center; font-size: .9rem; margin-top: 1rem;"></div>
 
             <div id="progress-label" aria-live="polite" style="display: none; text-align: center; color: var(--gold-soft); font-size: .95rem; margin-top: 1.2rem;"></div>
-            <div class="progress-bar-container" id="progress-box" style="display: none; width: 100%; height: 3px; background: rgba(201, 161, 90, 0.15); overflow: hidden; margin-top: 1.2rem;">
+            <div class="progress-bar-container" id="progress-box" style="display: none; width: 100%; height: 3px; background: rgba(var(--accent-rgb), 0.15); overflow: hidden; margin-top: 1.2rem;">
                 <div class="progress-bar-fill" id="progress-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--wine-soft), var(--gold)); transition: width 0.3s ease;"></div>
             </div>
 
@@ -140,21 +141,7 @@
             return `${(err && err.name) || 'Error'}: ${(err && err.message) || ''}`;
         }
 
-        const TYPE_BY_EXTENSION = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
-        // Tipo de la foto: el declarado por el navegador; si viene vacío (pasa con algunos selectores de galería), se
-        // deduce de la extensión. SUPUESTO: sin extensión conocida se asume image/jpeg. No abre nada: el servidor valida
-        // el contenido real por la firma binaria de los bytes, no por este tipo.
-        function inferImageType(file) {
-            if (file.type) return file.type;
-            const match = /\.([A-Za-z0-9]+)$/.exec(file.name || '');
-            return (match && TYPE_BY_EXTENSION[match[1].toLowerCase()]) || 'image/jpeg';
-        }
-
-        // Lee la foto entera a memoria y devuelve un File que ya no depende del selector.
-        async function copyFileToMemory(file) {
-            const buffer = await file.arrayBuffer();
-            return new File([buffer], file.name || 'photo', { type: inferImageType(file), lastModified: file.lastModified || Date.now() });
-        }
+        // inferImageType, copyFileToMemory y compressImageIfNeeded viven en /js/image-compress.js.
 
         // Errores de subida etiquetados con el paso que falló, para el código discreto del mensaje y el modo debug.
         function tagError(err, step, { cause, status } = {}) {
@@ -529,7 +516,7 @@
             let fileToUpload;
             dbg(`comprimir: antes ${describeFile(selectedFile)}`);
             try {
-                fileToUpload = await compressImageIfNeeded(selectedFile);
+                fileToUpload = await compressImageIfNeeded(selectedFile, { log: dbg });
             } catch (compressErr) {
                 dbg(`comprimir: FALLÓ ${describeError(compressErr)}`);
                 handleUploadFailure(compressErr, null);
@@ -588,7 +575,7 @@
             const btn = document.getElementById('btn-submit');
             const statusDiv = document.getElementById('status-message');
             setStage(`Reintentando… (${attemptNumber} de ${totalAttempts})`);
-            statusDiv.innerHTML = '<div class="alert-box alert-retry" style="background: rgba(201, 161, 90, 0.15); border: 1px solid rgba(201, 161, 90, 0.4); color: var(--gold-soft); padding: 10px; border-radius: 8px; margin-top: 10px;">📶 Reintentando… la señal está débil.</div>';
+            statusDiv.innerHTML = '<div class="alert-box alert-retry" style="background: rgba(var(--accent-rgb), 0.15); border: 1px solid rgba(var(--accent-rgb), 0.4); color: var(--gold-soft); padding: 10px; border-radius: 8px; margin-top: 10px;">📶 Reintentando… la señal está débil.</div>';
         }
 
         function onUploadSuccess() {
@@ -821,63 +808,6 @@
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        async function compressImageIfNeeded(file) {
-            if (!file || file.size <= 1.5 * 1024 * 1024) {
-                return file;
-            }
-
-            return new Promise((resolve) => {
-                const img = new Image();
-                const url = URL.createObjectURL(file);
-                img.onload = () => {
-                    URL.revokeObjectURL(url);
-
-                    const maxDim = 2048;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > maxDim || height > maxDim) {
-                        if (width > height) {
-                            height = Math.round((height * maxDim) / width);
-                            width = maxDim;
-                        } else {
-                            width = Math.round((width * maxDim) / height);
-                            height = maxDim;
-                        }
-                    }
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width;
-                    canvas.height = height;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            // El blob es JPEG: el nombre lleva extensión .jpg (si no, "captura.png" viajaría como
-                            // image/jpeg y el servidor la rechazaría por incoherente).
-                            const baseName = (file.name || 'photo').replace(/\.[^./\\]*$/, '') || 'photo';
-                            const compressedFile = new File([blob], baseName + '.jpg', {
-                                type: 'image/jpeg',
-                                lastModified: Date.now()
-                            });
-                            resolve(compressedFile);
-                        } else {
-                            resolve(file);
-                        }
-                    }, 'image/jpeg', 0.85);
-                };
-                // Si no se puede decodificar, se devuelve `file`: la COPIA EN MEMORIA que recibe esta función (handleSubmit
-                // le pasa selectedFile, que ya no es el File del selector), nunca el original de la galería.
-                img.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    dbg('comprimir: no se pudo decodificar la imagen -> se sube la copia en memoria sin comprimir');
-                    resolve(file);
-                };
-                img.src = url;
-            });
-        }
     </script>
 </body>
 </html>

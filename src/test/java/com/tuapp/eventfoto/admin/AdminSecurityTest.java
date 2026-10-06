@@ -84,7 +84,7 @@ class AdminSecurityTest {
                 .eventDate(LocalDate.now().plusDays(1))
                 .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true)
-                .origin(EventOrigin.PAID)
+                .origin(EventOrigin.PAID).wizardCompletedAt(Instant.now())
                 .build());
 
         adminJwtToken = jwtTokenProvider.generateOrganizerToken(organizer.getId(), organizer.getEmail(), organizer.getTokenVersion());

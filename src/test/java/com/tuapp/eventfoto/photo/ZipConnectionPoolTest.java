@@ -76,7 +76,7 @@ class ZipConnectionPoolTest {
         event = eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento de Prueba").slug("evento-pool-k7m2xq9p")
                 .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID).build());
+                .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
         for (int i = 0; i < 3; i++) {
             photoRepository.save(Photo.builder().event(event).storageKey("photos/pool/" + i + ".jpg").uploaderName("Ana").build());
         }
