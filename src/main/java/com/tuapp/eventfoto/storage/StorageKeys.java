@@ -38,6 +38,8 @@ public final class StorageKeys {
     private static final String UUID_REGEX = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
     private static final String EXTENSIONS_REGEX = "(?:jpg|jpeg|png|webp|heic|heif)";
     private static final Pattern ANY_EVENT_KEY = Pattern.compile("^events/" + UUID_REGEX + "/" + UUID_REGEX + "\\." + EXTENSIONS_REGEX + "$");
+    /** Imagen de fondo del evento (Fase 9.5): no es una Photo, pero vive bajo el prefijo del evento. */
+    private static final Pattern BRANDING_KEY = Pattern.compile("^events/" + UUID_REGEX + "/branding/" + UUID_REGEX + "\\.jpg$");
 
     private StorageKeys() {
     }
@@ -55,9 +57,18 @@ public final class StorageKeys {
         return key != null && key.startsWith(prefixOf(eventId)) && ANY_EVENT_KEY.matcher(key).matches();
     }
 
-    /** Formato exacto de cualquier evento: lo usa el modo local, que no conoce el evento. */
+    public static String newBrandingKey(UUID eventId) {
+        return prefixOf(eventId) + "branding/" + UUID.randomUUID() + ".jpg";
+    }
+
+    /** Imagen de fondo de ESTE evento, con el formato exacto {@code events/{eventId}/branding/{uuid}.jpg}. */
+    public static boolean isBrandingKeyOf(UUID eventId, String key) {
+        return key != null && key.startsWith(prefixOf(eventId)) && BRANDING_KEY.matcher(key).matches();
+    }
+
+    /** Formato exacto de cualquier evento (foto o imagen de fondo): lo usa el modo local, que no conoce el evento. */
     public static boolean isValidFormat(String key) {
-        return key != null && ANY_EVENT_KEY.matcher(key).matches();
+        return key != null && (ANY_EVENT_KEY.matcher(key).matches() || BRANDING_KEY.matcher(key).matches());
     }
 
     /** ¿La clave pertenece al evento por prefijo? (para decidir si se puede borrar su objeto). */

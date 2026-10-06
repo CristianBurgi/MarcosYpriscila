@@ -51,6 +51,7 @@
         .event-side { display: flex; align-items: center; gap: 14px; }
         .badge { padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
         .badge-active { background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
+        .badge-pending { background: rgba(234, 179, 8, 0.18); color: #fde68a; border: 1px solid rgba(234, 179, 8, 0.4); }
         .badge-closed { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
         .empty {
             text-align: center; background: var(--glass-card); border: 1px dashed var(--glass-border);
@@ -91,7 +92,7 @@
     </div>
 
     <div class="events-list" th:if="${!events.isEmpty()}">
-        <a class="event-card" th:each="ev : ${events}" th:href="@{'/admin/eventos/' + ${ev.slug()}}">
+        <a class="event-card" th:each="ev : ${events}" th:href="@{'/admin/eventos/' + ${ev.slug()} + ${ev.configured() ? '' : '/wizard'}}">
             <div>
                 <div class="event-name" th:text="${ev.name()}">Nombre del evento</div>
                 <div class="event-meta">
@@ -102,7 +103,8 @@
                 </div>
             </div>
             <div class="event-side">
-                <span class="badge" th:classappend="${ev.isActive() ? 'badge-active' : 'badge-closed'}"
+                <span class="badge badge-pending" th:if="${!ev.configured()}">Falta configurar</span>
+                <span class="badge" th:if="${ev.configured()}" th:classappend="${ev.isActive() ? 'badge-active' : 'badge-closed'}"
                       th:text="${ev.isActive() ? 'Activo' : 'Cerrado'}">Activo</span>
                 <i class="fa-solid fa-chevron-right" style="color: var(--text-sub);"></i>
             </div>

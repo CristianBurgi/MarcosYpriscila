@@ -123,10 +123,27 @@ public class R2StorageService implements StorageService {
 
     @Override
     public void uploadBytes(String key, byte[] bytes, String contentType) {
+        uploadBytes(key, bytes, contentType, null);
+    }
+
+    @Override
+    public void uploadBytes(String key, byte[] bytes, String contentType, String cacheControl) {
         validateContentType(contentType);
 
         if (isLocalDevMode()) {
-            log.info("Modo local: Guardando bytes de imagen convertida HEIC localmente");
+            // Mismo lugar del que lo sirve WebConfig (/uploads/**) y del que lo borra deleteFile().
+            Path baseDir = Paths.get("uploads").toAbsolutePath().normalize();
+            Path target = baseDir.resolve(key).normalize();
+            if (!target.startsWith(baseDir)) {
+                throw new StorageException("Clave de storage inválida: " + key);
+            }
+            try {
+                Files.createDirectories(target.getParent());
+                Files.write(target, bytes);
+            } catch (IOException e) {
+                throw new StorageException("Error al guardar el archivo localmente", e);
+            }
+            log.info("Modo local: {} bytes guardados en {}", bytes.length, target);
             return;
         }
 
@@ -135,6 +152,7 @@ public class R2StorageService implements StorageService {
                     .bucket(bucketName)
                     .key(key)
                     .contentType(contentType)
+                    .cacheControl(cacheControl)
                     .contentLength((long) bytes.length)
                     .build();
 

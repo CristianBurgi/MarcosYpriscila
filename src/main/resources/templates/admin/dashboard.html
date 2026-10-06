@@ -407,6 +407,9 @@
             background: rgba(168, 85, 247, 0.25);
             border: 1px solid rgba(168, 85, 247, 0.5);
         }
+
+        /* .btn lleva display: inline-flex, que le ganaba al atributo hidden (tarjeta Personalización). */
+        [hidden] { display: none !important; }
     </style>
 </head>
 <body>
@@ -479,6 +482,42 @@
         <p style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 12px 22px;">Cada persona puede subir todas las fotos que quiera.</p>
         <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 6px;">Podés cambiarlo cuando quieras, incluso durante el evento. Si pasás de "sin límite" a un límite, quienes ya subieron más fotos no podrán subir más, pero sus fotos se mantienen.</p>
         <div id="guestLimitStatus" role="status" style="color: #94a3b8; font-size: 0.88rem; min-height: 1.2em;"></div>
+    </div>
+
+    <!-- Tarjeta: personalización (lo mismo que el wizard, editable después) -->
+    <div class="metric-card" id="brandingCard" style="margin-bottom: 24px;">
+        <div class="title"><i class="fa-solid fa-palette" style="margin-right: 6px;"></i> Personalización</div>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 14px;">Así se ven las páginas de tus invitados. <a th:href="${guestMenuUrl}" target="_blank" rel="noopener" style="color: #c4b5fd;">Ver el menú de invitados</a></p>
+
+        <label for="brandingDate" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 6px;">Fecha del evento</label>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 4px;">
+            <input type="date" id="brandingDate" th:value="${settings.eventDate()}" th:min="${minDate}" th:max="${maxDate}"
+                   th:disabled="${!settings.dateEditable()}"
+                   style="background: rgba(15, 23, 42, 0.6); color: #f8fafc; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 10px; font-family: inherit; color-scheme: dark;">
+            <button type="button" class="btn btn-toggle-event" id="btnSaveDate" th:disabled="${!settings.dateEditable()}"><i class="fa-solid fa-check"></i> Guardar fecha</button>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 16px;"
+           th:text="${settings.dateEditable()} ? 'Se puede cambiar hasta que se habilita la subida de fotos (00:00 del día anterior al evento).' : 'La fecha ya no se puede cambiar: la subida de fotos ya está habilitada.'">Se puede cambiar hasta que se habilita la subida de fotos.</p>
+
+        <label for="brandingColor" style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 6px;">Color del evento</label>
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px;">
+            <input type="color" id="brandingColor" th:value="${settings.backgroundColor() != null ? settings.backgroundColor() : '#c89b3c'}"
+                   style="width: 46px; height: 40px; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; background: transparent; padding: 2px; cursor: pointer;">
+            <span id="brandingColorHex" style="font-family: monospace; color: #cbd5e1; text-transform: uppercase;"
+                  th:text="${settings.backgroundColor() != null ? settings.backgroundColor() : 'Colores de la app'}">#c89b3c</span>
+            <button type="button" class="btn btn-toggle-event" id="btnResetColor" th:hidden="${settings.backgroundColor() == null}"><i class="fa-solid fa-rotate-left"></i> Restablecer colores</button>
+        </div>
+
+        <span style="display: block; color: #e2e8f0; font-weight: 600; margin-bottom: 6px;">Imagen de fondo</span>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <img id="brandingImageThumb" alt="Imagen de fondo" th:src="${settings.backgroundImageUrl()}" th:hidden="${settings.backgroundImageUrl() == null}"
+                 style="width: 52px; height: 52px; object-fit: cover; border-radius: 8px;">
+            <label class="btn btn-toggle-event" style="cursor: pointer;"><i class="fa-solid fa-upload"></i> <span id="brandingImageLabel" th:text="${settings.backgroundImageUrl() != null} ? 'Cambiar imagen' : 'Subir imagen'">Subir imagen</span>
+                <input type="file" id="brandingImageFile" accept="image/*" style="display: none;">
+            </label>
+            <button type="button" class="btn btn-toggle-event" id="btnRemoveImage" th:hidden="${settings.backgroundImageUrl() == null}"><i class="fa-solid fa-trash"></i> Quitar</button>
+        </div>
+        <div id="brandingStatus" role="status" style="color: #94a3b8; font-size: 0.88rem; min-height: 1.2em; margin-top: 10px;"></div>
     </div>
 
     <!-- Navegación por Pestañas -->
@@ -691,6 +730,7 @@
 
 </div>
 
+<script src="/js/image-compress.js"></script>
 <script th:inline="javascript">
     const slug = /*[[${slug}]]*/ 'evento-demo-k7m2xq9p';
     let targetPhotoIdToDelete = null;
@@ -895,6 +935,89 @@
                 radios.forEach((r) => r.disabled = false);
             }
         }));
+    })();
+
+    // ---- Tarjeta: personalización (mismos endpoints que el wizard) ----
+    (function setupBrandingCard() {
+        const status = document.getElementById('brandingStatus');
+        if (!status) return;
+        const api = `/api/v1/admin/events/${encodeURIComponent(slug)}`;
+
+        function show(text, kind) {
+            status.style.color = kind === 'ok' ? '#86efac' : kind === 'error' ? '#fca5a5' : '#94a3b8';
+            status.textContent = text;
+        }
+        async function call(method, path, body) {
+            const options = { method };
+            if (body instanceof FormData) options.body = body;
+            else if (body !== undefined) { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify(body); }
+            const res = await fetch(api + path, options);
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 413) throw new Error('La imagen supera los 15 MB.');
+            if (!res.ok) throw new Error(data.message || 'No pudimos guardar el cambio. Probá de nuevo.');
+            return data;
+        }
+        function renderImage(url) {
+            const thumb = document.getElementById('brandingImageThumb');
+            thumb.hidden = !url;
+            if (url) thumb.src = url;
+            document.getElementById('btnRemoveImage').hidden = !url;
+            document.getElementById('brandingImageLabel').textContent = url ? 'Cambiar imagen' : 'Subir imagen';
+        }
+
+        document.getElementById('btnSaveDate').addEventListener('click', async () => {
+            show('Guardando…');
+            try {
+                await call('PUT', '/date', { date: document.getElementById('brandingDate').value });
+                show('Listo, guardamos la fecha.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+
+        const colorInput = document.getElementById('brandingColor');
+        colorInput.addEventListener('change', async () => {
+            show('Guardando…');
+            try {
+                const saved = await call('PUT', '/branding/color', { color: colorInput.value });
+                document.getElementById('brandingColorHex').textContent = saved.backgroundColor;
+                document.getElementById('btnResetColor').hidden = false;
+                show('Listo, guardamos el color.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+
+        // Vuelve a la paleta por defecto de la app (color null).
+        document.getElementById('btnResetColor').addEventListener('click', async () => {
+            show('Guardando…');
+            try {
+                await call('PUT', '/branding/color', { color: null });
+                document.getElementById('brandingColorHex').textContent = 'Colores de la app';
+                document.getElementById('btnResetColor').hidden = true;
+                show('Listo, volvimos a los colores de la app.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+
+        document.getElementById('brandingImageFile').addEventListener('change', async (e) => {
+            const picked = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!picked) return;
+            show('Subiendo imagen…');
+            try {
+                // A memoria primero (arreglo de Android); después reducida y re-codificada (sin EXIF) en el navegador.
+                const file = await compressImageIfNeeded(await copyFileToMemory(picked), { maxDim: 1920, minBytes: 0 });
+                const form = new FormData();
+                form.append('file', file, file.name);
+                const saved = await call('POST', '/branding/image', form);
+                renderImage(saved.backgroundImageUrl);
+                show('Listo, guardamos la imagen.', 'ok');
+            } catch (err) { show(err.message || 'No pudimos leer la imagen. Probá con otra.', 'error'); }
+        });
+
+        document.getElementById('btnRemoveImage').addEventListener('click', async () => {
+            try {
+                await call('DELETE', '/branding/image');
+                renderImage(null);
+                show('Listo, quitamos la imagen.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
     })();
 
     // ---- Tarjeta Moderador ----

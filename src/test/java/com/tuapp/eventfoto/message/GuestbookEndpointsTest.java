@@ -77,7 +77,7 @@ class GuestbookEndpointsTest {
                 .eventDate(LocalDate.parse("2026-09-19"))
                 .uploadDeadline(Instant.parse("2026-10-04T23:59:00Z"))
                 .isActive(true)
-                .origin(EventOrigin.PAID)
+                .origin(EventOrigin.PAID).wizardCompletedAt(Instant.now())
                 .build());
         messageRepository.save(Message.builder().event(event).authorName("Tía Marta").text("¡Felicidades! 😘").build());
         photoRepository.save(Photo.builder().event(event).storageKey("photos/libro-endpoint/foto.jpg").uploaderName("Ana").build());

@@ -8,6 +8,7 @@ import com.tuapp.eventfoto.event.AdminRouteExceptions;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.event.WizardRouteExceptions;
 import com.tuapp.eventfoto.message.Message;
 import com.tuapp.eventfoto.message.MessageRepository;
 import com.tuapp.eventfoto.organizer.Organizer;
@@ -82,6 +83,7 @@ class AdminRouteEnumerationTest {
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
     private Cookie cookieOfA;
+    private Organizer organizerA;
     private Event eventA;
     private Event eventB;
     private Map<String, String> foreignFixtures;
@@ -96,8 +98,11 @@ class AdminRouteEnumerationTest {
 
         Organizer organizerA = organizerRepository.save(Organizer.builder().email("enum-a@test.com").build());
         Organizer organizerB = organizerRepository.save(Organizer.builder().email("enum-b@test.com").build());
-        eventA = event(organizerA, "evento-a-k7m2xq9p");
-        eventB = event(organizerB, "evento-b-x4h8wt2n");
+        this.organizerA = organizerA;
+        eventA = event(organizerA, "evento-a-k7m2xq9p", true);
+        // B con el wizard SIN completar a propósito: A contra un evento ajeno en ese estado sigue siendo 404,
+        // nunca el redirect al wizard ni el 409 (pasada 1).
+        eventB = event(organizerB, "evento-b-x4h8wt2n", false);
 
         Photo photoB = photoRepository.save(Photo.builder().event(eventB).storageKey("photos/b/1.jpg").build());
         Message messageB = messageRepository.save(Message.builder().event(eventB).authorName("Beto").text("Hola B").build());
@@ -113,11 +118,11 @@ class AdminRouteEnumerationTest {
                 jwtTokenProvider.generateOrganizerToken(organizerA.getId(), organizerA.getEmail(), organizerA.getTokenVersion()));
     }
 
-    private Event event(Organizer organizer, String slug) {
+    private Event event(Organizer organizer, String slug, boolean wizardCompleted) {
         return eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
                 .eventDate(LocalDate.now().plusDays(3)).uploadDeadline(Instant.now().plusSeconds(864000))
-                .isActive(true).origin(EventOrigin.PAID).build());
+                .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(wizardCompleted ? Instant.now() : null).build());
     }
 
     /** Una ruta bajo el panel, con uno de los métodos HTTP que declara. */
@@ -273,6 +278,62 @@ class AdminRouteEnumerationTest {
         assertThat(messageRepository.count()).isEqualTo(1);
         assertThat(commentRepository.count()).isEqualTo(1);
         assertThat(eventRepository.findById(eventB.getId()).orElseThrow().isActive()).isTrue();
+    }
+
+    // ---------- 3. Wizard sin completar (Fase 9.5) ----------
+
+    @Test
+    @DisplayName("Wizard sin completar: cada vista del panel redirige al wizard y cada API responde 409 WIZARD_REQUIRED, salvo WizardRouteExceptions")
+    void everyPanelRouteIsBlockedUntilTheWizardIsDone() throws Exception {
+        Event pending = event(organizerA, "evento-pendiente-m3q8zt5r", false);
+        String wizardUrl = "/admin/eventos/" + pending.getSlug() + "/wizard";
+        List<String> blocked = new ArrayList<>();
+        List<String> open = new ArrayList<>();
+        for (PanelRoute route : panelRoutes()) {
+            if (AdminRouteExceptions.isException(route.pattern())) {
+                continue;
+            }
+            Map<String, String> fixtures = new LinkedHashMap<>(foreignFixtures);
+            fixtures.put("slug", pending.getSlug());
+            CHILD_VARIABLES.forEach(name -> fixtures.put(name, UUID.randomUUID().toString()));
+            // Cada ruta arranca con el wizard sin completar (POST .../wizard/complete lo completa de verdad).
+            pending.setWizardCompletedAt(null);
+            pending = eventRepository.saveAndFlush(pending);
+            var response = send(route, fixtures);
+            boolean redirectedToWizard = response.getStatus() == 302 && wizardUrl.equals(response.getRedirectedUrl());
+            boolean wizardRequired = response.getStatus() == 409 && response.getContentAsString().contains("\"WIZARD_REQUIRED\"");
+
+            if (WizardRouteExceptions.isException(route.pattern())) {
+                assertThat(redirectedToWizard || wizardRequired).as("%s está en WizardRouteExceptions y quedó bloqueada", route).isFalse();
+                open.add(route.toString());
+            } else if (route.pattern().startsWith("/admin/")) {
+                assertThat(redirectedToWizard).as("%s (vista) debe redirigir a %s; respondió %d", route, wizardUrl, response.getStatus()).isTrue();
+                blocked.add(route.toString());
+            } else {
+                assertThat(wizardRequired).as("%s (API) debe responder 409 WIZARD_REQUIRED; respondió %d %s",
+                        route, response.getStatus(), response.getContentAsString()).isTrue();
+                blocked.add(route.toString());
+            }
+        }
+        assertThat(blocked).as("rutas bloqueadas").isNotEmpty();
+        assertThat(open).as("rutas del wizard").hasSize(WizardRouteExceptions.ENTRIES.stream()
+                .mapToInt(entry -> (int) panelRoutes().stream().filter(r -> r.pattern().equals(entry.pattern())).count()).sum());
+        System.out.println("WIZARD bloqueadas " + blocked.size() + ": " + blocked + " | abiertas " + open.size() + ": " + open);
+    }
+
+    @Test
+    @DisplayName("Las excepciones del wizard son exactas: cada una coincide con una ruta real, lleva {slug} y tiene motivo")
+    void wizardExceptionsAreExactAndReal() {
+        Set<String> realPatterns = new LinkedHashSet<>();
+        panelRoutes().forEach(route -> realPatterns.add(route.pattern()));
+        for (WizardRouteExceptions.Entry entry : WizardRouteExceptions.ENTRIES) {
+            assertThat(entry.pattern()).as("excepción del wizard sin {slug}: %s", entry.pattern()).contains("{slug}");
+            assertThat(entry.pattern().replace("{slug}", "")).as("excepción con comodín: %s", entry.pattern())
+                    .doesNotContain("*").doesNotContain("{");
+            assertThat(entry.reason()).as("excepción sin motivo: %s", entry.pattern()).isNotBlank();
+            assertThat(realPatterns).as("la excepción del wizard '%s' no coincide con ninguna ruta real (¿sobra?)", entry.pattern())
+                    .contains(entry.pattern());
+        }
     }
 
     // ---------- armado de requests desde el mapping ----------

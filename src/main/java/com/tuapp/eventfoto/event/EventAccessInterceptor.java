@@ -3,6 +3,7 @@ package com.tuapp.eventfoto.event;
 import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.common.config.TokenMasker;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
+import com.tuapp.eventfoto.common.exception.WizardRequiredException;
 import com.tuapp.eventfoto.moderation.ModeratorRateLimiter;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +35,9 @@ import java.util.Optional;
  * de nada. Si la ruta no tiene su variable ({slug} / {token}) y no figura en
  * {@link AdminRouteExceptions}, se CIERRA (404 + log.error con la ruta ENMASCARADA): nunca queda abierta.
  * AdminRouteEnumerationTest hace que además rompa el build.
+ *
+ * En el panel, con el wizard del evento sin completar, toda ruta fuera de {@link WizardRouteExceptions}
+ * redirige al wizard (vistas) o responde 409 WIZARD_REQUIRED (API).
  *
  * "No existe" y "no es tuyo" (y, en el moderador, "mal formado") lanzan la misma excepción con el mismo
  * mensaje: el 404 no permite descubrir qué slugs o tokens existen. En el moderador cada intento fallido se
@@ -54,7 +59,7 @@ public class EventAccessInterceptor implements HandlerInterceptor {
 
     @Override
     @SuppressWarnings("unchecked")
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
         if (request.getDispatcherType() == DispatcherType.ASYNC) {
             // Redespacho al terminar un SseEmitter: el acceso ya se verificó en el despacho original (y el
             // token pudo haberse regenerado mientras tanto, que es justo cuando se cierran esos streams).
@@ -110,6 +115,15 @@ public class EventAccessInterceptor implements HandlerInterceptor {
 
         request.setAttribute(EVENT_ATTRIBUTE, event);
         request.setAttribute(SCOPE_ATTRIBUTE, scope);
+
+        // Después del acceso a propósito: un evento ajeno sigue dando el 404 de arriba, nunca este bloqueo.
+        if (scope == AccessScope.PANEL && event.getWizardCompletedAt() == null && !WizardRouteExceptions.isException(pattern)) {
+            if (pattern.startsWith("/admin/")) {
+                response.sendRedirect("/admin/eventos/" + event.getSlug() + "/wizard");
+                return false;
+            }
+            throw new WizardRequiredException();
+        }
         return true;
     }
 

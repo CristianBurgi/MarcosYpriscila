@@ -75,6 +75,14 @@ public class Event {
     @Column(name = "max_photos_per_guest")
     private Integer maxPhotosPerGuest;
 
+    /** Color elegido en el wizard ({@code #rrggbb} en minúsculas); {@code null} = paleta por defecto. Ver {@link EventPalette}. */
+    @Column(name = "background_color", length = 7)
+    private String backgroundColor;
+
+    /** Imagen de fondo de las páginas de invitado ({@code events/{id}/branding/{uuid}.jpg}); no es una Photo. */
+    @Column(name = "background_image_key")
+    private String backgroundImageKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

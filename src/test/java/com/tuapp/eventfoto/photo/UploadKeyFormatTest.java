@@ -23,6 +23,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.UUID;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -181,5 +182,26 @@ class UploadKeyFormatTest {
                 () -> StorageKeys.validatedExtension("a.exe", "image/jpeg"));
         org.junit.jupiter.api.Assertions.assertThrows(com.tuapp.eventfoto.common.exception.InvalidFileFormatException.class,
                 () -> StorageKeys.validatedExtension(null, "application/pdf"));
+    }
+
+    @Test
+    @DisplayName("Imagen de fondo (9.5): formato exacto events/{eventId}/branding/{uuid}.jpg; nunca pasa por /confirm como foto")
+    void brandingKeyFormat() {
+        UUID id = UUID.fromString("11111111-2222-4333-8444-555555555555");
+        String key = StorageKeys.newBrandingKey(id);
+        assertThat(key).matches("events/" + id + "/branding/[0-9a-f-]{36}\\.jpg");
+        assertThat(StorageKeys.isValidFormat(key)).isTrue();
+        assertThat(StorageKeys.isBrandingKeyOf(id, key)).isTrue();
+        assertThat(StorageKeys.isBrandingKeyOf(UUID.randomUUID(), key)).as("de otro evento").isFalse();
+        assertThat(StorageKeys.belongsToEvent(id, key)).as("no es una clave de foto").isFalse();
+        for (String bad : new String[]{
+                "events/" + id + "/branding/" + UUID.randomUUID() + ".png",
+                "events/" + id + "/branding/../" + UUID.randomUUID() + ".jpg",
+                "events/" + id + "/branding/sub/" + UUID.randomUUID() + ".jpg",
+                "events/" + id + "/BRANDING/" + UUID.randomUUID() + ".jpg",
+                "events/" + id + "/branding/x\");}body{a.jpg"}) {
+            assertThat(StorageKeys.isValidFormat(bad)).as(bad).isFalse();
+            assertThat(StorageKeys.isBrandingKeyOf(id, bad)).as(bad).isFalse();
+        }
     }
 }

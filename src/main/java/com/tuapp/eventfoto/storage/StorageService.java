@@ -40,6 +40,9 @@ public interface StorageService {
      */
     void uploadBytes(String key, byte[] bytes, String contentType);
 
+    /** Igual, con el header Cache-Control del objeto (null = sin header). */
+    void uploadBytes(String key, byte[] bytes, String contentType, String cacheControl);
+
     /**
      * Convierte una imagen HEIC en bytes a formato JPEG en bytes mediante heif-convert.
      *

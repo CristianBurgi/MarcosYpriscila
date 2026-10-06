@@ -275,6 +275,21 @@ public class GlobalExceptionHandler {
                 TokenMasker.mask(request.getRequestURI())));
     }
 
+    /** El código va en "error": el panel lo reconoce y manda al wizard. */
+    @ExceptionHandler(WizardRequiredException.class)
+    public ResponseEntity<ErrorResponseDTO> handleWizardRequired(WizardRequiredException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponseDTO.of(
+                HttpStatus.CONFLICT.value(), WizardRequiredException.CODE, ex.getMessage(),
+                TokenMasker.mask(request.getRequestURI())));
+    }
+
+    @ExceptionHandler(InvalidEventSettingsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidEventSettings(InvalidEventSettingsException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(), "Bad Request - Validation Error", ex.getMessage(),
+                TokenMasker.mask(request.getRequestURI())));
+    }
+
     @ExceptionHandler(com.tuapp.eventfoto.checkout.InvalidCheckoutRequestException.class)
     public ResponseEntity<ErrorResponseDTO> handleInvalidCheckout(
             com.tuapp.eventfoto.checkout.InvalidCheckoutRequestException ex, HttpServletRequest request) {

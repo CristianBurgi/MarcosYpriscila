@@ -1,0 +1,98 @@
+/* ==========================================================================
+   EventFoto — Personalización del evento (Fase 9.5)
+   Solo se carga cuando el evento tiene color o imagen: GuestPageController la agrega
+   antes de </head> junto con las variables de la paleta (--brand-*, --gold, --gold-soft,
+   --accent-rgb, --brand-bg). Sin personalización la página no la ve.
+
+   Criterio (mockup docs/mockups/wizard-onboarding.dc.html, vista previa de menu.html):
+   - fondo: degradado de la paleta o la imagen, SIEMPRE con una capa oscura uniforme encima;
+   - el texto sigue claro con cualquier paleta;
+   - la paleta pinta los botones; los acentos (lo que era dorado) pasan a primaryLight.
+   Si una combinación no se lee, se ajusta --brand-scrim, nunca el texto.
+   ========================================================================== */
+
+:root {
+    /* .75: el texto secundario (#cbb99e) llega a 4.5:1 (AA) aun sobre blanco puro, el peor caso de una imagen. */
+    --brand-scrim: rgba(10, 14, 24, .75);
+}
+
+/* Fondo fijo en un pseudo-elemento (no background-attachment: fixed, que iOS ignora y estira la imagen
+   a todo el alto de la página). El html lleva un color sólido por si la imagen tarda en llegar. */
+html {
+    background: var(--brand-primary-deep) !important;
+}
+
+body {
+    background: transparent !important;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(var(--brand-scrim), var(--brand-scrim)), var(--brand-bg);
+    background-size: cover;
+    pointer-events: none;
+}
+
+/* Botones: la forma del mockup (pastilla) y los colores de la paleta. */
+.btn-primary-elegant,
+#upload-card {
+    background: var(--brand-primary) !important;
+    color: var(--brand-on-primary) !important;
+    border: none;
+    border-radius: 999px;
+    /* Borde fino: con un primario muy oscuro (#111111) el botón se perdía contra el fondo. */
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2), 0 8px 22px -10px rgba(0, 0, 0, .55);
+    font-weight: 600;
+}
+
+.btn-primary-elegant:hover,
+#upload-card:hover {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2), 0 10px 26px -8px rgba(0, 0, 0, .6);
+}
+
+a.btn-elegant[data-event-path="/album"] {
+    background: var(--brand-secondary);
+    color: var(--brand-on-secondary);
+    border: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2);
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+/* El resto de los botones: fantasma blanco translúcido. */
+.btn-elegant {
+    background: rgba(255, 255, 255, .14);
+    color: #fff;
+    border: 1.3px solid rgba(255, 255, 255, .4);
+    border-radius: 999px;
+}
+
+.btn-elegant:hover {
+    background: rgba(255, 255, 255, .22);
+    border-color: rgba(255, 255, 255, .6);
+    color: #fff;
+}
+
+a.btn-elegant[data-event-path="/album"]:hover {
+    background: var(--brand-secondary);
+    color: var(--brand-on-secondary);
+    filter: brightness(1.06);
+}
+
+/* Íconos de los botones: del color del texto del botón (en el HTML vienen con el dorado o el vino fijos). */
+.btn-elegant svg,
+.btn-primary-elegant svg {
+    stroke: currentColor;
+}
+
+/* Lo que tenía el vino de la app de fondo: neutro oscuro, así el texto claro se lee con cualquier paleta. */
+dialog.modal-photo {
+    background: rgba(10, 14, 24, .96);
+}
+
+#progress-fill {
+    background: var(--brand-primary-light) !important;
+}
