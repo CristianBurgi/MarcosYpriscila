@@ -121,7 +121,7 @@ class AdminRouteEnumerationTest {
     private Event event(Organizer organizer, String slug, boolean wizardCompleted) {
         return eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
-                .eventDate(LocalDate.now().plusDays(3)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now().plusDays(3))
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(wizardCompleted ? Instant.now() : null).build());
     }
 

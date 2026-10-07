@@ -79,13 +79,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EventClosedException.class)
     public ResponseEntity<ErrorResponseDTO> handleEventClosed(
             EventClosedException ex, HttpServletRequest request) {
+        // El código va en "error" (UPLOAD_NOT_OPEN, UPLOAD_CLOSED, EVENT_NOT_READY, EVENT_CLOSED); el mensaje es para el invitado.
         ErrorResponseDTO error = ErrorResponseDTO.of(
                 HttpStatus.BAD_REQUEST.value(),
-                "Bad Request - Event Closed",
+                ex.getCode(),
                 ex.getMessage(),
                 TokenMasker.mask(request.getRequestURI())
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    @ExceptionHandler(EventExpiredException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEventExpired(EventExpiredException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.GONE).body(ErrorResponseDTO.of(
+                HttpStatus.GONE.value(), EventExpiredException.CODE, ex.getMessage(),
+                TokenMasker.mask(request.getRequestURI())));
     }
 
     @ExceptionHandler(InvalidFileFormatException.class)

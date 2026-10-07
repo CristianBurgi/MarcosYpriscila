@@ -42,8 +42,17 @@ public class Event {
     @Column(name = "event_date")
     private LocalDate eventDate;
 
-    @Column(name = "upload_deadline", nullable = false)
-    private Instant uploadDeadline;
+    /** Fecha de borrado fijada por el superadmin (9.7); {@code null} = eventDate + 30 días. Ver {@link UploadWindow#deletionDate}. */
+    @Column(name = "retention_override_until")
+    private LocalDate retentionOverrideUntil;
+
+    /** Reserva del recordatorio de borrado: sale una sola vez (ver EventLifecycleService). */
+    @Column(name = "expiry_reminder_sent_at")
+    private Instant expiryReminderSentAt;
+
+    /** Contenido ya borrado (R2 y base). La fila se conserva para los pagos y "Mis eventos". */
+    @Column(name = "purged_at")
+    private Instant purgedAt;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)

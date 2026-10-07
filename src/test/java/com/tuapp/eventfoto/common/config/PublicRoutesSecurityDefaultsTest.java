@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.common.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.comment.dto.CreateCommentRequestDTO;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
@@ -60,7 +61,7 @@ class PublicRoutesSecurityDefaultsTest {
         Organizer organizer = organizerRepository.save(Organizer.builder().email("defaults@test.com").build());
         event = eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento Defaults").slug("evento-defaults-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).build());
         photo = photoRepository.save(Photo.builder().event(event)
                 .storageKey("events/" + event.getId() + "/" + UUID.randomUUID() + ".jpg").build());

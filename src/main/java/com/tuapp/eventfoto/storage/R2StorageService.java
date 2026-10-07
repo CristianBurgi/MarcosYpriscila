@@ -6,12 +6,18 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -27,8 +33,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.List;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -45,6 +55,11 @@ public class R2StorageService implements StorageService {
     );
 
     private static final Duration PRESIGNED_URL_DURATION = Duration.ofMinutes(10);
+
+    /** Máximo de DeleteObjects (y de ListObjectsV2) por llamada. */
+    static final int DELETE_BATCH_SIZE = 1000;
+    /** Tope de lotes por evento en deleteEventObjects: 100.000 objetos, muy por encima de cualquier álbum. */
+    static final int MAX_DELETE_PAGES = 100;
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -200,6 +215,61 @@ public class R2StorageService implements StorageService {
             log.error("Error al eliminar el archivo con clave '{}' de Cloudflare R2: {}", key, e.getMessage(), e);
             throw new StorageException("Error al eliminar el archivo de Cloudflare R2", e);
         }
+    }
+
+    @Override
+    public int deleteEventObjects(UUID eventId) {
+        String prefix = StorageKeys.prefixOf(eventId);
+
+        if (isLocalDevMode()) {
+            Path dir = Paths.get("uploads", prefix);
+            if (!Files.exists(dir)) {
+                return 0;
+            }
+            try (Stream<Path> walk = Files.walk(dir)) {
+                List<Path> paths = walk.sorted(Comparator.reverseOrder()).toList(); // hijos antes que su carpeta
+                int files = 0;
+                for (Path path : paths) {
+                    if (Files.isRegularFile(path)) {
+                        files++;
+                    }
+                    Files.delete(path);
+                }
+                return files;
+            } catch (IOException e) {
+                throw new StorageException("Error al borrar los archivos locales del evento", e);
+            }
+        }
+
+        // Relista desde el principio después de cada lote (no depende del continuation token mientras se borra).
+        // Con tope: un listado que nunca se vacía no deja colgado al job.
+        int deleted = 0;
+        for (int page = 0; page < MAX_DELETE_PAGES; page++) {
+            List<ObjectIdentifier> batch;
+            DeleteObjectsResponse result;
+            try {
+                batch = s3Client.listObjectsV2(ListObjectsV2Request.builder()
+                                .bucket(bucketName).prefix(prefix).maxKeys(DELETE_BATCH_SIZE).build())
+                        .contents().stream()
+                        .map(object -> ObjectIdentifier.builder().key(object.key()).build())
+                        .toList();
+                if (batch.isEmpty()) {
+                    return deleted;
+                }
+                result = s3Client.deleteObjects(DeleteObjectsRequest.builder()
+                        .bucket(bucketName)
+                        .delete(Delete.builder().objects(batch).quiet(true).build())
+                        .build());
+            } catch (SdkException e) {
+                throw new StorageException("Error al borrar los objetos del evento en Cloudflare R2", e);
+            }
+            if (result.hasErrors() && !result.errors().isEmpty()) {
+                throw new StorageException("Cloudflare R2 no borró " + result.errors().size() + " de " + batch.size()
+                        + " objetos del evento (primer error: " + result.errors().get(0).code() + ")");
+            }
+            deleted += batch.size();
+        }
+        throw new StorageException("El listado de objetos del evento no se vació después de " + MAX_DELETE_PAGES + " lotes");
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.comment.dto.CreateCommentRequestDTO;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
@@ -95,8 +96,7 @@ class PublicApiIntegrationTest {
                 .organizer(organizer)
                 .name("Evento de Prueba")
                 .slug("evento-demo-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1))
-                .uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true)
                 .origin(EventOrigin.PAID).wizardCompletedAt(Instant.now())
                 .maxPhotosPerGuest(24) // explícito: sin valor, el evento quedaría "sin límite"

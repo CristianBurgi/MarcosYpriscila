@@ -108,7 +108,6 @@ class EventSettingsTest {
         Organizer b = organizerRepository.save(Organizer.builder().email("settings-b@test.com").build());
         event = eventRepository.save(Event.builder()
                 .organizer(a).name("Cumple de Sofía").slug("cumple-sofia-k7m2xq9p")
-                .uploadDeadline(Instant.now().plusSeconds(864000))
                 .isActive(true).origin(EventOrigin.PAID).build());
         owner = cookieOf(a);
         stranger = cookieOf(b);

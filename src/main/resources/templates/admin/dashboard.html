@@ -451,6 +451,16 @@
         </div>
     </div>
 
+    <!-- Reglas del ciclo de vida (Fase 9.6), en hora de Argentina -->
+    <div class="metric-card" id="lifecycleCard" style="margin-bottom: 24px;">
+        <p style="color: #cbd5e1; line-height: 1.6;">
+            <i class="fa-regular fa-calendar" style="margin-right: 6px;"></i>
+            <span th:text="|Tus invitados pueden subir fotos del ${uploadFrom} 00:00 al ${uploadUntil} 23:59.|">Tus invitados pueden subir fotos del ...</span><br>
+            <i class="fa-regular fa-trash-can" style="margin-right: 6px;"></i>
+            <span th:text="|Tu álbum se borra el ${deletionDay}.|">Tu álbum se borra el ...</span>
+        </p>
+    </div>
+
     <!-- Tarjeta Moderador: beneficio, no configuración técnica -->
     <div class="metric-card" id="moderatorCard" style="margin-bottom: 24px;">
         <div class="title"><i class="fa-solid fa-user-shield" style="margin-right: 6px;"></i> Moderador</div>

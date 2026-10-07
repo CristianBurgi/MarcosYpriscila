@@ -139,7 +139,29 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadMessages();
             setupForm();
+            checkGuestbookOpen();
         });
+
+        // Ventana del libro de visitas (fecha del evento o cierre del organizador): si está cerrada, se avisa y el
+        // formulario queda deshabilitado, en vez de dejar escribir y recién ahí mostrar el error.
+        async function checkGuestbookOpen() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}`);
+                if (!res.ok) return;
+                const eventData = await res.json();
+                if (!eventData.guestbookMessage) return;
+                document.querySelectorAll('#message-form input, #message-form textarea, #message-form button')
+                    .forEach(el => { el.disabled = true; });
+                const btn = document.getElementById('btn-submit');
+                btn.innerText = '🔒 Libro de visitas cerrado';
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                document.getElementById('status-message').innerHTML =
+                    `<div class="alert-box alert-error" style="background: rgba(252, 165, 165, 0.08); border: 1px solid rgba(252, 165, 165, 0.5); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(eventData.guestbookMessage)}</div>`;
+            } catch (err) {
+                console.warn('No se pudo verificar el estado del libro de visitas:', err);
+            }
+        }
 
         // 1. Cargar mensajes
         async function loadMessages() {

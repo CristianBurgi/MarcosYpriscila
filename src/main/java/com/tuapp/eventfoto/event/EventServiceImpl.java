@@ -13,12 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
+    private final UploadWindow uploadWindow;
 
     @Override
     @Transactional(readOnly = true)
     public EventResponseDTO getEventBySlug(String slug) {
         Event event = getEventEntityBySlug(slug);
-        return EventResponseDTO.fromEntity(event);
+        return EventResponseDTO.fromEntity(event, uploadWindow);
     }
 
     @Override
@@ -35,6 +36,6 @@ public class EventServiceImpl implements EventService {
         event.setActive(!event.isActive());
         Event updated = eventRepository.save(event);
         log.info("Estado del evento '{}' cambiado a: {}", slug, updated.isActive() ? "ACTIVO" : "CERRADO");
-        return EventResponseDTO.fromEntity(updated);
+        return EventResponseDTO.fromEntity(updated, uploadWindow);
     }
 }

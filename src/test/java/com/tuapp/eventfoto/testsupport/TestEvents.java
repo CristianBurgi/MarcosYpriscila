@@ -3,6 +3,7 @@ package com.tuapp.eventfoto.testsupport;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.organizer.Organizer;
 
 import java.time.Instant;
@@ -22,7 +23,7 @@ public final class TestEvents {
     public static Event.EventBuilder base(Organizer organizer, String slug) {
         return Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE)) // hoy en Argentina: ventana de subida abierta a cualquier hora
                 .isActive(true).origin(EventOrigin.PAID)
                 .wizardCompletedAt(Instant.now()); // wizard hecho: el panel responde (ver EventAccessInterceptor)
     }

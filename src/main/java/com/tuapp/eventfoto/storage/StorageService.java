@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.storage;
 
 import java.io.InputStream;
 import java.util.OptionalLong;
+import java.util.UUID;
 
 public interface StorageService {
 
@@ -65,6 +66,17 @@ public interface StorageService {
      * @param key Clave del objeto a eliminar
      */
     void deleteFile(String key);
+
+    /**
+     * Borra TODO lo que hay bajo {@code events/{eventId}/}: fotos, fondo y huérfanos (PUT presignado sin /confirm).
+     * Recibe el id y no un prefijo libre: no hay forma de pedirle que borre otra cosa (ni el bucket entero).
+     * Repetirlo no falla: sin objetos devuelve 0.
+     *
+     * @return cantidad de objetos borrados
+     * @throws com.tuapp.eventfoto.common.exception.StorageException si algún objeto no se pudo borrar o el listado
+     *         no se vacía; en ese caso quien llama no toca la base y reintenta después
+     */
+    int deleteEventObjects(UUID eventId);
 
     /**
      * Abre y devuelve un InputStream hacia el contenido del objeto almacenado en R2 o disco local.

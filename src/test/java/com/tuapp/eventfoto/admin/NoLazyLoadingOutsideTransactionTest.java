@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.admin;
 
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.JwtAuthenticationFilter;
@@ -62,7 +63,7 @@ class NoLazyLoadingOutsideTransactionTest {
         Organizer organizer = organizerRepository.save(Organizer.builder().email("lazy@test.com").build());
         event = eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento Lazy").slug("evento-lazy-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
         Photo photo = photoRepository.save(Photo.builder().event(event).storageKey("photos/lazy/1.jpg").uploaderName("Ana").build());
         commentRepository.save(Comment.builder().photo(photo).authorName("Beto").text("Linda foto").build());

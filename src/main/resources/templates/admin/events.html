@@ -53,6 +53,7 @@
         .badge-active { background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
         .badge-pending { background: rgba(234, 179, 8, 0.18); color: #fde68a; border: 1px solid rgba(234, 179, 8, 0.4); }
         .badge-closed { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .badge-expired { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.4); }
         .empty {
             text-align: center; background: var(--glass-card); border: 1px dashed var(--glass-border);
             border-radius: 16px; padding: 48px 24px; color: var(--text-sub);
@@ -104,7 +105,8 @@
             </div>
             <div class="event-side">
                 <span class="badge badge-pending" th:if="${!ev.configured()}">Falta configurar</span>
-                <span class="badge" th:if="${ev.configured()}" th:classappend="${ev.isActive() ? 'badge-active' : 'badge-closed'}"
+                <span class="badge badge-expired" th:if="${ev.expired()}">Vencido</span>
+                <span class="badge" th:if="${ev.configured() && !ev.expired()}" th:classappend="${ev.isActive() ? 'badge-active' : 'badge-closed'}"
                       th:text="${ev.isActive() ? 'Activo' : 'Cerrado'}">Activo</span>
                 <i class="fa-solid fa-chevron-right" style="color: var(--text-sub);"></i>
             </div>

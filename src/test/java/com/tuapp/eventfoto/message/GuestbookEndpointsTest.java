@@ -75,7 +75,8 @@ class GuestbookEndpointsTest {
                 .name("Boda de prueba")
                 .slug("libro-endpoint")
                 .eventDate(LocalDate.parse("2026-09-19"))
-                .uploadDeadline(Instant.parse("2026-10-04T23:59:00Z"))
+                .retentionOverrideUntil(LocalDate.parse("2999-01-01")) // fecha fija en el pasado: que el álbum no venza con el calendario
+                
                 .isActive(true)
                 .origin(EventOrigin.PAID).wizardCompletedAt(Instant.now())
                 .build());

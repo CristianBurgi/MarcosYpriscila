@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.admin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.admin.dto.LoginRequestDTO;
 import com.tuapp.eventfoto.common.config.JwtAuthenticationFilter;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
@@ -81,8 +82,7 @@ class AdminSecurityTest {
                 .organizer(organizer)
                 .name("Evento de Prueba")
                 .slug("evento-demo-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1))
-                .uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true)
                 .origin(EventOrigin.PAID).wizardCompletedAt(Instant.now())
                 .build());

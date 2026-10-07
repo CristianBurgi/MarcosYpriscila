@@ -32,12 +32,33 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     @Query("""
             select new com.tuapp.eventfoto.event.dto.EventSummaryDTO(
                 e.name, e.slug, e.eventDate, e.isActive, case when e.wizardCompletedAt is not null then true else false end,
-                (select count(p) from Photo p where p.event = e))
+                (select count(p) from Photo p where p.event = e), false)
             from Event e
             where e.organizer.id = :organizerId
             order by e.createdAt desc
             """)
     List<EventSummaryDTO> findSummariesByOrganizerId(@Param("organizerId") UUID organizerId);
+
+    List<Event> findByOrganizerId(UUID organizerId);
+
+    /**
+     * Candidatos del job de ciclo de vida (EventLifecycleService): sin borrar y con alguna fecha de la que sale la de
+     * borrado. Trae el organizador (el recordatorio va a su email) porque el job corre fuera de una transacción.
+     */
+    @Query("select e from Event e join fetch e.organizer where e.purgedAt is null and (e.eventDate is not null or e.retentionOverrideUntil is not null)")
+    List<Event> findLifecycleCandidates();
+
+    /** Reserva del recordatorio de borrado: 1 si la tomó esta llamada, 0 si ya estaba tomada (sale una sola vez). */
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update Event e set e.expiryReminderSentAt = :now where e.id = :id and e.expiryReminderSentAt is null")
+    int reserveExpiryReminder(@Param("id") UUID id, @Param("now") Instant now);
+
+    /** Libera la reserva si el envío falló: la próxima corrida lo reintenta. */
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update Event e set e.expiryReminderSentAt = null where e.id = :id")
+    int releaseExpiryReminder(@Param("id") UUID id);
 
     /**
      * Cambia solo el límite de fotos por invitado ({@code null} = sin límite) con un UPDATE puntual, así no

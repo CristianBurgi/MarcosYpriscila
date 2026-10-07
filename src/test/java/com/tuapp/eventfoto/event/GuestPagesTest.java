@@ -50,8 +50,7 @@ class GuestPagesTest {
         Organizer organizer = organizerRepository.save(Organizer.builder().email("guest-pages@test.com").build());
         eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento Demo").slug(SLUG)
-                .eventDate(LocalDate.now().plusDays(1))
-                .uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).build());
     }
 

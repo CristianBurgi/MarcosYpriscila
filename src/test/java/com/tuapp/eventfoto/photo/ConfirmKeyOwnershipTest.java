@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
 import com.tuapp.eventfoto.common.exception.UploadInProgressException;
 import com.tuapp.eventfoto.event.Event;
@@ -97,7 +98,7 @@ class ConfirmKeyOwnershipTest {
     private Event event(Organizer organizer, String slug) {
         return eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
     }
 

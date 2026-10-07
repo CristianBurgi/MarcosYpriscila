@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.photo;
 
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
@@ -75,7 +76,7 @@ class ZipConnectionPoolTest {
         organizer = organizerRepository.save(Organizer.builder().email("pool@test.com").build());
         event = eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento de Prueba").slug("evento-pool-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
         for (int i = 0; i < 3; i++) {
             photoRepository.save(Photo.builder().event(event).storageKey("photos/pool/" + i + ".jpg").uploaderName("Ana").build());
