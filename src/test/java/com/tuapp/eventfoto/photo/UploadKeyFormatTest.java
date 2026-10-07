@@ -1,6 +1,7 @@
 package com.tuapp.eventfoto.photo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
@@ -65,7 +66,7 @@ class UploadKeyFormatTest {
         Organizer organizer = organizerRepository.save(Organizer.builder().email("keys@test.com").build());
         event = eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento Keys").slug("evento-keys-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).build());
         when(storageService.generatePublicUrl(any())).thenReturn("https://r2.test/foto.jpg");
         when(storageService.generateUploadUrl(anyString(), anyString())).thenReturn("https://r2.test/presigned");

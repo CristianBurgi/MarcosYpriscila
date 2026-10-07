@@ -347,8 +347,19 @@
             return card;
         }
 
-        function showEmptyGallery(container) {
-            container.innerHTML = '<p class="gallery-empty" style="grid-column: 1 / -1; text-align: center; color: var(--cream-muted);"><em>Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!</em></p>';
+        // Con la subida cerrada (antes o después de la ventana, o cerrada por el organizador) el álbum vacío no invita a subir.
+        const UPLOAD_OPEN = fetch(`/api/v1/events/${SLUG}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(eventData => !eventData || eventData.uploadStatus === 'OPEN')
+            .catch(() => true);
+
+        async function showEmptyGallery(container) {
+            const text = (await UPLOAD_OPEN)
+                ? 'Aún no hay fotografías en la galería pública. ¡Sé el primero en subir una!'
+                : 'Todavía no hay fotos en el álbum.';
+            if (loadedCards().length > 0) return; // llegó una foto mientras se esperaba el estado
+            container.innerHTML = '<p class="gallery-empty" style="grid-column: 1 / -1; text-align: center; color: var(--cream-muted);"><em></em></p>';
+            container.querySelector('em').textContent = text;
         }
 
         // 1. Cargar página de la galería

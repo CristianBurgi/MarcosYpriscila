@@ -53,7 +53,7 @@
 
     <main class="card-elegant">
         <div id="event-closed-banner" style="display: none; border: 1px solid rgba(252, 165, 165, 0.5); background: rgba(252, 165, 165, 0.08); color: #fca5a5; padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
-            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> La recepción de fotografías se encuentra temporalmente cerrada por el organizador.
+            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> <span id="event-closed-text">La recepción de fotografías se encuentra temporalmente cerrada por el organizador.</span>
         </div>
         <div id="quota-exceeded-banner" style="display: none; border: 1px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.08); color: var(--gold-soft); padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
             <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> <span id="quota-exceeded-text"></span>
@@ -694,8 +694,9 @@
                 const res = await fetch(`/api/v1/events/${SLUG}`);
                 if (res.ok) {
                     const eventData = await res.json();
-                    if (eventData && eventData.isActive === false) {
-                        disableUploadForm('closed');
+                    // Ventana de subida (fecha del evento o cierre del organizador): se bloquea ANTES de elegir una foto.
+                    if (eventData && eventData.uploadStatus && eventData.uploadStatus !== 'OPEN') {
+                        disableUploadForm('closed', eventData.uploadMessage);
                     }
                 }
             } catch (err) {
@@ -746,7 +747,7 @@
         // true mientras el formulario está bloqueado POR CUPO (no por evento cerrado).
         let quotaLockActive = false;
 
-        function disableUploadForm(reason = 'closed') {
+        function disableUploadForm(reason = 'closed', closedMessage = null) {
             const closedBanner = document.getElementById('event-closed-banner');
             const quotaBanner = document.getElementById('quota-exceeded-banner');
 
@@ -756,6 +757,8 @@
                 if (quotaText) quotaText.textContent = quotaExceededMessage();
                 if (quotaBanner) quotaBanner.style.display = 'block';
             } else {
+                const closedText = document.getElementById('event-closed-text');
+                if (closedText && closedMessage) closedText.textContent = closedMessage;
                 if (closedBanner) closedBanner.style.display = 'block';
             }
 
@@ -774,7 +777,7 @@
                 btnSubmit.style.display = '';
                 btnSubmit.innerText = reason === 'quota'
                     ? (guestQuotaMax !== null ? `🎉 Ya usaste tus ${guestQuotaMax} fotos` : '🎉 Ya usaste tus fotos')
-                    : '🔒 Recepción de Fotos Cerrada';
+                    : '🔒 Subida de fotos no disponible';
                 btnSubmit.style.opacity = '0.5';
                 btnSubmit.style.cursor = 'not-allowed';
             }

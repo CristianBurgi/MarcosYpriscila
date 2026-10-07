@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.event;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -8,7 +9,10 @@ import org.springframework.stereotype.Component;
  * puerta del moderador (nunca concede nada en el panel) y que el evento sigue siendo moderable.
  */
 @Component
+@RequiredArgsConstructor
 public class ModeratorTokenPolicy implements EventAccessPolicy {
+
+    private final UploadWindow uploadWindow;
 
     @Override
     public boolean canAccess(AccessRequest request, Event event) {
@@ -16,11 +20,10 @@ public class ModeratorTokenPolicy implements EventAccessPolicy {
     }
 
     /**
-     * Único lugar que decide si un evento admite moderación. Hoy siempre: el link no vence y
-     * isActive=false (recepción cerrada) NO cierra la moderación. La regla de vencimiento se define en 9.6;
-     * cuando exista, se cambia acá y todos los 404 del moderador la respetan.
+     * Único lugar que decide si un evento admite moderación. isActive=false (recepción cerrada) NO cierra la
+     * moderación; el vencimiento del álbum sí (9.6): desde la fecha de borrado el link da el 404 de siempre.
      */
-    public static boolean isModeratable(Event event) {
-        return event != null;
+    public boolean isModeratable(Event event) {
+        return event != null && !uploadWindow.isExpired(event);
     }
 }

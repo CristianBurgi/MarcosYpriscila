@@ -7,6 +7,7 @@ import com.tuapp.eventfoto.event.EventRepository;
 import com.tuapp.eventfoto.event.ModeratorTokenPolicy;
 import com.tuapp.eventfoto.event.ModeratorTokens;
 import com.tuapp.eventfoto.event.OrganizerOwnerPolicy;
+import com.tuapp.eventfoto.event.UploadWindow;
 import io.sentry.Breadcrumb;
 import io.sentry.SentryEvent;
 import io.sentry.protocol.Message;
@@ -78,7 +79,7 @@ class TokenMaskingTest {
         EventRepository repository = mock(EventRepository.class);
         when(repository.existsByIdAndOrganizerId(any(), any())).thenReturn(true);
         OrganizerOwnerPolicy ownerPolicy = new OrganizerOwnerPolicy(repository);
-        ModeratorTokenPolicy moderatorPolicy = new ModeratorTokenPolicy();
+        ModeratorTokenPolicy moderatorPolicy = new ModeratorTokenPolicy(new UploadWindow(java.time.Clock.systemUTC()));
         Authentication organizer = new UsernamePasswordAuthenticationToken(organizerId, null, List.of());
 
         assertThat(moderatorPolicy.canAccess(new AccessRequest(AccessScope.MODERATOR, null), event)).isTrue();

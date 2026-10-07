@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.message.GuestbookPdfService;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
 import com.tuapp.eventfoto.storage.ImageContent;
@@ -58,7 +59,7 @@ class ZipStreamingFailureTest {
         photoService = new PhotoServiceImpl(photoRepository, mock(CommentRepository.class), eventService, storageService,
                 mock(SseBroadcaster.class), mock(RateLimiterService.class), mock(GuestQuotaService.class),
                 mock(PhotoPersistenceService.class), guestbookPdfService, mock(PhotoUploadClaimService.class),
-                new AlbumReader(photoRepository, eventService), new ImageContent(storageService));
+                new AlbumReader(photoRepository, eventService), new ImageContent(storageService), mock(UploadWindow.class));
 
         event = Event.builder().id(UUID.randomUUID()).slug("evento-demo-k7m2xq9p").build();
         brokenInR2 = Photo.builder().id(UUID.randomUUID()).event(event).storageKey("photos/evento-demo-k7m2xq9p/rota.jpg").uploaderName("Ana").build();

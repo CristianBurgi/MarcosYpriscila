@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.photo;
 
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
@@ -77,8 +78,7 @@ class ConfirmUploadConcurrencyTest {
                 .organizer(organizer)
                 .name("Evento de Prueba")
                 .slug("evento-demo-k7m2xq9p")
-                .eventDate(LocalDate.now().plusDays(1))
-                .uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true)
                 .origin(EventOrigin.PAID)
                 .build());

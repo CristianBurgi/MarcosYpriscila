@@ -4,7 +4,6 @@ import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
 import com.tuapp.eventfoto.common.config.DeletionActor;
-import com.tuapp.eventfoto.common.exception.EventClosedException;
 import com.tuapp.eventfoto.common.exception.EventPhotoLimitReachedException;
 import com.tuapp.eventfoto.common.exception.FileTooLargeException;
 import com.tuapp.eventfoto.common.exception.GuestQuotaExceededException;
@@ -13,6 +12,7 @@ import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.message.GuestbookPdfService;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
@@ -68,6 +68,7 @@ public class PhotoServiceImpl implements PhotoService {
     private final PhotoUploadClaimService photoUploadClaimService;
     private final AlbumReader albumReader;
     private final ImageContent imageContent;
+    private final UploadWindow uploadWindow;
 
     /** Tope de tamaño por archivo (app.upload.max-file-bytes): lo comparten /confirm y /upload-direct. */
     @Value("${app.upload.max-file-bytes}")
@@ -78,11 +79,9 @@ public class PhotoServiceImpl implements PhotoService {
         // 1. Aplicar rate limiting en dos capas: por guestToken (primario) + por IP (secundario)
         rateLimiterService.checkUploadUrlRateLimit(clientIp, guestToken);
 
-        // 2. Validar que el evento exista por slug y esté activo
+        // 2. Validar que el evento exista por slug y que la ventana de subida esté abierta
         Event event = eventService.getEventEntityBySlug(slug);
-        if (!event.isActive()) {
-            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
-        }
+        uploadWindow.assertGuestCanWrite(event, UploadWindow.GuestWrite.PHOTO_START);
 
         // 3. Chequeo previo (no atómico) del cupo del invitado: evita gastar una presigned
         // URL si ya sabemos que no tiene fotos disponibles. La verdad final y atómica se
@@ -113,9 +112,8 @@ public class PhotoServiceImpl implements PhotoService {
             throw new InvalidFileFormatException("La clave de la subida no es válida para este evento.");
         }
 
-        if (!event.isActive()) {
-            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
-        }
+        // Con gracia: termina una subida empezada antes del cierre (ver UploadWindow.CLOSE_GRACE).
+        uploadWindow.assertGuestCanWrite(event, UploadWindow.GuestWrite.PHOTO_FINISH);
 
         // Tope de tamaño del objeto que el cliente subió directo a R2 (el PUT presignado no tiene tope propio: un
         // cliente malicioso puede subir cualquier tamaño). Un HeadObject, ANTES de reclamar la key, de leer un solo
@@ -249,9 +247,8 @@ public class PhotoServiceImpl implements PhotoService {
         }
 
         Event event = eventService.getEventEntityBySlug(slug);
-        if (!event.isActive()) {
-            throw new EventClosedException("La recepción de fotografías para este evento se encuentra cerrada por el organizador.");
-        }
+        // Respaldo del mismo intento que /confirm: misma gracia.
+        uploadWindow.assertGuestCanWrite(event, UploadWindow.GuestWrite.PHOTO_FINISH);
 
         // Chequeo previo (no atómico) del cupo del invitado: evita gastar tiempo/CPU
         // subiendo bytes a storage si ya sabemos que no tiene fotos disponibles.

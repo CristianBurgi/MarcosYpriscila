@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.realtime;
 
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.comment.Comment;
 import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.common.config.JwtTokenProvider;
@@ -103,7 +104,7 @@ class SseEventIsolationTest {
     private Event event(Organizer organizer, String slug) {
         return eventRepository.save(Event.builder()
                 .organizer(organizer).name("Evento " + slug).slug(slug)
-                .eventDate(LocalDate.now().plusDays(1)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now(UploadWindow.ZONE))
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
     }
 

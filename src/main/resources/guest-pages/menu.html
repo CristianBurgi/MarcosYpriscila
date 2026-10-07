@@ -91,10 +91,11 @@
                 const res = await fetch(`/api/v1/events/${SLUG}`);
                 if (res.ok) {
                     const eventData = await res.json();
-                    if (eventData && eventData.isActive === false) {
+                    if (eventData && eventData.uploadStatus && eventData.uploadStatus !== 'OPEN') {
                         const uploadDesc = document.getElementById('upload-desc');
                         if (uploadDesc) {
-                            uploadDesc.innerHTML = '🔒 <span style="color: #fca5a5; font-weight: 600;">Recepción de fotos cerrada</span>';
+                            uploadDesc.innerHTML = '🔒 <span style="color: #fca5a5; font-weight: 600;"></span>';
+                            uploadDesc.querySelector('span').textContent = eventData.uploadMessage;
                         }
                     }
                 }

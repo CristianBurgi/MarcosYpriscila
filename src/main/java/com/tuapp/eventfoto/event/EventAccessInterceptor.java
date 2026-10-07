@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.event;
 
 import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.common.config.TokenMasker;
+import com.tuapp.eventfoto.common.exception.EventExpiredException;
 import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.common.exception.WizardRequiredException;
 import com.tuapp.eventfoto.moderation.ModeratorRateLimiter;
@@ -36,7 +37,8 @@ import java.util.Optional;
  * {@link AdminRouteExceptions}, se CIERRA (404 + log.error con la ruta ENMASCARADA): nunca queda abierta.
  * AdminRouteEnumerationTest hace que además rompa el build.
  *
- * En el panel, con el wizard del evento sin completar, toda ruta fuera de {@link WizardRouteExceptions}
+ * En el panel, con el álbum vencido, toda ruta del evento responde la pantalla "no disponible" (vistas) o 410
+ * EVENT_EXPIRED (API). Con el wizard del evento sin completar, toda ruta fuera de {@link WizardRouteExceptions}
  * redirige al wizard (vistas) o responde 409 WIZARD_REQUIRED (API).
  *
  * "No existe" y "no es tuyo" (y, en el moderador, "mal formado") lanzan la misma excepción con el mismo
@@ -56,6 +58,7 @@ public class EventAccessInterceptor implements HandlerInterceptor {
     private final List<EventAccessPolicy> policies;
     private final ModeratorRateLimiter moderatorRateLimiter;
     private final ClientIpResolver clientIpResolver;
+    private final UploadWindow uploadWindow;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -116,7 +119,12 @@ public class EventAccessInterceptor implements HandlerInterceptor {
         request.setAttribute(EVENT_ATTRIBUTE, event);
         request.setAttribute(SCOPE_ATTRIBUTE, scope);
 
-        // Después del acceso a propósito: un evento ajeno sigue dando el 404 de arriba, nunca este bloqueo.
+        // Después del acceso a propósito: un evento ajeno sigue dando el 404 de arriba, nunca estos bloqueos.
+        // Álbum vencido: la vista muestra "no disponible" y la API responde 410 EVENT_EXPIRED (el moderador ya quedó
+        // afuera en la policy: ModeratorTokenPolicy.isModeratable).
+        if (scope == AccessScope.PANEL && uploadWindow.isExpired(event)) {
+            throw new EventExpiredException();
+        }
         if (scope == AccessScope.PANEL && event.getWizardCompletedAt() == null && !WizardRouteExceptions.isException(pattern)) {
             if (pattern.startsWith("/admin/")) {
                 response.sendRedirect("/admin/eventos/" + event.getSlug() + "/wizard");

@@ -7,6 +7,7 @@ import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.common.moderation.ContentModerationService;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.message.dto.CreateMessageRequestDTO;
 import com.tuapp.eventfoto.message.dto.MessageResponseDTO;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
@@ -29,6 +30,7 @@ public class MessageServiceImpl implements MessageService {
     private final RateLimiterService rateLimiterService;
     private final ContentModerationService contentModerationService;
     private final SseBroadcaster sseBroadcaster;
+    private final UploadWindow uploadWindow;
 
     @Override
     @Transactional
@@ -44,8 +46,9 @@ public class MessageServiceImpl implements MessageService {
             throw new ContentModerationException("Tu mensaje no pudo publicarse, revisá el contenido e intentá de nuevo.");
         }
 
-        // 3. Validar que el evento exista por slug
+        // 3. Validar que el evento exista por slug y que la ventana esté abierta
         Event event = eventService.getEventEntityBySlug(slug);
+        uploadWindow.assertGuestCanWrite(event, UploadWindow.GuestWrite.MESSAGE);
 
         // 4. Crear el mensaje del libro de visitas
         Message message = Message.builder()

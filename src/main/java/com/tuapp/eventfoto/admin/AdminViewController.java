@@ -23,6 +23,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -69,7 +70,7 @@ public class AdminViewController {
     @GetMapping("/eventos/{slug}")
     public String dashboard(@OwnedEvent Event ownedEvent, Model model) {
         String slug = ownedEvent.getSlug();
-        EventResponseDTO event = EventResponseDTO.fromEntity(ownedEvent);
+        EventResponseDTO event = EventResponseDTO.fromEntity(ownedEvent, uploadWindow);
         long totalPhotos = photoService.countTotalPhotos(slug);
         long totalMessages = messageService.countTotalMessages(slug);
 
@@ -91,6 +92,11 @@ public class AdminViewController {
         model.addAttribute("messages", messages);
         model.addAttribute("photoComments", photoComments);
         addSettings(ownedEvent, model);
+        // Reglas del ciclo de vida para el organizador (hora de Argentina). El panel exige wizard completo: hay fecha.
+        LocalDate eventDate = ownedEvent.getEventDate();
+        model.addAttribute("uploadFrom", UploadWindow.day(eventDate.minusDays(1)));
+        model.addAttribute("uploadUntil", UploadWindow.day(eventDate.plusDays(1)));
+        model.addAttribute("deletionDay", UploadWindow.day(uploadWindow.deletionDate(ownedEvent)));
 
         return "admin/dashboard";
     }

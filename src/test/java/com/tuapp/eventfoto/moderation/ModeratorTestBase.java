@@ -88,7 +88,7 @@ abstract class ModeratorTestBase {
     protected Event event(Organizer organizer, String name, String slug) {
         return eventRepository.save(Event.builder()
                 .organizer(organizer).name(name).slug(slug)
-                .eventDate(LocalDate.now().plusDays(3)).uploadDeadline(Instant.now().plusSeconds(864000))
+                .eventDate(LocalDate.now().plusDays(3))
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
     }
 

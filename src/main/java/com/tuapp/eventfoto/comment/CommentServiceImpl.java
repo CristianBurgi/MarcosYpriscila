@@ -8,6 +8,7 @@ import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.common.moderation.ContentModerationService;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
+import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.photo.Photo;
 import com.tuapp.eventfoto.photo.PhotoRepository;
 import com.tuapp.eventfoto.realtime.SseBroadcaster;
@@ -32,6 +33,7 @@ public class CommentServiceImpl implements CommentService {
     private final ContentModerationService contentModerationService;
     private final SseBroadcaster sseBroadcaster;
     private final StorageService storageService;
+    private final UploadWindow uploadWindow;
 
     @Override
     @Transactional
@@ -52,6 +54,7 @@ public class CommentServiceImpl implements CommentService {
         Event event = eventService.getEventEntityBySlug(slug);
         Photo photo = photoRepository.findByIdAndEventId(photoId, event.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId));
+        uploadWindow.assertGuestCanWrite(event, UploadWindow.GuestWrite.COMMENT);
 
         // 4. Crear el comentario
         Comment comment = Comment.builder()

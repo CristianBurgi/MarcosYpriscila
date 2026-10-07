@@ -67,7 +67,8 @@ class GuestbookPdfIntegrationTest {
                 .name("Evento de Prueba")
                 .slug("libro-prueba")
                 .eventDate(LocalDate.parse("2026-09-19"))
-                .uploadDeadline(Instant.parse("2026-10-04T23:59:00Z"))
+                .retentionOverrideUntil(LocalDate.parse("2999-01-01")) // fecha fija en el pasado: que el álbum no venza con el calendario
+                
                 .isActive(true)
                 .origin(EventOrigin.PAID)
                 .build());
