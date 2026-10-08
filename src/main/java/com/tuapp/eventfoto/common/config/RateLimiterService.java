@@ -1,12 +1,13 @@
 package com.tuapp.eventfoto.common.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.tuapp.eventfoto.common.exception.RateLimitExceededException;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * Rate limiter en dos capas para endpoints de invitados:
@@ -18,6 +19,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *    - No debería activarse en uso normal del evento
  *
  * El admin login rate limit sigue siendo solo por IP (no aplica guestToken).
+ *
+ * Cada bucket es un Caffeine que expira la clave una ventana después de su último pedido y guarda como mucho
+ * 100.000 claves, así que rotar tokens o IPs no hace crecer la memoria sin fin.
  */
 @Service
 public class RateLimiterService {
@@ -49,34 +53,35 @@ public class RateLimiterService {
 
     private static final long ONE_MINUTE_IN_MS = 60_000L;
     private static final long FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000L;
+    private static final long MAX_TRACKED_KEYS = 100_000;
 
     // Buckets para upload URLs (dos claves: guestToken e IP)
-    private final Map<String, Queue<Long>> uploadUrlByGuestTokenBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Queue<Long>> uploadUrlByIpBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> uploadUrlByGuestTokenBuckets = buckets(ONE_MINUTE_IN_MS);
+    private final Cache<String, Deque<Long>> uploadUrlByIpBuckets = buckets(ONE_MINUTE_IN_MS);
 
     // Buckets de upload-direct (multipart por el servidor): mismos valores que upload-url, buckets propios
-    private final Map<String, Queue<Long>> uploadDirectByGuestTokenBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Queue<Long>> uploadDirectByIpBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> uploadDirectByGuestTokenBuckets = buckets(ONE_MINUTE_IN_MS);
+    private final Cache<String, Deque<Long>> uploadDirectByIpBuckets = buckets(ONE_MINUTE_IN_MS);
 
     // Buckets para comments/messages (dos claves: guestToken e IP)
-    private final Map<String, Queue<Long>> commentMessageByGuestTokenBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Queue<Long>> commentMessageByIpBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> commentMessageByGuestTokenBuckets = buckets(ONE_MINUTE_IN_MS);
+    private final Cache<String, Deque<Long>> commentMessageByIpBuckets = buckets(ONE_MINUTE_IN_MS);
 
     // Buckets para admin login (solo IP, sin guestToken)
-    private final Map<String, Queue<Long>> adminLoginBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> adminLoginBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
 
     // Bucket separado para login de superadmin (mismo mecanismo, aislado del de organizador)
-    private final Map<String, Queue<Long>> superadminLoginBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> superadminLoginBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
 
     // Checkout público (por IP) y recompra del organizador (por organizerId)
-    private final Map<String, Queue<Long>> checkoutBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Queue<Long>> adminCheckoutBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> checkoutBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
+    private final Cache<String, Deque<Long>> adminCheckoutBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
     // Página de retorno: confirmar el pago y consultar el estado, cada uno con su bucket por IP
-    private final Map<String, Queue<Long>> checkoutConfirmBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Queue<Long>> checkoutStatusBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> checkoutConfirmBuckets = buckets(ONE_MINUTE_IN_MS);
+    private final Cache<String, Deque<Long>> checkoutStatusBuckets = buckets(ONE_MINUTE_IN_MS);
     // Demo: subidas y sesiones nuevas, por IP
-    private final Map<String, Queue<Long>> demoUploadBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Queue<Long>> demoSessionBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> demoUploadBuckets = buckets(ONE_MINUTE_IN_MS);
+    private final Cache<String, Deque<Long>> demoSessionBuckets = buckets(ONE_HOUR_IN_MS);
 
     /**
      * Chequea rate limit para presigned URLs de foto.
@@ -193,39 +198,48 @@ public class RateLimiterService {
         checkCommentMessageRateLimit(clientIp, "unknown-guest");
     }
 
-    private void checkRateLimit(String key, Map<String, Queue<Long>> buckets, int maxLimit, long windowMs, String errorMessage) {
+    private static Cache<String, Deque<Long>> buckets(long windowMs) {
+        return Caffeine.newBuilder().expireAfterWrite(Duration.ofMillis(windowMs)).maximumSize(MAX_TRACKED_KEYS).build();
+    }
+
+    private void checkRateLimit(String key, Cache<String, Deque<Long>> buckets, int maxLimit, long windowMs, String errorMessage) {
         String normalizedKey = (key != null && !key.isBlank()) ? key : "unknown";
         long now = System.currentTimeMillis();
+        boolean[] allowed = {false};
 
-        Queue<Long> timestamps = buckets.computeIfAbsent(normalizedKey, k -> new ConcurrentLinkedQueue<>());
+        // compute() es atómico por clave: descartar lo vencido, contar y anotar pasan sin que otro pedido se meta.
+        buckets.asMap().compute(normalizedKey, (k, timestamps) -> {
+            Deque<Long> window = timestamps != null ? timestamps : new ArrayDeque<>();
+            while (!window.isEmpty() && now - window.peekFirst() > windowMs) {
+                window.pollFirst();
+            }
+            allowed[0] = window.size() < maxLimit;
+            if (allowed[0]) {
+                window.addLast(now);
+            }
+            return window;
+        });
 
-        // Remover marcas de tiempo anteriores a la ventana definida
-        while (!timestamps.isEmpty() && (now - timestamps.peek() > windowMs)) {
-            timestamps.poll();
-        }
-
-        if (timestamps.size() >= maxLimit) {
+        if (!allowed[0]) {
             throw new RateLimitExceededException(errorMessage);
         }
-
-        timestamps.add(now);
     }
 
     public void resetRateLimits() {
-        uploadUrlByGuestTokenBuckets.clear();
-        uploadUrlByIpBuckets.clear();
-        uploadDirectByGuestTokenBuckets.clear();
-        uploadDirectByIpBuckets.clear();
-        commentMessageByGuestTokenBuckets.clear();
-        commentMessageByIpBuckets.clear();
-        adminLoginBuckets.clear();
-        superadminLoginBuckets.clear();
-        checkoutBuckets.clear();
-        adminCheckoutBuckets.clear();
-        checkoutConfirmBuckets.clear();
-        checkoutStatusBuckets.clear();
-        demoUploadBuckets.clear();
-        demoSessionBuckets.clear();
+        uploadUrlByGuestTokenBuckets.invalidateAll();
+        uploadUrlByIpBuckets.invalidateAll();
+        uploadDirectByGuestTokenBuckets.invalidateAll();
+        uploadDirectByIpBuckets.invalidateAll();
+        commentMessageByGuestTokenBuckets.invalidateAll();
+        commentMessageByIpBuckets.invalidateAll();
+        adminLoginBuckets.invalidateAll();
+        superadminLoginBuckets.invalidateAll();
+        checkoutBuckets.invalidateAll();
+        adminCheckoutBuckets.invalidateAll();
+        checkoutConfirmBuckets.invalidateAll();
+        checkoutStatusBuckets.invalidateAll();
+        demoUploadBuckets.invalidateAll();
+        demoSessionBuckets.invalidateAll();
     }
 }
 

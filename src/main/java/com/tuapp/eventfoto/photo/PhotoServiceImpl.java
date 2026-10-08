@@ -153,8 +153,13 @@ public class PhotoServiceImpl implements PhotoService {
         String finalKey;
         try {
             finalKey = validateAndConvertIfNeeded(request.key());
+        } catch (InvalidFileContentException e) {
+            // Rechazo definitivo: el mismo archivo seguirá siendo inválido en cada reintento.
+            photoUploadClaimService.markFailed(request.key(), HttpStatus.UNPROCESSABLE_ENTITY.value(), e.getMessage());
+            throw e;
         } catch (RuntimeException e) {
-            photoUploadClaimService.markFailed(request.key(), statusOf(e), e.getMessage());
+            // Error pasajero (R2, heif-convert): se libera la key para que el reintento procese de nuevo.
+            photoUploadClaimService.release(request.key());
             throw e;
         }
 
@@ -177,6 +182,10 @@ public class PhotoServiceImpl implements PhotoService {
             }
             int status = e instanceof EventPhotoLimitReachedException ? HttpStatus.CONFLICT.value() : HttpStatus.FORBIDDEN.value();
             photoUploadClaimService.markFailed(request.key(), status, e.getMessage());
+            throw e;
+        } catch (RuntimeException e) {
+            // Falla pasajera de BD: sin esto la key quedaría "en proceso" (503) para siempre.
+            photoUploadClaimService.release(request.key());
             throw e;
         }
 
@@ -228,13 +237,6 @@ public class PhotoServiceImpl implements PhotoService {
             }
             throw new FileTooLargeException("El archivo supera el tope de " + maxFileBytes + " bytes");
         }
-    }
-
-    private static int statusOf(RuntimeException e) {
-        if (e instanceof InvalidFileContentException) {
-            return HttpStatus.UNPROCESSABLE_ENTITY.value();
-        }
-        return HttpStatus.INTERNAL_SERVER_ERROR.value();
     }
 
     @Override

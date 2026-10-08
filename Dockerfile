@@ -23,11 +23,21 @@ RUN apt-get update && \
 
 WORKDIR /app
 
+# Usuario sin privilegios: dueño de /app (por si algo escribe en el directorio de trabajo)
+RUN useradd --system --uid 1001 --no-create-home eventfoto && chown eventfoto:eventfoto /app
+
 # Copiar únicamente el ejecutable .jar generado en la etapa de compilación
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build --chown=eventfoto:eventfoto /app/target/*.jar app.jar
+
+USER eventfoto
+
+# La imagen es la de producción: sin STORAGE_MODE caería en 'local' y saltearía ProductionSecretsValidator.
+# Una variable de Railway con el mismo nombre la pisa.
+ENV STORAGE_MODE=r2
 
 # Exponer el puerto predeterminado 8080
 EXPOSE 8080
 
 # Comando de ejecución de Spring Boot
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# El heap toma hasta el 75% de la memoria del contenedor, no el 25% por defecto ni más que el límite.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]

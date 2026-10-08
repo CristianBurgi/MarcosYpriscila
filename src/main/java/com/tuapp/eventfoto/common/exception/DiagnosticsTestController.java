@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
  * en ambientes de desarrollo/prueba, sin necesidad de forzar un error en
  * producción real.
  *
- * Restringido con @Profile al mismo patrón que StorageTestController: en
+ * Restringido con @Profile a los perfiles de desarrollo: en
  * Railway no se activa ningún profile de Spring (perfil "default"), así que
  * este controller nunca se registra en producción.
  */

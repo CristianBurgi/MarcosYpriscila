@@ -62,8 +62,7 @@
             <version>${sentry.version}</version>
         </dependency>
 
-        <!-- Caches con expiración para los contadores de rate limit del moderador (los buckets viejos de
-             RateLimiterService nunca borran sus registros; ver pendiente en el README) -->
+        <!-- Caches con expiración para los contadores de rate limit (RateLimiterService y ModeratorRateLimiter) -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>

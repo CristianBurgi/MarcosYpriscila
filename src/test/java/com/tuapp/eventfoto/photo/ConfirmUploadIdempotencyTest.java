@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.ByteArrayInputStream;
@@ -31,6 +32,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -64,6 +66,8 @@ class ConfirmUploadIdempotencyTest {
     private OrganizerRepository organizerRepository;
     @MockBean
     private StorageService storageService;
+    @SpyBean
+    private PhotoPersistenceService photoPersistenceService;
 
     private Event event;
 
@@ -196,6 +200,25 @@ class ConfirmUploadIdempotencyTest {
         // El ganador sí paga el costo real de la lectura/conversión de storage.
         assertThat(winner.elapsedMs()).isGreaterThanOrEqualTo(slowStorage.toMillis());
         assertThat(winner.photo().id()).isEqualTo(photoRepository.findAll().get(0).getId());
+    }
+
+    @Test
+    @DisplayName("Falla inesperada al persistir (500): la key se libera y el reintento confirma una sola foto")
+    void unexpectedPersistFailureReleasesKeyForRetry() {
+        String key = key(".jpg");
+        when(storageService.streamObject(key)).thenAnswer(inv -> new ByteArrayInputStream(JPEG_HEADER));
+        doThrow(new IllegalStateException("BD caída un instante")).doCallRealMethod()
+                .when(photoPersistenceService).persistConfirmedPhoto(any(), any(), any(), any(), any(), any(), any());
+        ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(key, "Invitado", null, "guest-token-transient");
+
+        assertThatThrownBy(() -> photoService.confirmUpload("evento-demo-k7m2xq9p", request))
+                .isInstanceOf(IllegalStateException.class);
+        PhotoResponseDTO retry = photoService.confirmUpload("evento-demo-k7m2xq9p", request);
+
+        assertThat(photoRepository.count()).isEqualTo(1);
+        assertThat(photoRepository.findAll().get(0).getId()).isEqualTo(retry.id());
+        assertThat(guestQuotaRepository.findByEventIdAndGuestToken(event.getId(), "guest-token-transient").orElseThrow().getPhotosUploaded())
+                .isEqualTo(1);
     }
 
     private static long elapsedMs(long startNanos) {

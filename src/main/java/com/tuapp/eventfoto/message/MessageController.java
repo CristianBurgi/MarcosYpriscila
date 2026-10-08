@@ -46,7 +46,7 @@ public class MessageController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         Page<MessageResponseDTO> messages = messageService.getMessages(slug, pageable);
         return ResponseEntity.ok(messages);
     }

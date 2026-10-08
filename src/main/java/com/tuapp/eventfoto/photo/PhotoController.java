@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.photo;
 
 import com.tuapp.eventfoto.common.config.ClientIpResolver;
 import com.tuapp.eventfoto.common.config.RateLimiterService;
+import com.tuapp.eventfoto.common.exception.InvalidFileFormatException;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import com.tuapp.eventfoto.photo.dto.UploadUrlRequestDTO;
@@ -67,6 +68,10 @@ public class PhotoController {
             @RequestParam("guestToken") String guestToken,
             HttpServletRequest servletRequest) {
 
+        // Mismos largos que ConfirmUploadRequestDTO: un uploaderName de más reventaría contra la columna (500).
+        if (guestToken.length() > 64 || uploaderName.length() > 150 || (caption != null && caption.length() > 500)) {
+            throw new InvalidFileFormatException("guestToken, uploaderName o caption demasiado largo.");
+        }
         // Mismo freno que upload-url (30/min por token, 500/min por IP). /confirm no lo necesita: solo opera sobre
         // keys ya emitidas por upload-url, que sí pasó por el limitador.
         rateLimiterService.checkUploadDirectRateLimit(clientIpResolver.resolve(servletRequest), guestToken);
@@ -84,7 +89,7 @@ public class PhotoController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         Page<PhotoResponseDTO> photos = photoService.getPhotos(slug, pageable);
         return ResponseEntity.ok(photos);
     }
