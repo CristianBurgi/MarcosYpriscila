@@ -351,6 +351,16 @@ public class GlobalExceptionHandler {
         log.debug("Cliente desconectado en {}: {}", TokenMasker.mask(request.getRequestURI()), ex.getMessage());
     }
 
+    /** Cuerpo JSON ilegible (mal formado, o una fecha que no es fecha): error del cliente, 400 sin Sentry. */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.info("Cuerpo ilegible en {}", TokenMasker.mask(request.getRequestURI()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponseDTO.of(
+                HttpStatus.BAD_REQUEST.value(), "Bad Request", "El cuerpo de la solicitud no es válido.",
+                TokenMasker.mask(request.getRequestURI())));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleGenericException(
             Exception ex, HttpServletRequest request) {

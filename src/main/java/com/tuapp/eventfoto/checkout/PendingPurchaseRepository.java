@@ -53,4 +53,7 @@ public interface PendingPurchaseRepository extends JpaRepository<PendingPurchase
                and ((p.mpPreferenceId is null and p.createdAt < :orphanCutoff) or p.createdAt < :expiredCutoff)
             """)
     int discard(@Param("orphanCutoff") Instant orphanCutoff, @Param("expiredCutoff") Instant expiredCutoff);
+
+    /** La compra procesada que creó este evento (reenvío del mail de confirmación desde el superadmin). */
+    Optional<PendingPurchase> findFirstByEventIdAndProcessedAtIsNotNull(UUID eventId);
 }

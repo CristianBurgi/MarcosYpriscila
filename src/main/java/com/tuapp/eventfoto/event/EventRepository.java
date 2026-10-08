@@ -61,6 +61,15 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     int releaseExpiryReminder(@Param("id") UUID id);
 
     /**
+     * Fecha de borrado fijada por el superadmin (9.7). Reinicia la reserva del recordatorio: con la fecha nueva sale
+     * otro 5 días antes. Un evento ya borrado no se toca (0).
+     */
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("update Event e set e.retentionOverrideUntil = :until, e.expiryReminderSentAt = null where e.id = :id and e.purgedAt is null")
+    int overrideRetention(@Param("id") UUID id, @Param("until") LocalDate until);
+
+    /**
      * Cambia solo el límite de fotos por invitado ({@code null} = sin límite) con un UPDATE puntual, así no
      * pisa otros campos del evento con una copia vieja de la entidad (el panel puede tenerla desactualizada).
      */
