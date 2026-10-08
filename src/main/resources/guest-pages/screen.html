@@ -400,11 +400,10 @@
     </div>
 
     <script>
-        const SLUG = window.EVENT_SLUG;
 
         // QR y nombre del evento salen del slug de la URL, no de valores escritos a mano.
-        document.getElementById('event-qr').src = `/api/v1/events/${SLUG}/qr?size=400`;
-        fetch(`/api/v1/events/${SLUG}`)
+        document.getElementById('event-qr').src = `${EVENT_API}/qr?size=400`;
+        fetch(EVENT_API)
             .then(r => r.ok ? r.json() : null)
             .then(ev => { if (ev && ev.name) document.getElementById('event-brand').textContent = ev.name.toUpperCase(); })
             .catch(() => {});
@@ -670,7 +669,7 @@
             let serverPhotos = [];
             try {
                 for (let page = 0; ; page++) {
-                    const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=${PAGE_SIZE}`, { cache: 'no-store' });
+                    const res = await fetch(`${EVENT_API}/photos?page=${page}&size=${PAGE_SIZE}`, { cache: 'no-store' });
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     serverPhotos = serverPhotos.concat(data.content || []);
@@ -768,7 +767,7 @@
         // Conexión SSE con autoreconexión + resync al reconectar (Test 11)
         function setupSSE() {
             if (!!window.EventSource) {
-                const eventSource = new EventSource(`/api/v1/events/${SLUG}/stream`);
+                const eventSource = new EventSource(`${EVENT_API}/stream`);
 
                 eventSource.addEventListener('PHOTO_PUBLISHED', (e) => {
                     handlePublishedPhoto(extractPayload(e.data));
@@ -823,7 +822,7 @@
         // 8. Cargar mensajes iniciales para el ticker del zócalo
         async function fetchTickerMessages() {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/messages?page=0&size=20`);
+                const res = await fetch(`${EVENT_API}/messages?page=0&size=20`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.content && data.content.length > 0) {

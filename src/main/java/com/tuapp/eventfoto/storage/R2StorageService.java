@@ -219,7 +219,16 @@ public class R2StorageService implements StorageService {
 
     @Override
     public int deleteEventObjects(UUID eventId) {
-        String prefix = StorageKeys.prefixOf(eventId);
+        return deleteByPrefix(StorageKeys.prefixOf(eventId), "del evento");
+    }
+
+    @Override
+    public int deleteDemoObjects(String sid) {
+        return deleteByPrefix(sid == null ? StorageKeys.DEMO_ROOT : StorageKeys.demoPrefixOf(sid), "de la demo");
+    }
+
+    /** Solo con prefijos armados por StorageKeys (events/{uuid}/, demo/ o demo/{sid}/): nunca uno libre. */
+    private int deleteByPrefix(String prefix, String what) {
 
         if (isLocalDevMode()) {
             Path dir = Paths.get("uploads", prefix);
@@ -237,7 +246,7 @@ public class R2StorageService implements StorageService {
                 }
                 return files;
             } catch (IOException e) {
-                throw new StorageException("Error al borrar los archivos locales del evento", e);
+                throw new StorageException("Error al borrar los archivos locales " + what, e);
             }
         }
 
@@ -261,15 +270,15 @@ public class R2StorageService implements StorageService {
                         .delete(Delete.builder().objects(batch).quiet(true).build())
                         .build());
             } catch (SdkException e) {
-                throw new StorageException("Error al borrar los objetos del evento en Cloudflare R2", e);
+                throw new StorageException("Error al borrar los objetos " + what + " en Cloudflare R2", e);
             }
             if (result.hasErrors() && !result.errors().isEmpty()) {
                 throw new StorageException("Cloudflare R2 no borró " + result.errors().size() + " de " + batch.size()
-                        + " objetos del evento (primer error: " + result.errors().get(0).code() + ")");
+                        + " objetos " + what + " (primer error: " + result.errors().get(0).code() + ")");
             }
             deleted += batch.size();
         }
-        throw new StorageException("El listado de objetos del evento no se vació después de " + MAX_DELETE_PAGES + " lotes");
+        throw new StorageException("El listado de objetos " + what + " no se vació después de " + MAX_DELETE_PAGES + " lotes");
     }
 
     @Override

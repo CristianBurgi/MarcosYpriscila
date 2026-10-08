@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Probá la demo — EventFoto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <script src="/js/event-palette.js"></script>
+    <script src="/js/image-compress.js"></script>
+    <!-- Fase 9.7-B: el mismo diseño que el wizard real; estilos, marca, pasos, paso 2 y vista previa salen de sus fragmentos. -->
+    <style th:replace="~{admin/wizard :: styles}"></style>
+    <style>
+        .demo-banner { margin: 0 0 18px; padding: 12px 14px; border-radius: 10px; background: var(--gold-soft); color: var(--ink); font-size: .95rem; }
+        .demo-rules { margin-top: 16px; padding: 12px 14px; border-left: 3px solid var(--gold); background: #fff; color: var(--ink-muted); font-size: .92rem; line-height: 1.45; }
+        .demo-note { margin-top: 22px; font-size: .8rem; color: var(--ink-muted); }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <div class="panel">
+        <div th:replace="~{admin/wizard :: brand}"></div>
+        <div th:replace="~{admin/wizard :: stepper}"></div>
+        <div class="content">
+            <p class="demo-banner" th:if="${ended}">Tu demo terminó. ¿Probás de nuevo?</p>
+            <section id="step1">
+                <span class="eyebrow">Paso 1 de 3</span>
+                <h2>¿Cuándo es tu evento?</h2>
+                <p class="lead">Elegí cualquier fecha: te mostramos cuándo podrían subir fotos tus invitados. En la demo la subida está abierta ya mismo.</p>
+                <div class="field">
+                    <label class="field-label" for="eventDate">Fecha del evento</label>
+                    <input type="date" id="eventDate">
+                </div>
+                <p class="demo-rules" id="rules" hidden></p>
+            </section>
+            <section th:replace="~{admin/wizard :: step2}"></section>
+            <section id="step3" hidden>
+                <span class="eyebrow">Paso 3 de 3</span>
+                <h2 style="font-size:1.5rem;margin-top:14px;">¡Todo listo!</h2>
+                <p class="lead" style="margin-top:16px;">Así van a ver tu evento los invitados. Entrá al menú, subí fotos, dejá un mensaje y mirá cómo aparece todo en la pantalla.</p>
+                <div style="margin-top:22px;">
+                    <div class="summary-row"><span id="summaryDate"></span></div>
+                    <div class="summary-row"><div class="swatch" id="summarySwatch"></div><span>Color elegido</span></div>
+                    <div class="summary-row"><span id="summaryImage"></span></div>
+                </div>
+            </section>
+            <div class="status" id="status" role="status" aria-live="polite"></div>
+            <p class="demo-note">Esto es una demo. Se borra sola en 30 minutos y nadie más la ve.</p>
+        </div>
+        <div th:replace="~{admin/wizard :: nav}"></div>
+    </div>
+    <div th:replace="~{admin/wizard :: preview}"></div>
+</div>
+
+<script>
+    const DEFAULT_COLOR = '#c89b3c';
+    let step = 1;
+    // Hasta confirmar, todo vive acá: la demo se crea recién en el último paso (fecha, color e imagen en un solo POST).
+    let imageFile = null;
+    let imageUrl = null;
+
+    const $ = (id) => document.getElementById(id);
+    const dateInput = $('eventDate');
+    const colorInput = $('color');
+    colorInput.value = DEFAULT_COLOR;
+
+    function setStatus(text, isError) {
+        $('status').textContent = text || '';
+        $('status').classList.toggle('error', !!isError);
+    }
+
+    function formatDate(iso, long) {
+        if (!iso) return 'Sin definir';
+        const d = new Date(iso + 'T00:00:00');
+        if (long) return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const month = d.toLocaleDateString('es-AR', { month: 'long' });
+        return `${d.getDate()} · ${month.charAt(0).toUpperCase() + month.slice(1)} · ${d.getFullYear()}`;
+    }
+
+    function renderPreview() {
+        const p = derivePalette(colorInput.value);
+        $('colorHex').textContent = colorInput.value;
+        const screen = $('pvScreen');
+        screen.style.setProperty('--pv-accent', p.primaryLight);
+        screen.style.background = `linear-gradient(165deg, ${p.primaryLight} 0%, ${p.primary} 55%, ${p.primaryDeep} 100%)`;
+        $('pvPrimary').style.cssText = `background:${p.primary};color:${p.textOnPrimary};`;
+        $('pvSecondary').style.cssText = `background:${p.secondary};color:${p.textOnSecondary};`;
+        $('pvImage').hidden = !imageUrl;
+        if (imageUrl) $('pvImage').src = imageUrl;
+        $('pvDate').textContent = dateInput.value ? formatDate(dateInput.value, false) : '';
+    }
+
+    function renderImage() {
+        $('imageLoaded').hidden = !imageUrl;
+        $('imageDrop').hidden = !!imageUrl;
+        if (imageUrl) $('imageThumb').src = imageUrl;
+        renderPreview();
+    }
+
+    function renderStep() {
+        [1, 2, 3].forEach((n) => {
+            $('step' + n).hidden = n !== step;
+            const el = document.querySelector(`.step[data-step="${n}"]`);
+            el.classList.toggle('active', n === step);
+            el.classList.toggle('done', n < step);
+        });
+        $('btnBack').hidden = step === 1;
+        $('btnNextLabel').textContent = step === 3 ? 'Ver mi demo' : 'Continuar';
+        $('btnNext').disabled = step === 1 && !dateInput.value;
+        if (step === 3) {
+            $('summaryDate').textContent = formatDate(dateInput.value, true);
+            $('summarySwatch').style.background = colorInput.value;
+            $('summaryImage').textContent = imageUrl ? 'Con imagen de fondo' : 'Sin imagen — solo color';
+        }
+        setStatus('');
+    }
+
+    // Las reglas de un evento real con esa fecha, calculadas en el servidor por UploadWindow.
+    async function loadRules() {
+        $('rules').hidden = true;
+        if (!dateInput.value) return;
+        try {
+            const res = await fetch(`/api/v1/demo/rules?date=${encodeURIComponent(dateInput.value)}`);
+            if (!res.ok) return;
+            $('rules').textContent = (await res.json()).text;
+            $('rules').hidden = false;
+        } catch (e) { /* sin reglas no se frena nada */ }
+    }
+
+    dateInput.addEventListener('input', () => { renderStep(); renderPreview(); loadRules(); });
+    colorInput.addEventListener('input', renderPreview);
+
+    $('imageFile').addEventListener('change', async (e) => {
+        const picked = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!picked) return;
+        setStatus('Preparando imagen…');
+        try {
+            // Igual que el wizard real: primero a memoria (arreglo de Android), después reducida y sin EXIF.
+            const copy = await copyFileToMemory(picked);
+            const file = await compressImageIfNeeded(copy, { maxDim: 1920, minBytes: 0 });
+            if (imageUrl) URL.revokeObjectURL(imageUrl); // una sola imagen: la nueva reemplaza a la anterior
+            imageFile = file;
+            imageUrl = URL.createObjectURL(file);
+            renderImage();
+            setStatus('');
+        } catch (err) {
+            setStatus('No pudimos leer la imagen. Probá con otra.', true);
+        }
+    });
+
+    $('removeImage').addEventListener('click', () => {
+        if (imageUrl) URL.revokeObjectURL(imageUrl);
+        imageFile = null;
+        imageUrl = null;
+        renderImage();
+    });
+
+    $('btnBack').addEventListener('click', () => { step = Math.max(1, step - 1); renderStep(); });
+
+    $('btnNext').addEventListener('click', async () => {
+        if (step < 3) {
+            step += 1;
+            renderStep();
+            return;
+        }
+        const btn = $('btnNext');
+        btn.disabled = true;
+        setStatus('Armando tu demo…');
+        try {
+            const form = new FormData();
+            form.append('date', dateInput.value);
+            form.append('color', colorInput.value);
+            if (imageFile) form.append('file', imageFile, imageFile.name);
+            let res;
+            try {
+                res = await fetch('/api/v1/demo/sessions', { method: 'POST', body: form });
+            } catch (e) {
+                throw new Error('No hay conexión. Probá de nuevo.');
+            }
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 413) throw new Error('La imagen supera los 15 MB.');
+            if (!res.ok) throw new Error(data.message || 'No pudimos crear la demo. Probá de nuevo.');
+            window.location.href = data.url;
+        } catch (err) {
+            setStatus(err.message, true);
+            btn.disabled = false;
+        }
+    });
+
+    renderStep();
+    renderImage();
+</script>
+</body>
+</html>

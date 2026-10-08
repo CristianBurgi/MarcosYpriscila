@@ -84,11 +84,10 @@
     </main>
 
     <script>
-        const SLUG = window.EVENT_SLUG;
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}`);
+                const res = await fetch(EVENT_API);
                 if (res.ok) {
                     const eventData = await res.json();
                     if (eventData && eventData.uploadStatus && eventData.uploadStatus !== 'OPEN') {
@@ -110,7 +109,7 @@
 
         async function loadEventHeader() {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}`);
+                const res = await fetch(EVENT_API);
                 if (!res.ok) return;
                 const eventData = await res.json();
 

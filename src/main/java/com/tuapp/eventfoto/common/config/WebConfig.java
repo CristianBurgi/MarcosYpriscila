@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.event.EventAccessInterceptor;
 import com.tuapp.eventfoto.event.PublicEventExpiryInterceptor;
 import com.tuapp.eventfoto.event.OwnedEventArgumentResolver;
 import lombok.RequiredArgsConstructor;
+import com.tuapp.eventfoto.demo.DemoEnabledInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -21,6 +22,7 @@ public class WebConfig implements WebMvcConfigurer {
     private final OwnedEventArgumentResolver ownedEventArgumentResolver;
     private final EventAccessInterceptor eventAccessInterceptor;
     private final PublicEventExpiryInterceptor publicEventExpiryInterceptor;
+    private final DemoEnabledInterceptor demoEnabledInterceptor;
 
     /**
      * Todo el panel del organizador y todo el lado del moderador (/moderar/{token}, /api/v1/moderate/{token}/...)
@@ -34,6 +36,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/admin/**", "/api/v1/admin/**", "/moderar/**", "/api/v1/moderate/**");
         // Lado público: un álbum vencido no se sirve (ver PublicEventExpiryInterceptor).
         registry.addInterceptor(publicEventExpiryInterceptor).addPathPatterns(PublicEventExpiryInterceptor.PATHS);
+        // Demo (Fase 9.7-B): el interruptor app.demo.enabled. La demo no pasa por los interceptores de eventos.
+        registry.addInterceptor(demoEnabledInterceptor).addPathPatterns(DemoEnabledInterceptor.PATHS);
     }
 
     @Override

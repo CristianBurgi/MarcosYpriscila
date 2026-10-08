@@ -108,6 +108,9 @@ public class SecurityConfig {
                 // (los comentarios cuelgan de /events/{slug}/photos/{photoId}/comments; no hay rutas
                 // públicas fuera de /events/**, así que una ruta nueva sin slug nace cerrada)
                 .requestMatchers("/api/v1/events/**").permitAll()
+
+                // Demo en vivo (Fase 9.7-B): pública a propósito. La llave es el sid de la URL (256 bits).
+                .requestMatchers("/demo", "/demo/**", "/api/v1/demo/**", "/img/demo/**").permitAll()
                 
                 // Lado del moderador: la credencial es el token de la URL; la verifica EventAccessInterceptor (ámbito
                 // MODERATOR) en cada request y responde 404 si no resuelve a un evento. Nunca un rol: no abre /admin/**.

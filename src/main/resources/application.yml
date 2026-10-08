@@ -72,6 +72,11 @@ app:
     mp-access-token: ${MP_ACCESS_TOKEN:}
     # Fase 9.4: clave secreta de Webhooks del panel de MP (valida x-signature). Obligatoria con el checkout prendido.
     mp-webhook-secret: ${MP_WEBHOOK_SECRET:}
+  demo:
+    # Fase 9.7-B: demo en vivo en /demo. Interruptor por si alguien abusa: con false, /demo/** muestra "no disponible"
+    # y /api/v1/demo/** responde 503. Cada demo dura 30 minutos (DemoCleanupJob, cada 5 minutos).
+    enabled: ${DEMO_ENABLED:true}
+    cleanup-interval-ms: 300000
   support:
     # WhatsApp de contacto para la página de retorno cuando un pago queda en revisión (solo dígitos, con código de país).
     whatsapp: ${SUPPORT_WHATSAPP:}

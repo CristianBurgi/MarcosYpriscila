@@ -201,6 +201,17 @@
     </div>
 </div>
 
+<div class="card" id="demo">
+    <h2>Demo</h2>
+    <p class="muted">La demo en vivo de /demo. No son eventos: no aparecen en el listado ni en el ciclo de vida. Cada demo se borra sola a los 30 minutos.</p>
+    <div class="toolbar" style="margin-top:12px">
+        <span>Demos activas: <strong th:text="${demo.activeSessions()}">0</strong></span>
+        <span>Fotos actuales: <strong th:text="${demo.photos()}">0</strong></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-danger" data-action="demo-clear">Vaciar demo</button>
+    </div>
+</div>
+
 <dialog id="dlg">
     <h3 id="dlgTitle"></h3>
     <p id="dlgText"></p>
@@ -255,6 +266,12 @@
             text: `El incidente del pago ${d.payment} sale de la lista. No hace nada más: la revisión y un reembolso, si corresponde, son a mano.`,
             url: `/api/v1/superadmin/incidents/${d.id}/resolve`,
             ok: r => r.resolvedNow ? 'Incidente resuelto.' : 'Ya estaba resuelto.'
+        }),
+        'demo-clear': () => ({
+            title: 'Vaciar demo',
+            text: 'Borra TODAS las demos ahora: sus fotos y fondos en R2, sus mensajes y sus sesiones. Las pantallas abiertas pasan a "Tu demo terminó". No se puede deshacer.',
+            url: '/api/v1/superadmin/demo/clear',
+            ok: r => `Demos borradas: ${r.sessions} · Objetos en storage: ${r.objects} · Con error: ${r.failed}`
         }),
         'lifecycle': () => ({
             title: 'Correr el ciclo de vida ahora',

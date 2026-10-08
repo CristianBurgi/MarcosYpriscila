@@ -1,0 +1,72 @@
+/* Fase 9.7-B: solo en las páginas de la demo (las agrega DemoPageController). Ver js/demo.js. */
+.demo-note {
+    position: fixed;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    z-index: 60;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .62);
+    color: #fff;
+    font: 500 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;
+    text-align: center;
+    pointer-events: none;
+}
+
+/* Lugar al pie para que el aviso fijo no tape lo último de la página. */
+body.demo-page::after { content: ""; display: block; height: 64px; }
+
+/* En la pantalla el pie es el ticker: el aviso va arriba, centrado. */
+.demo-screen .demo-note { top: 14px; bottom: auto; }
+
+/* Menú: lo que en un evento real se hace desde el panel. */
+.demo-disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    flex-direction: column;
+    gap: 2px;
+}
+.demo-disabled small { font-size: .72rem; letter-spacing: .04em; text-transform: none; }
+
+/* Álbum: en la demo no hay comentarios. */
+.demo-album #comment-form { display: none !important; }
+
+/* Pantalla: volver al menú y, en un celular, subir sin escanear la propia pantalla. */
+.demo-back {
+    position: fixed;
+    top: 14px;
+    right: 18px;
+    z-index: 60;
+    color: rgba(255, 255, 255, .8);
+    font: 500 13px system-ui, -apple-system, 'Segoe UI', sans-serif;
+    text-decoration: none;
+}
+.demo-mobile-upload { display: none; }
+@media (max-width: 768px) {
+    /* screen.html está pensada para una TV: en un celular, título más chico, QR chico arriba a la derecha y el
+       aviso y el botón apilados sobre el ticker, sin taparse con la foto. */
+    .demo-screen .salon-header { padding: 1rem 1.1rem; }
+    .demo-screen .event-brand { font-size: 1.15rem; letter-spacing: 1px; }
+    .demo-screen .qr-floating-card { top: 64px; right: 12px; transform: scale(.5); transform-origin: top right; }
+    .demo-screen .demo-note { top: auto; bottom: 64px; }
+    .demo-screen .demo-back { top: 20px; }
+    .demo-mobile-upload {
+        display: block;
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: 128px;
+        z-index: 60;
+        padding: 14px 18px;
+        border-radius: 999px;
+        background: var(--brand-primary, #c89b3c);
+        color: var(--brand-on-primary, #1c2321);
+        font: 600 16px system-ui, -apple-system, 'Segoe UI', sans-serif;
+        text-align: center;
+        text-decoration: none;
+        box-shadow: 0 10px 26px -8px rgba(0, 0, 0, .6);
+    }
+}

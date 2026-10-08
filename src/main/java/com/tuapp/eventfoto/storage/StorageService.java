@@ -79,6 +79,12 @@ public interface StorageService {
     int deleteEventObjects(UUID eventId);
 
     /**
+     * Fase 9.7-B: borra lo de UNA demo ({@code demo/{sid}/}) o, con {@code sid} null, todo {@code demo/} ("Vaciar
+     * demo"). Mismas garantías que {@link #deleteEventObjects}; nunca toca {@code events/}.
+     */
+    int deleteDemoObjects(String sid);
+
+    /**
      * Abre y devuelve un InputStream hacia el contenido del objeto almacenado en R2 o disco local.
      *
      * @param key Clave del objeto a transmitir

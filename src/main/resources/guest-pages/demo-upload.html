@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Fotografía | Demo</title>
+    <!-- Fase 9.7-B: la subida de la demo. Mismo aspecto que upload.html (mismas hojas y estructura), pero solo
+         multipart a /api/v1/demo/{sid}/photos: sin nombre, sin cupo por invitado y sin presigned PUT. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/theme.css?v=3">
+    <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
+    <style>
+        html, body {
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: var(--cream) !important;
+            font-family: 'Cormorant Garamond', serif !important;
+        }
+        .header-section { text-align: center; padding: 2rem 1.25rem 0.5rem; max-width: 480px; margin: 0 auto; }
+        .card-elegant { max-width: 420px; margin: 0 auto; padding: 0 1.5rem 4rem; text-align: center; }
+        .alert { padding: 10px 14px; border-radius: 8px; margin-top: 1.2rem; }
+        .alert-ok { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; }
+        .alert-err { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
+        .alert a { color: inherit; text-decoration: underline; }
+    </style>
+    <script src="/js/event-context.js"></script>
+    <script src="/js/image-compress.js"></script>
+</head>
+<body>
+<header class="header-section">
+    <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+    <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+    <h1 class="page-title">Compartí este instante</h1>
+    <p class="page-sub">Tu foto aparece en la pantalla en vivo</p>
+</header>
+
+<main class="card-elegant">
+    <div class="divider"><span class="l"></span>Elegir imagen<span class="l"></span></div>
+    <button type="button" id="btn-camera" class="btn-primary-elegant">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3a0f14" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg>
+        Tomar Foto
+    </button>
+    <p style="font-size: .85rem; color: var(--cream-muted); margin: 14px 0 0;">
+        o <a href="#" id="btn-gallery" style="text-decoration: underline; color: var(--gold-soft);">elegí una de tu galería</a>
+    </p>
+    <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;">
+    <input type="file" id="galleryFile" accept="image/*" style="display: none;">
+
+    <div id="preview-box" style="display: none; margin: 1.4rem 0 0; border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 4px; padding: 8px;">
+        <img id="image-preview" alt="Vista previa de la foto" style="max-width: 100%; max-height: 320px; object-fit: contain;">
+    </div>
+    <button type="button" id="btn-submit" class="btn-primary-elegant" style="margin-top: 1.6rem; display: none;">Subir y Compartir Foto</button>
+    <div id="status-message" role="status" aria-live="polite"></div>
+    <p class="footer-note" id="remaining"></p>
+</main>
+
+<script>
+    let selectedFile = null;
+    let previewUrl = null;
+    const $ = (id) => document.getElementById(id);
+
+    function status(kind, html) {
+        $('status-message').innerHTML = html ? `<div class="alert alert-${kind}">${html}</div>` : '';
+    }
+
+    function escapeHtml(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    async function loadRemaining() {
+        try {
+            const res = await fetch(EVENT_API, { cache: 'no-store' });
+            if (!res.ok) return;
+            const demo = await res.json();
+            const left = Math.max(0, demo.maxPhotos - demo.photos);
+            $('remaining').textContent = left > 0
+                ? `Te ${left === 1 ? 'queda 1 foto' : `quedan ${left} fotos`} de ${demo.maxPhotos} en la demo.`
+                : `Ya subiste las ${demo.maxPhotos} fotos de la demo. ¡En tu evento no hay límite!`;
+        } catch (e) { /* el contador es informativo */ }
+    }
+
+    // Igual que upload.html: la foto se copia ENTERA a memoria apenas se elige (arreglo de Android) y se reduce en
+    // el navegador si pesa más de 1,5 MB. El servidor valida el contenido real y le saca los metadatos.
+    async function onPicked(input) {
+        const picked = input.files && input.files[0];
+        input.value = '';
+        if (!picked) return;
+        status('', '');
+        try {
+            selectedFile = await compressImageIfNeeded(await copyFileToMemory(picked));
+        } catch (e) {
+            selectedFile = null;
+            status('err', 'No pudimos leer la foto. Probá con otra.');
+            return;
+        }
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(selectedFile);
+        $('image-preview').src = previewUrl;
+        $('preview-box').style.display = 'block';
+        $('btn-submit').style.display = '';
+    }
+
+    $('btn-camera').addEventListener('click', () => $('cameraFile').click());
+    $('btn-gallery').addEventListener('click', (e) => { e.preventDefault(); $('galleryFile').click(); });
+    $('cameraFile').addEventListener('change', (e) => onPicked(e.target));
+    $('galleryFile').addEventListener('change', (e) => onPicked(e.target));
+
+    $('btn-submit').addEventListener('click', async () => {
+        if (!selectedFile) return;
+        const btn = $('btn-submit');
+        btn.disabled = true;
+        btn.innerText = 'Subiendo...';
+        try {
+            const form = new FormData();
+            form.append('file', selectedFile, selectedFile.name || 'foto.jpg');
+            let res;
+            try {
+                res = await fetch(`${EVENT_API}/photos`, { method: 'POST', body: form });
+            } catch (e) {
+                throw new Error('No hay conexión. Probá de nuevo.');
+            }
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 404) { location.href = '/demo?fin=1'; return; }
+            if (res.status === 413) throw new Error('La foto supera los 15 MB.');
+            if (!res.ok) throw new Error(data.message || 'No pudimos subir la foto. Probá de nuevo.');
+
+            status('ok', `¡Foto subida! Ya está en el álbum y en <a href="${EVENT_BASE}/pantalla">la pantalla</a>. 📸`);
+            selectedFile = null;
+            $('preview-box').style.display = 'none';
+            btn.style.display = 'none';
+        } catch (err) {
+            status('err', escapeHtml(err.message));
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Subir y Compartir Foto';
+            loadRemaining();
+        }
+    });
+
+    loadRemaining();
+</script>
+</body>
+</html>
