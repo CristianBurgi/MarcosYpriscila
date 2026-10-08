@@ -40,7 +40,7 @@ public class AdminPhotoController {
             @OwnedEvent Event event,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PhotoResponseDTO> photos = photoService.getPhotos(event.getSlug(), PageRequest.of(page, size));
+        Page<PhotoResponseDTO> photos = photoService.getPhotos(event.getSlug(), PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100)));
         return ResponseEntity.ok(photos);
     }
 

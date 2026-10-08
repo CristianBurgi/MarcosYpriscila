@@ -399,6 +399,26 @@ class PublicApiIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+    @Test
+    @DisplayName("GET fotos (pública y admin) y mensajes: size se acota a [1, 100]; size=0 no da 500")
+    void pageSizeIsClampedTo100() throws Exception {
+        for (int i = 0; i < 101; i++) {
+            photoRepository.save(Photo.builder().event(testEvent).storageKey("photos/p" + i + ".jpg").build());
+            messageRepository.save(com.tuapp.eventfoto.message.Message.builder()
+                    .event(testEvent).authorName("Invitado").text("Hola " + i).isApproved(true).build());
+        }
+
+        for (String url : new String[]{"/api/v1/events/evento-demo-k7m2xq9p/photos", "/api/v1/events/evento-demo-k7m2xq9p/messages"}) {
+            mockMvc.perform(get(url).param("size", "100000"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.content", hasSize(100)));
+            mockMvc.perform(get(url).param("size", "0"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.content", hasSize(1)));
+        }
+        mockMvc.perform(get("/api/v1/admin/events/evento-demo-k7m2xq9p/photos").param("size", "100000")
+                        .header("Authorization", "Bearer " + adminJwtToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.content", hasSize(100)));
+    }
+
     /** Clave con el formato events/{eventId}/{uuid}.ext (el único que acepta /confirm). */
     private String key() {
         return "events/" + testEvent.getId() + "/" + java.util.UUID.randomUUID() + ".jpg";

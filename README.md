@@ -404,7 +404,7 @@ Cada evento tiene un link `/moderar/{token}` pensado para celular: quien lo tien
 - **El token nunca se loguea:** `TokenMasker` lo reemplaza por `{token}` en logs, cuerpos de error (`GlobalExceptionHandler`, `MaskingErrorAttributes`) y en Sentry (`SentryTokenScrubber`). Las respuestas del lado del moderador llevan `Referrer-Policy: no-referrer` y `Cache-Control: no-store`, errores incluidos.
 - **Vencimiento:** sin vencimiento por ahora (`ModeratorTokenPolicy.isModeratable`, único punto de decisión; se define en 9.6). Cerrar la recepción (`isActive=false`) no cierra la moderación. Un link filtrado puede borrar contenido para siempre hasta que el organizador genere uno nuevo.
 - **Límite conocido:** los logs HTTP del borde de Railway registran el path completo (incluido el token); la aplicación no puede enmascararlos.
-- **Pendiente (no tocado en este bloque):** los buckets de `RateLimiterService` nunca borran sus claves (crecen con cada IP/guestToken distintos); migrarlos a una estructura con expiración como `ModeratorRateLimiter`.
+- Los buckets de `RateLimiterService` también expiran solos (Caffeine, hasta 100.000 claves por bucket).
 
 ---
 
@@ -773,7 +773,7 @@ Railway conecta automáticamente el servicio de PostgreSQL mediante variables de
 
 **Sin `SENTRY_DSN` configurado, la app funciona exactamente igual** — Sentry queda "apagado" (modo no-op), no rompe nada ni en desarrollo local ni en los tests automáticos.
 
-Para probarlo en desarrollo local sin tocar producción, hay un endpoint de diagnóstico (`GET /api/diagnostics/test/throw`) que solo existe cuando corrés la app con un perfil de desarrollo activo (`dev`, `local` o `test`) — el mismo patrón que ya usa `StorageTestController`. En Railway no se activa ningún perfil, así que este endpoint nunca queda expuesto en producción.
+Para probarlo en desarrollo local sin tocar producción, hay un endpoint de diagnóstico (`GET /api/diagnostics/test/throw`) que solo existe cuando corrés la app con un perfil de desarrollo activo (`dev`, `local` o `test`). En Railway no se activa ningún perfil, así que este endpoint nunca queda expuesto en producción.
 
 ---
 

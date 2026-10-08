@@ -71,6 +71,15 @@ public class PhotoUploadClaimService {
         });
     }
 
+    /**
+     * Libera la key tras un error transitorio (R2/BD caídos un instante) para que el
+     * reintento del invitado vuelva a procesarla en vez de recibir un "falló" permanente.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void release(String uploadKey) {
+        claimRepository.deleteById(uploadKey);
+    }
+
     @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
     public Optional<PhotoUploadClaim> find(String uploadKey) {
         return claimRepository.findById(uploadKey);

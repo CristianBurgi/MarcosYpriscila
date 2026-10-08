@@ -11,8 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Límites del lado del moderador, con estructuras que EXPIRAN solas (Caffeine): los registros viejos se
- * descartan y el tamaño está acotado. (Los buckets de {@code RateLimiterService} nunca borran sus claves; eso
- * queda anotado como pendiente y no se toca en este bloque.)
+ * descartan y el tamaño está acotado.
  *
  * <ul>
  *   <li>Intentos inválidos: 20 fallos (token inexistente o mal formado) cada 10 minutos por IP. Cuenta FALLOS,
