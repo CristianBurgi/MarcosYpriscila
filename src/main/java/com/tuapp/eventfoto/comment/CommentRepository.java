@@ -12,13 +12,13 @@ import java.util.UUID;
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
-    List<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID photoId);
+    List<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(UUID photoId);
 
-    Page<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID photoId, Pageable pageable);
+    Page<Comment> findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(UUID photoId, Pageable pageable);
 
-    Page<Comment> findByPhotoIdOrderByCreatedAtAsc(UUID photoId, Pageable pageable);
+    Page<Comment> findByPhotoIdOrderByCreatedAtAscIdAsc(UUID photoId, Pageable pageable);
 
     Optional<Comment> findByIdAndPhotoEventId(UUID id, UUID eventId);
 
-    List<Comment> findByPhotoEventSlugAndIsApprovedTrueOrderByCreatedAtDesc(String slug);
+    List<Comment> findByPhotoEventSlugAndIsApprovedTrueOrderByCreatedAtDescIdDesc(String slug);
 }

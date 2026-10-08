@@ -200,7 +200,7 @@ public class PhotoServiceImpl implements PhotoService {
         if (existing.isPresent()) {
             Photo photo = existing.get();
             log.info("confirmUpload idempotente: la upload_key '{}' ya fue procesada, devolviendo foto {}", uploadKey, photo.getId());
-            List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
+            List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(photo.getId());
             return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
         }
 
@@ -320,7 +320,7 @@ public class PhotoServiceImpl implements PhotoService {
         Event event = eventService.getEventEntityBySlug(slug);
         return photoRepository.findByEventIdOrderByCreatedAtDescIdDesc(event.getId(), pageable)
                 .map(photo -> {
-                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
+                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(photo.getId());
                     return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
                 });
     }

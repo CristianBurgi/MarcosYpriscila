@@ -79,7 +79,7 @@ public class CommentServiceImpl implements CommentService {
             throw new ResourceNotFoundException("No se encontró la fotografía con ID: " + photoId);
         }
 
-        return commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photoId)
+        return commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(photoId)
                 .stream()
                 .map(CommentResponseDTO::fromEntity)
                 .toList();
@@ -88,7 +88,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional(readOnly = true)
     public List<CommentResponseDTO> getEventComments(String slug) {
-        return commentRepository.findByPhotoEventSlugAndIsApprovedTrueOrderByCreatedAtDesc(slug)
+        return commentRepository.findByPhotoEventSlugAndIsApprovedTrueOrderByCreatedAtDescIdDesc(slug)
                 .stream()
                 .map(comment -> {
                     String photoUrl = null;
