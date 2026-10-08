@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Libro de Visitas | Evento</title>
+    <!-- Google Fonts, FontAwesome & Theme -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/theme.css?v=3">
+    <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
+    <style>
+        html, body {
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: var(--cream) !important;
+            font-family: 'Cormorant Garamond', serif !important;
+        }
+
+        .header-section {
+            text-align: center;
+            padding: 2rem 1.25rem 0.5rem;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .form-card-elegant {
+            max-width: 420px;
+            margin: 0 auto 2.5rem;
+            padding: 1.6rem;
+            border: 1px solid rgba(var(--accent-rgb), 0.3);
+        }
+
+        #message-form { text-align: center; }
+
+        .field-elegant { text-align: center; }
+
+        .message-card {
+            background: rgba(var(--accent-rgb), 0.04);
+            border-left: 2px solid var(--gold);
+            padding: 1.1rem 1.3rem;
+            margin-bottom: 1.1rem;
+            overflow-wrap: anywhere;
+        }
+
+        .message-author {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-weight: 500;
+            font-size: 1.2rem;
+            color: var(--cream);
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .message-text {
+            color: var(--cream-muted);
+            font-size: 1.02rem;
+            margin-top: 0.4rem;
+            line-height: 1.45;
+            font-family: 'Cormorant Garamond', serif;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .message-time {
+            color: var(--gold-soft);
+            font-size: 0.8rem;
+            margin-top: 0.6rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            letter-spacing: .05em;
+        }
+
+        .messages-section {
+            max-width: 620px;
+            margin: 0 auto;
+            padding: 0 1.25rem;
+        }
+    </style>
+    <script src="/js/event-context.js"></script>
+<link rel="stylesheet" href="/css/event-branding.css?v=1">
+<style id="event-palette">:root{--brand-primary:#7b2d8e;--brand-primary-deep:#381441;--brand-primary-light:#ede7ee;--brand-secondary:#975da5;--brand-on-primary:#FFFFFF;--brand-on-secondary:#FFFFFF;--gold:#ede7ee;--gold-soft:#ede7ee;--accent-rgb:237, 231, 238;--brand-bg:url("/uploads/events/{EVENT_ID}/branding/11111111-2222-4333-8444-555555555555.jpg") center/cover no-repeat;}</style>
+</head>
+<body>
+    <header class="header-section">
+        <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+        <h1 class="page-title">Libro de Visitas</h1>
+        <p class="page-sub">Dejá tus buenos deseos</p>
+    </header>
+
+    <main>
+        <article class="form-card-elegant">
+            <div class="divider" style="margin-top: 0;"><span class="l"></span>Escribir un mensaje<span class="l"></span></div>
+
+            <form id="message-form">
+                <label for="authorName" class="field-label">Tu Nombre</label>
+                <input type="text" id="authorName" name="authorName" class="field-elegant" placeholder="Ej: Padrino Juan" required maxlength="150">
+
+                <label for="messageText" class="field-label">Tu mensaje</label>
+                <textarea id="messageText" name="text" rows="3" class="field-elegant" placeholder="Escribí tu mensaje…" required maxlength="1000"></textarea>
+
+                <button type="submit" id="btn-submit" class="btn-primary-elegant">
+                    Enviar Mensaje
+                </button>
+            </form>
+            <div id="status-message"></div>
+        </article>
+
+        <section class="messages-section">
+            <div class="divider"><span class="l"></span>Mensajes de los invitados<span class="l"></span></div>
+            <div id="messages-list">
+                <p style="color: var(--cream-muted); text-align: center;">Cargando mensajes del libro de visitas...</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const SLUG = window.EVENT_SLUG;
+
+        // Misma identidad de invitado que usa upload.html para las fotos: así el rate
+        // limiting por guestToken (15 mensajes/min) es por invitado y no compartido.
+        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        function getOrCreateGuestToken() {
+            let token = localStorage.getItem(GUEST_TOKEN_KEY);
+            if (!token) {
+                token = crypto.randomUUID();
+                localStorage.setItem(GUEST_TOKEN_KEY, token);
+            }
+            return token;
+        }
+        const GUEST_TOKEN = getOrCreateGuestToken();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMessages();
+            setupForm();
+            checkGuestbookOpen();
+        });
+
+        // Ventana del libro de visitas (fecha del evento o cierre del organizador): si está cerrada, se avisa y el
+        // formulario queda deshabilitado, en vez de dejar escribir y recién ahí mostrar el error.
+        async function checkGuestbookOpen() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}`);
+                if (!res.ok) return;
+                const eventData = await res.json();
+                if (!eventData.guestbookMessage) return;
+                document.querySelectorAll('#message-form input, #message-form textarea, #message-form button')
+                    .forEach(el => { el.disabled = true; });
+                const btn = document.getElementById('btn-submit');
+                btn.innerText = '🔒 Libro de visitas cerrado';
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+                document.getElementById('status-message').innerHTML =
+                    `<div class="alert-box alert-error" style="background: rgba(252, 165, 165, 0.08); border: 1px solid rgba(252, 165, 165, 0.5); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(eventData.guestbookMessage)}</div>`;
+            } catch (err) {
+                console.warn('No se pudo verificar el estado del libro de visitas:', err);
+            }
+        }
+
+        // 1. Cargar mensajes
+        async function loadMessages() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/messages?page=0&size=100`);
+                const data = await res.json();
+                const container = document.getElementById('messages-list');
+
+                if (!data.content || data.content.length === 0) {
+                    container.innerHTML = '<p style="color: var(--cream-muted); font-style: italic; text-align: center;">Aún no hay mensajes. ¡Sé el primero en escribir!</p>';
+                    return;
+                }
+
+                container.innerHTML = data.content.map(msg => `
+                    <div class="message-card">
+                        <div class="message-author">${escapeHtml(msg.authorName)}</div>
+                        <div class="message-text">${escapeHtml(msg.text)}</div>
+                        <span class="message-time"><i class="fa-regular fa-clock" style="font-size: 0.75rem;"></i> ${new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} hs</span>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error('Error al cargar mensajes:', err);
+            }
+        }
+
+        // 2. Enviar nuevo mensaje
+        function setupForm() {
+            document.getElementById('message-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const statusDiv = document.getElementById('status-message');
+                const btn = document.getElementById('btn-submit');
+                const authorName = document.getElementById('authorName').value.trim();
+                const text = document.getElementById('messageText').value.trim();
+
+                if (!authorName) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor ingresá tu nombre. Es obligatorio.</div>';
+                    return;
+                }
+
+                if (!text) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor escribí un mensaje.</div>';
+                    return;
+                }
+
+                try {
+                    btn.disabled = true;
+                    btn.innerText = 'Enviando...';
+
+                    const res = await fetch(`/api/v1/events/${SLUG}/messages`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ authorName, text, guestToken: GUEST_TOKEN })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        throw new Error(errData.message || 'Error al enviar el mensaje.');
+                    }
+
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Mensaje enviado con éxito! <i class="fa-solid fa-heart" style="color: #f472b6;"></i></div>';
+                    document.getElementById('messageText').value = '';
+
+                    setTimeout(() => { statusDiv.innerHTML = ''; }, 5000);
+
+                    loadMessages();
+
+                } catch (err) {
+                    statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">${escapeHtml(err.message)}</div>`;
+                } finally {
+                    btn.disabled = false;
+                    btn.innerText = 'Enviar Mensaje';
+                }
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

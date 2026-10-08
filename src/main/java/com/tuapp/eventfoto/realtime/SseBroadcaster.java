@@ -20,7 +20,19 @@ public class SseBroadcaster {
 
     private static final Long SSE_TIMEOUT_MS = 30 * 60 * 1000L; // 30 minutos
 
-    private final Map<UUID, List<SseEmitter>> eventEmitters = new ConcurrentHashMap<>();
+    /**
+     * Canal de una demo (Fase 9.7-B): la clave del mapa es un UUID para un evento o un DemoChannel para una demo. Al
+     * ser de otro tipo, el canal de una demo nunca puede coincidir con el de un evento, ni con el de otra demo. El
+     * toString recorta el sid: los logs no lo muestran entero (la URL de la demo es la llave).
+     */
+    public record DemoChannel(String sid) {
+        @Override
+        public String toString() {
+            return "demo:" + sid.substring(0, Math.min(6, sid.length()));
+        }
+    }
+
+    private final Map<Object, List<SseEmitter>> eventEmitters = new ConcurrentHashMap<>();
 
     /**
      * Suscribe un cliente al flujo Server-Sent Events (SSE) para un evento específico.
@@ -29,11 +41,42 @@ public class SseBroadcaster {
         return register(eventId, new SseEmitter(SSE_TIMEOUT_MS));
     }
 
+    /** Suscribe la pantalla de UNA demo: solo recibe lo que se publica en su propio canal. */
+    public SseEmitter subscribeDemo(String sid) {
+        return register(new DemoChannel(sid), new SseEmitter(SSE_TIMEOUT_MS));
+    }
+
+    public void broadcastDemoPhoto(String sid, PhotoResponseDTO photo) {
+        broadcast(new DemoChannel(sid), "PHOTO_PUBLISHED", SseNotificationEvent.of("PHOTO_PUBLISHED", photo));
+    }
+
+    public void broadcastDemoPhotoDeleted(String sid, UUID photoId) {
+        broadcast(new DemoChannel(sid), "PHOTO_DELETED", SseNotificationEvent.of("PHOTO_DELETED", Map.of("photoId", photoId)));
+    }
+
+    public void broadcastDemoMessage(String sid, MessageResponseDTO message) {
+        broadcast(new DemoChannel(sid), "MESSAGE_CREATED", SseNotificationEvent.of("MESSAGE_CREATED", message));
+    }
+
+    /** Cierra las pantallas abiertas de una demo borrada: al reconectar reciben 404 y vuelven a /demo. */
+    public void closeDemo(String sid) {
+        List<SseEmitter> emitters = eventEmitters.remove(new DemoChannel(sid));
+        if (emitters != null) {
+            emitters.forEach(emitter -> {
+                try {
+                    emitter.complete();
+                } catch (Exception e) {
+                    log.debug("Canal SSE de demo ya cerrado: {}", e.toString());
+                }
+            });
+        }
+    }
+
     /**
      * Registra un emitter ya creado en la lista activa del evento. Package-private para
      * poder testear el manejo de desconexiones con emitters simulados.
      */
-    SseEmitter register(UUID eventId, SseEmitter emitter) {
+    SseEmitter register(Object eventId, SseEmitter emitter) {
         // Alta ATÓMICA: agregar el emitter y (si hace falta) crear la lista ocurren dentro de un solo
         // compute() sobre la clave del evento. Antes era computeIfAbsent + add, y la limpieza hacía
         // remove + isEmpty + remove(eventId) por separado: un cliente que se suscribía en esa
@@ -74,7 +117,7 @@ public class SseBroadcaster {
     }
 
     /** Baja ATÓMICA: quita el emitter y, si la lista queda vacía, la quita del mapa en el mismo paso. */
-    private void removeEmitter(UUID eventId, SseEmitter emitter) {
+    private void removeEmitter(Object eventId, SseEmitter emitter) {
         eventEmitters.computeIfPresent(eventId, (id, list) -> {
             list.remove(emitter);
             return list.isEmpty() ? null : list;
@@ -125,7 +168,7 @@ public class SseBroadcaster {
         broadcast(eventId, "COMMENT_DELETED", notification);
     }
 
-    private void broadcast(UUID eventId, String eventName, Object data) {
+    private void broadcast(Object eventId, String eventName, Object data) {
         List<SseEmitter> emitters = eventEmitters.get(eventId);
         if (emitters == null || emitters.isEmpty()) {
             return;
@@ -178,7 +221,7 @@ public class SseBroadcaster {
         }
     }
 
-    public int getActiveSubscribersCount(UUID eventId) {
+    public int getActiveSubscribersCount(Object eventId) {
         List<SseEmitter> emitters = eventEmitters.get(eventId);
         return emitters != null ? emitters.size() : 0;
     }

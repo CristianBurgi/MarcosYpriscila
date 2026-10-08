@@ -44,6 +44,26 @@ public final class StorageKeys {
     private StorageKeys() {
     }
 
+    /** Todo lo de la demo (Fase 9.7-B) vive bajo este prefijo; nada de eventos reales empieza así. */
+    public static final String DEMO_ROOT = "demo/";
+    /** sid de una demo: 32 bytes aleatorios en base64url sin relleno. Se valida antes de usarlo en una clave. */
+    public static final Pattern DEMO_SID = Pattern.compile("^[A-Za-z0-9_-]{43}$");
+
+    public static String demoPrefixOf(String sid) {
+        if (sid == null || !DEMO_SID.matcher(sid).matches()) {
+            throw new IllegalArgumentException("sid de demo inválido");
+        }
+        return DEMO_ROOT + sid + "/";
+    }
+
+    public static String newDemoKey(String sid, String extension) {
+        return demoPrefixOf(sid) + UUID.randomUUID() + extension;
+    }
+
+    public static String newDemoBrandingKey(String sid) {
+        return demoPrefixOf(sid) + "branding/" + UUID.randomUUID() + ".jpg";
+    }
+
     public static String prefixOf(UUID eventId) {
         return "events/" + eventId + "/";
     }

@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.superadmin;
 
+import com.tuapp.eventfoto.demo.DemoService;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.UploadWindow;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class SuperadminViewController {
     private static final Fmt FMT = new Fmt();
 
     private final SuperadminPanelService panelService;
+    private final DemoService demoService;
 
     /** Fechas en hora de Argentina (Railway corre en UTC). */
     public static final class Fmt {
@@ -58,6 +60,7 @@ public class SuperadminViewController {
         model.addAttribute("result", panelService.events(scope, origin, Math.max(page, 0)));
         model.addAttribute("purchases", panelService.pendingPurchases());
         model.addAttribute("incidents", panelService.openIncidents());
+        model.addAttribute("demo", demoService.stats());
         return "superadmin/events";
     }
 }

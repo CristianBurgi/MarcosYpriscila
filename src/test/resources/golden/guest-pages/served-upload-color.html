@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Fotografía | Evento</title>
+    <!-- Google Fonts, FontAwesome & Theme -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/theme.css?v=3">
+    <link rel="stylesheet" href="/css/elegant-theme.css?v=1">
+    <style>
+        html, body {
+            background: linear-gradient(to bottom, #240a0d, #100405) fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            color: var(--cream) !important;
+            font-family: 'Cormorant Garamond', serif !important;
+        }
+
+        .header-section {
+            text-align: center;
+            padding: 2rem 1.25rem 0.5rem;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .card-elegant {
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        #upload-form { text-align: center; }
+
+        .field-elegant { text-align: center; }
+
+    </style>
+    <script src="/js/event-context.js"></script>
+    <script src="/js/image-compress.js"></script>
+<link rel="stylesheet" href="/css/event-branding.css?v=1">
+<style id="event-palette">:root{--brand-primary:#1f6f5c;--brand-primary-deep:#0b2821;--brand-primary-light:#e7efed;--brand-secondary:#4a8c7c;--brand-on-primary:#FFFFFF;--brand-on-secondary:#FFFFFF;--gold:#e7efed;--gold-soft:#e7efed;--accent-rgb:231, 239, 237;--brand-bg:linear-gradient(165deg,#e7efed 0%,#1f6f5c 55%,#0b2821 100%);}</style>
+</head>
+<body>
+    <header class="header-section">
+        <a href="#" data-event-path="" class="back-link-elegant"><i class="fa-solid fa-arrow-left"></i> Volver al Menú</a>
+        <div class="ornament"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+        <h1 class="page-title">Compartí este instante</h1>
+        <p class="page-sub">Tu foto puede aparecer en la pantalla en vivo</p>
+    </header>
+
+    <main class="card-elegant">
+        <div id="event-closed-banner" style="display: none; border: 1px solid rgba(252, 165, 165, 0.5); background: rgba(252, 165, 165, 0.08); color: #fca5a5; padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
+            <i class="fa-solid fa-lock" style="margin-right: 6px;"></i> <span id="event-closed-text">La recepción de fotografías se encuentra temporalmente cerrada por el organizador.</span>
+        </div>
+        <div id="quota-exceeded-banner" style="display: none; border: 1px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.08); color: var(--gold-soft); padding: 14px 18px; border-radius: 2px; text-align: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem;">
+            <i class="fa-solid fa-champagne-glasses" style="margin-right: 6px;"></i> <span id="quota-exceeded-text"></span>
+        </div>
+
+        <form id="upload-form">
+            <div class="divider"><span class="l"></span>Tu nombre<span class="l"></span></div>
+            <input class="field-elegant" type="text" id="uploaderName" name="uploaderName" placeholder="¿Quién sos?" required maxlength="150">
+
+            <div class="divider"><span class="l"></span>Elegir imagen<span class="l"></span></div>
+
+            <button type="button" id="btn-camera" class="btn-primary-elegant">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#3a0f14" stroke-width="1.6"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7l1.5-3h5L16 7"/><circle cx="12" cy="13.5" r="3.2"/></svg>
+                Tomar Foto
+            </button>
+            <p style="text-align: center; font-size: .85rem; color: var(--cream-muted); margin: 14px 0 0;">
+                o <a href="#" id="btn-gallery" style="text-decoration: underline; color: var(--gold-soft); cursor: pointer;">elegí una de tu galería</a>
+            </p>
+
+            <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;">
+            <input type="file" id="galleryFile" accept="image/*" style="display: none;">
+
+            <div class="preview-container" id="preview-box" style="display: none; width: 100%; max-height: 340px; align-items: center; justify-content: center; margin: 1.4rem 0; overflow: hidden; border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 4px; padding: 8px; box-sizing: border-box;">
+                <img id="image-preview" src="#" alt="Vista previa de la foto" style="max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 2px;">
+            </div>
+
+            <div id="name-notice" role="status" aria-live="polite" style="display: none; border: 1px solid rgba(var(--accent-rgb), 0.4); background: rgba(var(--accent-rgb), 0.12); color: var(--gold-soft); padding: 10px 14px; border-radius: 4px; margin-top: 1.2rem; text-align: center;">Escribí tu nombre para enviar tu foto</div>
+            <div id="busy-notice" role="status" aria-live="polite" style="display: none; color: var(--cream-muted); text-align: center; font-size: .9rem; margin-top: 1rem;"></div>
+
+            <div id="progress-label" aria-live="polite" style="display: none; text-align: center; color: var(--gold-soft); font-size: .95rem; margin-top: 1.2rem;"></div>
+            <div class="progress-bar-container" id="progress-box" style="display: none; width: 100%; height: 3px; background: rgba(var(--accent-rgb), 0.15); overflow: hidden; margin-top: 1.2rem;">
+                <div class="progress-bar-fill" id="progress-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--wine-soft), var(--gold)); transition: width 0.3s ease;"></div>
+            </div>
+
+            <button type="submit" id="btn-submit" class="btn-primary-elegant" style="margin-top: 1.6rem; display: none;">
+                Subir y Compartir Foto
+            </button>
+        </form>
+
+        <div id="status-message"></div>
+
+        <div class="footer-note" id="quota-badge" style="display: none;"></div>
+    </main>
+
+    <script>
+        const SLUG = window.EVENT_SLUG;
+        let selectedFile = null;
+        // true desde que handleSubmit() arranca (incluida la compresión) hasta que el intento
+        // termina (éxito o fallo definitivo): ignora nuevos change y evita el doble envío.
+        let uploadInProgress = false;
+        let successResetTimer = null;
+        let busyNoticeTimer = null;
+
+        // ---- Diagnóstico y copia en memoria de la foto (fix galería Android) ----
+        // En algunos Android (ej. Samsung A32 + Chrome) el File que entrega el selector de GALERÍA apunta a un content
+        // URI que deja de poder leerse un rato después de elegirlo (ERR_UPLOAD_FILE_CHANGED / acceso denegado): el PUT a
+        // R2 y el fallback, que usaban ese mismo File, se cortaban en el fetch. Por eso la foto se lee a memoria apenas
+        // se elige y de ahí en adelante se trabaja SOLO con esa copia.
+
+        // ?debug=1 muestra un recuadro con el paso a paso. Nunca imprime la presigned URL (da acceso de escritura al
+        // objeto) ni el guestToken: solo paso, nombre/tipo/tamaño de la foto, código de estado, key y err.name/err.message.
+        const DEBUG = new URLSearchParams(window.location.search).get('debug') === '1';
+        function debugSafe(text) {
+            // Defensa extra: si algún mensaje de error trajera una URL (puede llevar firma), no se muestra.
+            return String(text == null ? '' : text).replace(/https?:\/\/\S+/gi, '[url]');
+        }
+        function dbg(line) {
+            if (!DEBUG) return;
+            let box = document.getElementById('debug-box');
+            if (!box) {
+                box = document.createElement('pre');
+                box.id = 'debug-box';
+                box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:28vh;overflow:auto;margin:0;padding:6px 8px;'
+                    + 'background:rgba(0,0,0,0.88);color:#9be59b;font:11px/1.35 monospace;white-space:pre-wrap;word-break:break-all;z-index:9999;';
+                document.body.appendChild(box);
+            }
+            box.textContent += debugSafe(line) + '\n';
+            box.scrollTop = box.scrollHeight;
+        }
+        function describeFile(f) {
+            if (!f) return '(sin archivo)';
+            return `${f.name || '(sin nombre)'} | ${f.type || '(tipo vacío)'} | ${f.size} bytes`;
+        }
+        function describeError(err) {
+            return `${(err && err.name) || 'Error'}: ${(err && err.message) || ''}`;
+        }
+
+        // inferImageType, copyFileToMemory y compressImageIfNeeded viven en /js/image-compress.js.
+
+        // Errores de subida etiquetados con el paso que falló, para el código discreto del mensaje y el modo debug.
+        function tagError(err, step, { cause, status } = {}) {
+            err.step = step;
+            if (cause) { err.causeName = cause.name; err.causeMessage = cause.message; }
+            if (status) err.status = status;
+            return err;
+        }
+        function errorCode(err) {
+            return `${err.step || 'subida'}-${err.causeName || err.status || err.name || 'error'}`;
+        }
+
+        // El nombre se recuerda en el navegador para que desde la segunda foto sea un toque.
+        // localStorage puede fallar (modo privado, almacenamiento bloqueado): todo va en try/catch.
+        const UPLOADER_NAME_KEY = 'eventfoto_uploader_name';
+        function readSavedName() {
+            try { return (localStorage.getItem(UPLOADER_NAME_KEY) || '').trim(); } catch (e) { return ''; }
+        }
+        function saveName(name) {
+            try { localStorage.setItem(UPLOADER_NAME_KEY, name); } catch (e) { /* sin persistencia, no pasa nada */ }
+        }
+
+        // El botón "Subir y Compartir Foto" es respaldo: solo se ve si falta el nombre (o en
+        // los carteles de evento cerrado / cupo agotado, que lo usan como leyenda).
+        function setSubmitVisible(visible) {
+            const btn = document.getElementById('btn-submit');
+            if (!btn) return;
+            btn.style.display = (visible || btn.getAttribute('data-closed')) ? '' : 'none';
+        }
+
+        // Texto de progreso sobre la barra (antes se escribía en el botón, que ahora puede estar oculto).
+        function setStage(text) {
+            const label = document.getElementById('progress-label');
+            if (!label) return;
+            label.textContent = text || '';
+            label.style.display = text ? 'block' : 'none';
+        }
+
+        function showNameNotice() {
+            document.getElementById('name-notice').style.display = 'block';
+            setSubmitVisible(true);
+            document.getElementById('uploaderName').focus();
+        }
+        function hideNameNotice() {
+            document.getElementById('name-notice').style.display = 'none';
+        }
+
+        // Aviso corto que se borra solo; vive aparte de #status-message para no pisar éxito/error.
+        function showBusyNotice() {
+            const notice = document.getElementById('busy-notice');
+            notice.textContent = 'Esperá a que termine la subida actual';
+            notice.style.display = 'block';
+            clearTimeout(busyNoticeTimer);
+            busyNoticeTimer = setTimeout(() => { notice.style.display = 'none'; }, 3500);
+        }
+
+        // Al terminar el intento se vacían los inputs: elegir la misma foto de la galería
+        // después de un fallo vuelve a disparar change. (No se limpian al elegir: algunos
+        // navegadores de celular invalidan el File si se lo lee después.)
+        function clearFileInputs() {
+            document.getElementById('cameraFile').value = '';
+            document.getElementById('galleryFile').value = '';
+        }
+
+        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        function getOrCreateGuestToken() {
+            let token = localStorage.getItem(GUEST_TOKEN_KEY);
+            if (!token) {
+                token = crypto.randomUUID();
+                localStorage.setItem(GUEST_TOKEN_KEY, token);
+            }
+            return token;
+        }
+        const GUEST_TOKEN = getOrCreateGuestToken();
+        // Límite del evento tal como lo informa la API (guest-quota). null = sin límite o todavía no se consultó:
+        // el número NUNCA está escrito acá, siempre viene del servidor.
+        let guestQuotaMax = null;
+
+        function quotaExceededMessage() {
+            const fotos = guestQuotaMax !== null ? `tus ${guestQuotaMax} fotos` : 'tus fotos';
+            return `Ya usaste ${fotos} para este evento — ¡gracias por compartir tantos momentos! 🎉`;
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && !uploadInProgress) loadGuestQuota();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkEventStatus();
+            loadGuestQuota();
+
+            const nameInput = document.getElementById('uploaderName');
+            nameInput.value = readSavedName();
+            nameInput.addEventListener('input', () => saveName(nameInput.value.trim()));
+
+            const btnCamera = document.getElementById('btn-camera');
+            const btnGallery = document.getElementById('btn-gallery');
+            const cameraFile = document.getElementById('cameraFile');
+            const galleryFile = document.getElementById('galleryFile');
+            const previewBox = document.getElementById('preview-box');
+            const imagePreview = document.getElementById('image-preview');
+
+            btnCamera.addEventListener('click', () => cameraFile.click());
+            btnGallery.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (btnGallery.getAttribute('data-disabled') === 'true') return;
+                galleryFile.click();
+            });
+
+            let selectionSeq = 0;
+            const handleFileSelected = async (pickedFile) => {
+                if (!pickedFile) return; // cancelar en la cámara no dispara change; si algún navegador lo dispara vacío, no pasa nada
+                if (uploadInProgress) { showBusyNotice(); return; }
+                if (document.getElementById('btn-submit').getAttribute('data-closed')) return;
+                const seq = ++selectionSeq;
+                selectedFile = null;
+                document.getElementById('status-message').innerHTML = ''; // sin "Reintentar" viejo apuntando a otra foto
+                dbg(`seleccion: ${describeFile(pickedFile)}`);
+
+                // Lo PRIMERO que se hace con el File del selector es leerlo entero a memoria (ver comentario de arriba).
+                // Desde acá, vista previa, compresión, PUT y fallback usan solo `file` (la copia), nunca `pickedFile`.
+                let file;
+                const t0 = Date.now();
+                try {
+                    file = await copyFileToMemory(pickedFile);
+                } catch (readErr) {
+                    dbg(`lectura: FALLÓ ${describeError(readErr)}`);
+                    if (seq !== selectionSeq) return;
+                    previewBox.style.display = 'none';
+                    clearFileInputs();
+                    showReadFailure(readErr);
+                    return;
+                }
+                if (seq !== selectionSeq) return; // se eligió otra foto mientras se leía esta
+                dbg(`lectura: ok en ${Date.now() - t0} ms -> copia en memoria: ${describeFile(file)}`);
+                selectedFile = file;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imagePreview.src = event.target.result;
+                    previewBox.style.display = 'flex';
+                };
+                reader.readAsDataURL(file);
+
+                // Subida con un toque: con nombre arranca sola; sin nombre se conserva la foto
+                // y se pide el nombre (botón o Enter).
+                if (nameInput.value.trim()) {
+                    handleSubmit();
+                } else {
+                    showNameNotice();
+                }
+            };
+
+            // El File se toma sincrónicamente del input: nada se espera antes de empezar a leerlo.
+            cameraFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
+            galleryFile.addEventListener('change', (e) => handleFileSelected(e.target.files[0]));
+
+            document.getElementById('upload-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleSubmit();
+            });
+        });
+
+        // ── Fase 9.0 (Bloque C): reintento automático ante red mala ──────────────────
+        //
+        // El flujo es presigned PUT -> sube directo a R2 -> /confirm. Un fallo de red
+        // (timeout, conexión cortada, TypeError de fetch) o un 5xx transitorio se
+        // reintenta hasta 3 veces (2s, 5s, 10s) SIN perder lo que ya se logró: el estado
+        // (`state`) vive solo en memoria (se pierde si se recarga la página, a propósito)
+        // y recuerda si ya se obtuvo la presigned URL y si el PUT a R2 ya terminó, para
+        // que un reintento retome desde ahí en vez de repetir todo desde cero.
+        //   - Falla pedir la presigned URL -> se reintenta ESE paso (nada se subió aún).
+        //   - Falla el PUT a R2 -> se reintenta el PUT con la MISMA url (nunca se pide
+        //     una nueva). Reintentar un PUT es inofensivo: sube el mismo archivo al
+        //     mismo objeto, R2 lo sobreescribe.
+        //   - Falla /confirm -> se reintenta SOLO /confirm, nunca el PUT. Esto es seguro
+        //     gracias a la reclamación atómica de upload_key en el backend
+        //     (PhotoUploadClaimService): un /confirm repetido con la misma key devuelve
+        //     la MISMA foto en vez de duplicarla o cobrar cupo de más.
+        // Un 4xx (archivo inválido, cupo agotado, evento cerrado) nunca se reintenta.
+        const RETRY_DELAYS_MS = [2000, 5000, 10000];
+
+        function retryableError(message) {
+            const err = new Error(message);
+            err.retryable = true;
+            return err;
+        }
+
+        function nonRetryableError(message, kind) {
+            const err = new Error(message);
+            err.retryable = false;
+            if (kind) err.kind = kind;
+            return err;
+        }
+
+        // Rechazos definitivos del servidor con un mensaje pensado para el invitado: 413 (foto demasiado pesada) y
+        // 409 (el álbum llegó al tope de fotos del evento). Se muestra el mensaje del servidor tal cual; no se reintenta
+        // (la misma foto volvería a ser rechazada), no se prueba el fallback y no se habla de "señal débil".
+        async function rejectionError(res, fallbackMessage) {
+            if (res.status !== 413 && res.status !== 409) return null;
+            const body = await res.json().catch(() => ({}));
+            return nonRetryableError(body.message || fallbackMessage, res.status === 413 ? 'too-large' : 'album-full');
+        }
+
+        // La foto no se pudo leer a memoria: no es un problema de red (no hay subida ni reintentos), así que este mensaje
+        // reemplaza a cualquier otro y nunca habla de "señal débil".
+        function showReadFailure(err) {
+            const statusDiv = document.getElementById('status-message');
+            const code = DEBUG ? '' : `<div style="margin-top: 6px; color: #9ca3af; font-size: 0.75rem;">(código: ${escapeHtml(`READ-${(err && err.name) || 'error'}`)})</div>`;
+            statusDiv.innerHTML = `<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">No pudimos leer la foto. Probá sacándola con la cámara o elegí otra.${code}</div>`;
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        // Paso 1: presigned URL. Todavía no se subió nada: siempre es gratis reintentar
+        // este paso completo desde cero.
+        async function requestPresignedUrl(contentType, filename) {
+            let res;
+            try {
+                res = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contentType, filename, guestToken: GUEST_TOKEN })
+                });
+            } catch (networkErr) {
+                dbg(`url: FALLÓ ${describeError(networkErr)}`);
+                throw tagError(retryableError('No se pudo conectar para iniciar la subida.'), 'url', { cause: networkErr });
+            }
+            dbg(`url: HTTP ${res.status}`);
+            if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
+            const rejection = await rejectionError(res, 'No se pudo iniciar la subida.');
+            if (rejection) throw rejection;
+            if (res.ok) {
+                const presigned = await res.json(); // { uploadUrl, key }
+                dbg(`url: ok key=${presigned.key}`); // solo la key: la URL lleva una firma de escritura
+                return presigned;
+            }
+            if (res.status >= 500) throw tagError(retryableError('El servidor tardó en iniciar la subida.'), 'url', { status: res.status });
+            const body = await res.json().catch(() => ({}));
+            throw tagError(nonRetryableError(body.message || 'No se pudo iniciar la subida.'), 'url', { status: res.status });
+        }
+
+        // Paso 2: PUT directo a R2 con la presigned URL ya obtenida.
+        async function putToR2(uploadUrl, contentType, file) {
+            let res;
+            try {
+                res = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file });
+            } catch (networkErr) {
+                dbg(`PUT: FALLÓ ${describeError(networkErr)} (cuerpo: ${describeFile(file)})`);
+                throw tagError(retryableError('La foto no llegó al servidor de almacenamiento.'), 'PUT', { cause: networkErr });
+            }
+            dbg(`PUT: HTTP ${res.status}`);
+            if (res.ok) return;
+            if (res.status >= 500 || res.status === 429) throw tagError(retryableError('El almacenamiento tardó en responder.'), 'PUT', { status: res.status });
+            // 4xx acá (ej. URL vencida) no es un fallo de red: reintentar la MISMA url no
+            // sirve. Se marca no reintentable para que el llamador pruebe el fallback.
+            throw tagError(nonRetryableError('No se pudo completar la subida al almacenamiento.'), 'PUT', { status: res.status });
+        }
+
+        // Paso 3: confirmar. Seguro de llamar más de una vez con la MISMA key (ver
+        // comentario del bloque de arriba).
+        async function confirmUploadStep(key, uploaderName) {
+            let res;
+            try {
+                res = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, uploaderName, guestToken: GUEST_TOKEN })
+                });
+            } catch (networkErr) {
+                dbg(`confirm: FALLÓ ${describeError(networkErr)}`);
+                throw tagError(retryableError('No pudimos confirmar tu foto, pero ya se subió.'), 'confirm', { cause: networkErr });
+            }
+            dbg(`confirm: HTTP ${res.status} key=${key}`);
+            if (res.ok) return await res.json();
+            if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
+            const rejection = await rejectionError(res, 'No se pudo confirmar la fotografía.');
+            if (rejection) throw rejection;
+            // 503: otra confirmación con esta misma key está en curso (carrera o un
+            // reintento propio que se cruzó) -- se resuelve sola en el próximo intento.
+            if (res.status >= 500) throw tagError(retryableError('El servidor tardó en confirmar tu foto.'), 'confirm', { status: res.status });
+            const body = await res.json().catch(() => ({}));
+            throw tagError(nonRetryableError(body.message || 'No se pudo confirmar la fotografía.'), 'confirm', { status: res.status });
+        }
+
+        // Retoma desde donde quedó `state`: si ya hay presigned URL no pide otra, si el
+        // PUT ya terminó no vuelve a subir el archivo.
+        async function attemptUpload(state) {
+            if (!state.presigned) {
+                state.presigned = await requestPresignedUrl(state.contentType, state.fileName);
+            }
+            if (!state.putDone) {
+                await putToR2(state.presigned.uploadUrl, state.contentType, state.file);
+                state.putDone = true;
+            }
+            return await confirmUploadStep(state.presigned.key, state.uploaderName);
+        }
+
+        async function uploadWithRetries(state, onRetrying) {
+            for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+                try {
+                    return await attemptUpload(state);
+                } catch (err) {
+                    const exhausted = attempt === RETRY_DELAYS_MS.length;
+                    if (!err.retryable || exhausted) throw err;
+                    dbg(`reintento ${attempt + 1} de ${RETRY_DELAYS_MS.length} (paso ${err.step || '?'})`);
+                    onRetrying(attempt + 1, RETRY_DELAYS_MS.length);
+                    await sleep(RETRY_DELAYS_MS[attempt]);
+                }
+            }
+        }
+
+        // Fallback garantizado por el servidor (multipart, sin presigned URL): para
+        // navegadores/redes que bloquean el PUT directo a R2. Solo se intenta si el PUT
+        // NUNCA llegó a completarse (state.putDone === false) -- si ya está en R2,
+        // usar este camino independiente duplicaría la foto.
+        async function uploadDirectFallback(state) {
+            const safeFileName = (state.file.name && state.file.name.trim()) ? state.file.name : 'galeria_photo.jpg';
+            const formData = new FormData();
+            formData.append('file', state.file, safeFileName);
+            formData.append('uploaderName', state.uploaderName);
+            formData.append('guestToken', GUEST_TOKEN);
+
+            let res;
+            try {
+                res = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, { method: 'POST', body: formData });
+            } catch (networkErr) {
+                dbg(`fallback: FALLÓ ${describeError(networkErr)} (cuerpo: ${describeFile(state.file)})`);
+                throw tagError(nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.'), 'fallback', { cause: networkErr });
+            }
+            dbg(`fallback: HTTP ${res.status}`);
+            if (res.status === 403) throw nonRetryableError(quotaExceededMessage(), 'quota');
+            const rejection = await rejectionError(res, 'No se pudo enviar la fotografía.');
+            if (rejection) throw rejection;
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw tagError(nonRetryableError(errData.message || 'No se pudo enviar la fotografía desde la galería. Intentalo de nuevo.'), 'fallback', { status: res.status });
+            }
+        }
+
+        async function handleSubmit() {
+            if (uploadInProgress) return;
+            const statusDiv = document.getElementById('status-message');
+            const btn = document.getElementById('btn-submit');
+            const progressBox = document.getElementById('progress-box');
+            const progressFill = document.getElementById('progress-fill');
+
+            const uploaderName = document.getElementById('uploaderName').value.trim();
+
+            if (!uploaderName) {
+                statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor ingresá tu nombre. Es obligatorio.</div>';
+                return;
+            }
+
+            if (!selectedFile) {
+                statusDiv.innerHTML = '<div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">Por favor seleccioná o tomá una foto usando los botones superiores.</div>';
+                return;
+            }
+
+            uploadInProgress = true;
+            clearTimeout(successResetTimer); // el reseteo diferido de un éxito anterior no debe tocar esta subida
+            hideNameNotice();
+            statusDiv.innerHTML = '';
+            setSubmitVisible(false);
+            btn.disabled = true;
+            setStage('Optimizando foto...');
+            progressBox.style.display = 'block';
+            progressFill.style.width = '15%';
+
+            let fileToUpload;
+            dbg(`comprimir: antes ${describeFile(selectedFile)}`);
+            try {
+                fileToUpload = await compressImageIfNeeded(selectedFile, { log: dbg });
+            } catch (compressErr) {
+                dbg(`comprimir: FALLÓ ${describeError(compressErr)}`);
+                handleUploadFailure(compressErr, null);
+                return;
+            }
+            dbg(`comprimir: después ${describeFile(fileToUpload)}`);
+            let contentType = fileToUpload.type || 'image/jpeg';
+            if (contentType.toLowerCase() === 'image/jpg') {
+                contentType = 'image/jpeg';
+            }
+
+            const state = {
+                file: fileToUpload,
+                contentType,
+                fileName: fileToUpload.name || 'photo.jpg',
+                uploaderName,
+                presigned: null,   // { uploadUrl, key } una vez obtenida
+                putDone: false     // true apenas el PUT a R2 termina con éxito
+            };
+
+            await runUpload(state);
+        }
+
+        async function runUpload(state) {
+            const btn = document.getElementById('btn-submit');
+            const progressFill = document.getElementById('progress-fill');
+            setStage('Iniciando subida...');
+            progressFill.style.width = '30%';
+
+            try {
+                await uploadWithRetries(state, (attemptNumber, totalAttempts) => showRetrying(attemptNumber, totalAttempts));
+                onUploadSuccess();
+            } catch (err) {
+                if (!state.putDone && !err.kind) {
+                    // El archivo NUNCA llegó a subirse a R2 (se agotaron los reintentos, o
+                    // el PUT falló de forma no reintentable -- ej. bloqueado por el
+                    // navegador/red). Sin nada subido todavía, es seguro probar el
+                    // fallback garantizado por el servidor antes de rendirse.
+                    try {
+                        setStage('Enviando fotografía...');
+                        progressFill.style.width = '70%';
+                        await uploadDirectFallback(state);
+                        onUploadSuccess();
+                        return;
+                    } catch (fallbackErr) {
+                        fallbackErr.primaryCode = errorCode(err); // el PUT/URL que falló antes de probar el fallback
+                        handleUploadFailure(fallbackErr, state);
+                        return;
+                    }
+                }
+                handleUploadFailure(err, state);
+            }
+        }
+
+        function showRetrying(attemptNumber, totalAttempts) {
+            const btn = document.getElementById('btn-submit');
+            const statusDiv = document.getElementById('status-message');
+            setStage(`Reintentando… (${attemptNumber} de ${totalAttempts})`);
+            statusDiv.innerHTML = '<div class="alert-box alert-retry" style="background: rgba(var(--accent-rgb), 0.15); border: 1px solid rgba(var(--accent-rgb), 0.4); color: var(--gold-soft); padding: 10px; border-radius: 8px; margin-top: 10px;">📶 Reintentando… la señal está débil.</div>';
+        }
+
+        function onUploadSuccess() {
+            const statusDiv = document.getElementById('status-message');
+            const progressBox = document.getElementById('progress-box');
+            const progressFill = document.getElementById('progress-fill');
+            const btn = document.getElementById('btn-submit');
+            const previewBox = document.getElementById('preview-box');
+
+            progressFill.style.width = '100%';
+            statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Foto subida con éxito! Ya está en el álbum y en la pantalla del salón. 📸</div>';
+
+            loadGuestQuota();
+
+            selectedFile = null;
+            clearFileInputs();
+            previewBox.style.display = 'none';
+            setStage('');
+            uploadInProgress = false;
+
+            if (!btn.getAttribute('data-closed')) {
+                btn.disabled = false;
+                btn.innerText = 'Subir y Compartir Foto';
+            }
+            setSubmitVisible(false);
+
+            successResetTimer = setTimeout(() => {
+                statusDiv.innerHTML = '';
+                progressBox.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 5000);
+        }
+
+        // Error definitivo: nunca deja el botón/estado colgado en "reintentando". Si ya
+        // se armó un `state` (no es un error de validación previo a empezar), ofrece un
+        // botón para reintentar a mano SIN perder la foto elegida ni repetir lo que ya
+        // se logró (retoma con el mismo `state`, vía runUpload).
+        function handleUploadFailure(err, state) {
+            console.error(err);
+            const statusDiv = document.getElementById('status-message');
+            const progressBox = document.getElementById('progress-box');
+            const progressFill = document.getElementById('progress-fill');
+            const btn = document.getElementById('btn-submit');
+
+            progressBox.style.display = 'none';
+            progressFill.style.width = '0%';
+            setStage('');
+            uploadInProgress = false;
+            clearFileInputs();
+
+            const message = (err && err.message) ? err.message : 'No se pudo subir la fotografía. Intentá de nuevo.';
+            const offerManualRetry = !!state && !err.kind; // cupo / foto pesada / álbum lleno: reintentar la misma foto no sirve
+
+            if (err && err.kind === 'quota') {
+                if (!btn.getAttribute('data-closed')) {
+                    btn.disabled = false;
+                    btn.innerText = 'Subir y Compartir Foto';
+                }
+                handleQuotaRejection(statusDiv);
+                return;
+            }
+
+            // Sin ?debug=1, un fallo definitivo lleva un código corto y gris (ej. "PUT-TypeError") para poder
+            // diagnosticar desde una captura. Los rechazos con mensaje propio (cupo, foto pesada, álbum lleno) no lo llevan.
+            let codeHtml = '';
+            if (!DEBUG && !err.kind) {
+                const codes = [err.primaryCode, errorCode(err)].filter(Boolean).join(' + ');
+                codeHtml = `<div style="margin-top: 6px; color: #9ca3af; font-size: 0.75rem;">(código: ${escapeHtml(codes)})</div>`;
+            }
+            dbg(`FALLO DEFINITIVO: ${errorCode(err)}${err.primaryCode ? ' (antes ' + err.primaryCode + ')' : ''} -> ${describeError(err)}`);
+
+            statusDiv.innerHTML = `
+                <div class="alert-box alert-error" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                    ${escapeHtml(message)}${codeHtml}
+                    ${offerManualRetry ? '<div style="margin-top: 10px;"><button type="button" id="btn-manual-retry" class="btn-primary-elegant" style="padding: 8px 16px; font-size: 0.95rem;">Reintentar</button></div>' : ''}
+                </div>`;
+
+            if (!btn.getAttribute('data-closed')) {
+                btn.disabled = false;
+                btn.innerText = 'Subir y Compartir Foto';
+            }
+
+            if (offerManualRetry) {
+                const retryBtn = document.getElementById('btn-manual-retry');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', async () => {
+                        statusDiv.innerHTML = '';
+                        progressBox.style.display = 'block';
+                        btn.disabled = true;
+                        uploadInProgress = true;
+                        await runUpload(state);
+                    });
+                }
+            }
+        }
+
+        // Un 403 de cupo puede venir de una pantalla vieja: el organizador pudo haber pasado a "sin límite" (o
+        // subido el límite) después de que se cargó la página. Se vuelve a preguntar al servidor ANTES de mostrar el
+        // banner: si ahora hay lugar, el invitado puede reintentar sin recargar.
+        async function handleQuotaRejection(statusDiv) {
+            const quota = await fetchGuestQuota();
+            if (quota) {
+                applyGuestQuota(quota);
+                if (quota.unlimited || quota.remainingPhotos > 0) {
+                    statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">El organizador amplió el límite de fotos. ¡Probá subir de nuevo! 📸</div>';
+                    return;
+                }
+            }
+            // sigue sin cupo: banner con el número vigente que informa la API
+            statusDiv.innerHTML = '';
+            disableUploadForm('quota');
+        }
+
+        async function checkEventStatus() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}`);
+                if (res.ok) {
+                    const eventData = await res.json();
+                    // Ventana de subida (fecha del evento o cierre del organizador): se bloquea ANTES de elegir una foto.
+                    if (eventData && eventData.uploadStatus && eventData.uploadStatus !== 'OPEN') {
+                        disableUploadForm('closed', eventData.uploadMessage);
+                    }
+                }
+            } catch (err) {
+                console.warn('No se pudo verificar el estado del evento:', err);
+            }
+        }
+
+        async function fetchGuestQuota() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/guest-quota?token=${encodeURIComponent(GUEST_TOKEN)}`);
+                if (res.ok) return await res.json(); // { unlimited, maxPhotosPerGuest, remainingPhotos }
+            } catch (err) {
+                console.warn('No se pudo verificar el cupo de fotos del invitado:', err);
+            }
+            return null;
+        }
+
+        // Aplica el cupo que informa el servidor. Sin límite: no hay contador ni banner. Si el formulario había
+        // quedado bloqueado por cupo y el organizador cambió el límite, lo vuelve a habilitar.
+        function applyGuestQuota(quota) {
+            guestQuotaMax = quota.unlimited ? null : quota.maxPhotosPerGuest;
+            updateQuotaBadge(quota);
+            const exhausted = !quota.unlimited && quota.remainingPhotos <= 0;
+            if (exhausted) {
+                disableUploadForm('quota');
+            } else if (quotaLockActive) {
+                enableUploadForm();
+            }
+        }
+
+        async function loadGuestQuota() {
+            const quota = await fetchGuestQuota();
+            if (quota) applyGuestQuota(quota);
+        }
+
+        function updateQuotaBadge(quota) {
+            const badge = document.getElementById('quota-badge');
+            if (!badge) return;
+            if (quota.unlimited) {
+                badge.style.display = 'none';
+                badge.innerHTML = '';
+                return;
+            }
+            badge.style.display = 'block';
+            badge.innerHTML = `${quota.remainingPhotos} de ${quota.maxPhotosPerGuest} fotos disponibles para vos`;
+        }
+
+        // true mientras el formulario está bloqueado POR CUPO (no por evento cerrado).
+        let quotaLockActive = false;
+
+        function disableUploadForm(reason = 'closed', closedMessage = null) {
+            const closedBanner = document.getElementById('event-closed-banner');
+            const quotaBanner = document.getElementById('quota-exceeded-banner');
+
+            if (reason === 'quota') {
+                quotaLockActive = true;
+                const quotaText = document.getElementById('quota-exceeded-text');
+                if (quotaText) quotaText.textContent = quotaExceededMessage();
+                if (quotaBanner) quotaBanner.style.display = 'block';
+            } else {
+                const closedText = document.getElementById('event-closed-text');
+                if (closedText && closedMessage) closedText.textContent = closedMessage;
+                if (closedBanner) closedBanner.style.display = 'block';
+            }
+
+            const nameInput = document.getElementById('uploaderName');
+            if (nameInput) nameInput.disabled = true;
+
+            const btnCamera = document.getElementById('btn-camera');
+            const btnGallery = document.getElementById('btn-gallery');
+            const btnSubmit = document.getElementById('btn-submit');
+
+            if (btnCamera) { btnCamera.disabled = true; btnCamera.style.opacity = '0.5'; btnCamera.style.cursor = 'not-allowed'; }
+            if (btnGallery) { btnGallery.setAttribute('data-disabled', 'true'); btnGallery.style.opacity = '0.5'; btnGallery.style.cursor = 'not-allowed'; }
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.setAttribute('data-closed', 'true');
+                btnSubmit.style.display = '';
+                btnSubmit.innerText = reason === 'quota'
+                    ? (guestQuotaMax !== null ? `🎉 Ya usaste tus ${guestQuotaMax} fotos` : '🎉 Ya usaste tus fotos')
+                    : '🔒 Subida de fotos no disponible';
+                btnSubmit.style.opacity = '0.5';
+                btnSubmit.style.cursor = 'not-allowed';
+            }
+        }
+
+        // Deshace SOLO el bloqueo por cupo (el organizador pasó a "sin límite" o subió el límite).
+        function enableUploadForm() {
+            quotaLockActive = false;
+            const quotaBanner = document.getElementById('quota-exceeded-banner');
+            if (quotaBanner) quotaBanner.style.display = 'none';
+
+            const nameInput = document.getElementById('uploaderName');
+            if (nameInput) nameInput.disabled = false;
+            const btnCamera = document.getElementById('btn-camera');
+            const btnGallery = document.getElementById('btn-gallery');
+            const btnSubmit = document.getElementById('btn-submit');
+            if (btnCamera) { btnCamera.disabled = false; btnCamera.style.opacity = ''; btnCamera.style.cursor = ''; }
+            if (btnGallery) { btnGallery.removeAttribute('data-disabled'); btnGallery.style.opacity = ''; btnGallery.style.cursor = ''; }
+            if (btnSubmit) {
+                btnSubmit.removeAttribute('data-closed');
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = 'Subir y Compartir Foto';
+                btnSubmit.style.opacity = '';
+                btnSubmit.style.cursor = '';
+                setSubmitVisible(!!selectedFile);
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+    </script>
+</body>
+</html>

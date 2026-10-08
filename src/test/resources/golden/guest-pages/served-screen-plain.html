@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantalla del Salón | Evento</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #080706;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #ffffff;
+        }
+
+        .salon-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1.5rem 3.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+            background: linear-gradient(to bottom, rgba(8, 7, 6, 0.95), transparent);
+        }
+        .event-brand {
+            font-family: 'Playfair Display', 'Cormorant Garamond', serif;
+            font-size: 2.2rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #fdf6f7 0%, #e5cfb3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 16px rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-tag {
+            background: rgba(229, 207, 179, 0.12);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            color: #f3e5d3;
+            padding: 0.6rem 1.6rem;
+            border-radius: 40px;
+            font-size: 1.15rem;
+            font-weight: 500;
+            backdrop-filter: blur(12px);
+        }
+
+        .slideshow-stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 5rem;
+            padding-bottom: 4.5rem;
+        }
+
+        .photo-card-frame {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90vw;
+            max-height: 84vh;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+            position: absolute;
+        }
+        .photo-card-frame.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .slide-img {
+            max-width: 88vw;
+            max-height: 62vh;
+            object-fit: contain;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.85);
+            background-color: #120e0c;
+        }
+
+        .photo-credit-bar {
+            width: 100%;
+            background: rgba(22, 18, 15, 0.95);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            border-top: none;
+            padding: 0.7rem 2rem;
+            text-align: center;
+            color: #e5cfb3;
+            font-size: 1.3rem;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        .photo-comments-container {
+            width: 100%;
+            background: rgba(30, 24, 19, 0.95);
+            border: 1px solid rgba(229, 207, 179, 0.35);
+            border-top: 1px solid rgba(229, 207, 179, 0.15);
+            border-radius: 0 0 16px 16px;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 80px;
+            transition: opacity 0.4s ease;
+        }
+
+        .comments-badge {
+            font-size: 0.85rem;
+            color: #e5cfb3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+            text-align: right;
+            opacity: 0.8;
+        }
+
+        .comment-bubble {
+            background: rgba(229, 207, 179, 0.1);
+            border-left: 3px solid #d4af37;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 1.15rem;
+            text-align: left;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .comment-author-name {
+            color: #e5cfb3;
+            font-weight: 700;
+            margin-right: 0.4rem;
+        }
+
+        .message-banner-overlay {
+            position: absolute;
+            bottom: 4.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(30px);
+            width: 85%;
+            max-width: 900px;
+            background: linear-gradient(135deg, rgba(28, 22, 18, 0.96), rgba(16, 12, 10, 0.96));
+            border: 2px solid #e5cfb3;
+            border-radius: 20px;
+            padding: 1.8rem 2.8rem;
+            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9);
+            z-index: 30;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s ease, transform 0.6s ease, visibility 0.6s;
+            text-align: center;
+        }
+        .message-banner-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        .banner-author {
+            color: #e5cfb3;
+            font-family: 'Cinzel', serif;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        .banner-text {
+            color: #ffffff;
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #b8a693;
+            font-size: 1.8rem;
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Zócalo / Ticker de mensajes en la parte inferior */
+        .ticker-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 48px;
+            background: rgba(15, 12, 10, 0.94);
+            border-top: 1px solid rgba(229, 207, 179, 0.35);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.7);
+        }
+
+        .ticker-badge {
+            background: linear-gradient(135deg, #8c2b3e 0%, #521321 100%);
+            border-right: 1px solid rgba(229, 207, 179, 0.4);
+            color: #fdf6f7;
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 0 1.2rem;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            z-index: 105;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .ticker-viewport {
+            flex-grow: 1;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .ticker-track {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            will-change: transform;
+            animation: tickerScroll 35s linear infinite;
+        }
+
+        .ticker-track:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes tickerScroll {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            font-size: 1.05rem;
+            color: #ffffff;
+            padding: 0 0.5rem;
+        }
+
+        .ticker-author {
+            color: #e5cfb3;
+            font-weight: 700;
+            margin-right: 0.35rem;
+        }
+
+        .ticker-separator {
+            margin: 0 1.5rem;
+            color: #d4af37;
+            opacity: 0.75;
+            font-size: 0.9rem;
+        }
+
+        /* Tarjeta Flotante QR Vertical al centro derecho de la pantalla */
+        .qr-floating-card {
+            position: fixed;
+            top: 50%;
+            right: 2.5rem;
+            transform: translateY(-50%);
+            z-index: 90;
+            background: linear-gradient(135deg, rgba(28, 22, 18, 0.94), rgba(16, 12, 10, 0.96));
+            border: 1px solid rgba(229, 207, 179, 0.45);
+            border-radius: 20px;
+            padding: 1.2rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 12px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.3s ease;
+            max-width: 170px;
+        }
+
+        .qr-floating-card:hover {
+            transform: translateY(-50%) scale(1.04);
+            border-color: #d4af37;
+            box-shadow: 0 20px 56px rgba(212, 175, 55, 0.4);
+        }
+
+        .qr-img-wrapper {
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
+
+        .qr-img-wrapper img {
+            width: 110px;
+            height: 110px;
+            display: block;
+            border-radius: 6px;
+        }
+
+        .qr-text-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .qr-title {
+            color: #e5cfb3;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .qr-subtitle {
+            color: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0.92;
+            line-height: 1.3;
+        }
+    </style>
+    <script src="/js/event-context.js"></script>
+</head>
+<body>
+
+    <header class="salon-header">
+        <div class="event-brand">
+            <i class="fa-solid fa-gem" style="color: #e5cfb3; -webkit-text-fill-color: initial; font-size: 1.5rem;"></i> <span id="event-brand"></span>
+        </div>
+    </header>
+
+    <!-- Tarjeta Flotante Vertical con Código QR para los invitados -->
+    <div class="qr-floating-card">
+        <div class="qr-img-wrapper">
+            <img id="event-qr" alt="Código QR del evento">
+        </div>
+        <div class="qr-text-group">
+            <div class="qr-title"><i class="fa-solid fa-qrcode" style="color: #e5cfb3; font-size: 0.95rem; margin-right: 4px;"></i> ESCANEÁ EL QR</div>
+            <div class="qr-subtitle">¡y subí tu foto en vivo!</div>
+        </div>
+    </div>
+
+    <div class="slideshow-stage" id="stage">
+        <div class="empty-state" id="empty-message">
+            Esperando las primeras fotos del evento...
+        </div>
+    </div>
+
+    <div class="message-banner-overlay" id="msg-banner">
+        <div class="banner-author" id="banner-author"><i class="fa-solid fa-comment-dots" style="margin-right: 6px; color: #e5cfb3;"></i> Mensaje de Invitado</div>
+        <div class="banner-text" id="banner-text">¡Gracias por compartir tus fotos!</div>
+    </div>
+
+    <!-- Zócalo Ticker de Mensajes (Loop continuo al pie) -->
+    <div class="ticker-bar">
+        <div class="ticker-badge"><i class="fa-solid fa-envelope-open-text" style="margin-right: 8px;"></i> Libro de Visitas</div>
+        <div class="ticker-viewport">
+            <div class="ticker-track" id="ticker-track"></div>
+        </div>
+    </div>
+
+    <script>
+        const SLUG = window.EVENT_SLUG;
+
+        // QR y nombre del evento salen del slug de la URL, no de valores escritos a mano.
+        document.getElementById('event-qr').src = `/api/v1/events/${SLUG}/qr?size=400`;
+        fetch(`/api/v1/events/${SLUG}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(ev => { if (ev && ev.name) document.getElementById('event-brand').textContent = ev.name.toUpperCase(); })
+            .catch(() => {});
+
+        // ─── Fase 9.0 (Bloque B): rotación justa, precarga limitada y resync ───────────
+        //
+        // Antes: cada foto nueva reiniciaba la vuelta desde la más reciente (las primeras
+        // fotos de la noche casi no se veían), se pedían las fotos una sola vez al cargar
+        // (sin resync tras un corte: el fix del Test 11 había quedado solo en pantalla.html)
+        // y una imagen que fallaba al descargar mostraba una foto de stock para siempre.
+        //
+        // Ahora:
+        // - Cola FIFO de fotos nuevas con prioridad absoluta. Sin nuevas, se muestra la
+        //   foto con lastShownAt más antiguo. Nunca se reinicia la vuelta.
+        // - Una foto se muestra recién cuando terminó de cargar. Si falla, se reintenta con
+        //   espera creciente; una foto NUEVA que falla conserva su lugar en la cola de nuevas.
+        // - Solo se mantienen en memoria la foto actual y las próximas PRELOAD_AHEAD.
+        // - Resync al reconectar el SSE y cada RESYNC_MS: agrega las que faltan como nuevas,
+        //   saca las borradas y actualiza datos, sin tocar lastShownAt.
+        const params = new URLSearchParams(location.search);
+        const SLIDE_MS = Number(params.get('slideMs')) || 7000;        // duración de cada foto
+        const RESYNC_MS = Number(params.get('resyncMs')) || 4 * 60 * 1000;
+        const PRELOAD_AHEAD = 3;                                         // además de la actual
+        const MAX_WAIT_FOR_LOAD_MS = 5000;  // cuánto se estira la foto actual esperando a la próxima nueva
+        const RETRY_BACKOFF_MS = [5000, 15000, 45000, 120000];
+        const PAGE_SIZE = 100;
+
+        const entries = new Map();   // id -> { photo, lastShownAt, failures, retryAt }
+        let newQueue = [];           // ids de fotos nuevas no vistas, en orden de llegada
+        const preloads = new Map();  // id -> { img, status: 'loading' | 'loaded' }
+        let currentId = null;
+        let slideTimer = null;
+        let waitingSince = null;
+        let commentRotationInterval = null;
+        let sseWasDisconnected = false;
+
+        let tickerQueue = [];
+        const MAX_TICKER_MESSAGES = 50;
+        const DEFAULT_TICKER_MESSAGE = {
+            authorName: '',
+            text: '✦ ¡Dejá tu mensaje y felicitaciones escaneando el QR en las mesas! ✦'
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            resyncPhotos({ initial: true });
+            fetchTickerMessages();
+            setupSSE();
+            // Red de seguridad (Test 11): por si un corte no dispara un 'error' limpio del EventSource.
+            setInterval(() => resyncPhotos({ initial: false }), RESYNC_MS);
+        });
+
+        function photoUrl(photo) {
+            let url = photo.url || photo.storageKey || '';
+            if (url && !url.startsWith('http') && !url.startsWith('/')) url = '/' + url;
+            return url;
+        }
+
+        function isReady(entry, now) {
+            return entry.retryAt <= now;
+        }
+
+        // Orden de lo que viene: nuevas (FIFO) primero, después las viejas por lastShownAt
+        // ascendente (a igualdad, la más reciente primero). Excluye la foto en pantalla.
+        function upcomingIds() {
+            const now = Date.now();
+            const queued = new Set(newQueue);
+            const fresh = newQueue.filter(id => id !== currentId && isReady(entries.get(id), now));
+            const old = [...entries.entries()]
+                .filter(([id, e]) => id !== currentId && !queued.has(id) && isReady(e, now))
+                .sort(([, a], [, b]) => (a.lastShownAt - b.lastShownAt)
+                    || (new Date(b.photo.createdAt) - new Date(a.photo.createdAt)))
+                .map(([id]) => id);
+            return fresh.concat(old);
+        }
+
+        // Mantiene precargadas solo las próximas PRELOAD_AHEAD y libera el resto.
+        function refillPreloads() {
+            const wanted = new Set(upcomingIds().slice(0, PRELOAD_AHEAD));
+            for (const [id, p] of preloads) {
+                if (!wanted.has(id)) {
+                    p.img.onload = p.img.onerror = null;
+                    p.img.src = '';
+                    preloads.delete(id);
+                }
+            }
+            wanted.forEach(id => { if (!preloads.has(id)) startPreload(id); });
+        }
+
+        function startPreload(id) {
+            const entry = entries.get(id);
+            if (!entry) return;
+            const img = new Image();
+            img.className = 'slide-img';
+            img.alt = 'Foto del evento';
+            img.decoding = 'async';
+            const record = { img, status: 'loading' };
+            preloads.set(id, record);
+
+            img.onload = () => {
+                record.status = 'loaded';
+                entry.failures = 0;
+                // Si la pantalla estaba esperando justo esta foto, avanzar ya.
+                if (waitingSince !== null || currentId === null) advance();
+            };
+            img.onerror = () => {
+                // Una foto que no descarga (wifi del salón, límite de r2.dev) NO se muestra
+                // rota: se saca de la precarga y se reintenta más tarde con espera creciente.
+                // Si era nueva, sigue en newQueue: conserva su prioridad sobre las viejas.
+                preloads.delete(id);
+                entry.failures += 1;
+                entry.retryAt = Date.now() + RETRY_BACKOFF_MS[Math.min(entry.failures, RETRY_BACKOFF_MS.length) - 1];
+                console.warn(`Foto ${id} no cargó (intento ${entry.failures}); se reintenta en ${Math.round((entry.retryAt - Date.now()) / 1000)} s.`);
+                setTimeout(() => { refillPreloads(); if (currentId === null) advance(); }, entry.retryAt - Date.now() + 50);
+                refillPreloads();
+                if (waitingSince !== null) advance();
+            };
+            const url = photoUrl(entry.photo);
+            // Tras una falla, parámetro anti-caché para no reusar una respuesta fallida.
+            img.src = entry.failures > 0 ? `${url}${url.includes('?') ? '&' : '?'}retry=${entry.failures}-${Date.now()}` : url;
+        }
+
+        function scheduleAdvance(ms) {
+            clearTimeout(slideTimer);
+            slideTimer = setTimeout(advance, ms);
+        }
+
+        // Pasa a la próxima foto. La primera candidata tiene que estar cargada: si es una
+        // foto nueva que todavía está bajando, se estira la actual hasta MAX_WAIT_FOR_LOAD_MS
+        // para respetar el orden de llegada; pasado ese tiempo se muestra la primera lista.
+        function advance() {
+            clearTimeout(slideTimer);
+            refillPreloads();
+            const upcoming = upcomingIds();
+
+            if (upcoming.length === 0) {
+                waitingSince = null;
+                if (currentId === null) showEmptyState();
+                return; // se reintenta desde onload/onerror/resync o al llegar otra foto
+            }
+
+            const head = upcoming[0];
+            const headPreload = preloads.get(head);
+            let chosen = null;
+            if (headPreload && headPreload.status === 'loaded') {
+                chosen = head;
+            } else {
+                if (waitingSince === null) waitingSince = Date.now();
+                const waited = Date.now() - waitingSince;
+                if (waited < MAX_WAIT_FOR_LOAD_MS && currentId !== null) {
+                    scheduleAdvance(500);
+                    return;
+                }
+                chosen = upcoming.slice(0, PRELOAD_AHEAD).find(id => preloads.get(id)?.status === 'loaded') || null;
+                if (!chosen) {
+                    // Ninguna lista todavía: se queda la actual (o el mensaje de espera).
+                    scheduleAdvance(500);
+                    return;
+                }
+            }
+
+            waitingSince = null;
+            showPhoto(chosen);
+            scheduleAdvance(SLIDE_MS);
+        }
+
+        function showPhoto(id) {
+            const entry = entries.get(id);
+            const record = preloads.get(id);
+            preloads.delete(id); // el <img> pasa al DOM; al quitar el cuadro se libera
+            newQueue = newQueue.filter(q => q !== id);
+            entry.lastShownAt = Date.now();
+            currentId = id;
+
+            if (commentRotationInterval) {
+                clearInterval(commentRotationInterval);
+                commentRotationInterval = null;
+            }
+
+            const stage = document.getElementById('stage');
+            const emptyMsg = document.getElementById('empty-message');
+            if (emptyMsg) emptyMsg.style.display = 'none';
+
+            // Tope duro de cuadros en el DOM: solo se conserva el saliente para el fundido.
+            // Antes la limpieza vivía dentro de requestAnimationFrame: si el navegador deja
+            // de pintar (ventana tapada, protector de pantalla de la TV) los rAF se pausan y
+            // los cuadros se acumulaban con su imagen decodificada (reproducido: 14 cuadros
+            // en 10 s sin pintar).
+            const existingFrames = Array.from(stage.querySelectorAll('.photo-card-frame'));
+            existingFrames.slice(0, -1).forEach(f => f.remove());
+            const outgoing = existingFrames.at(-1);
+            const newFrame = document.createElement('div');
+            newFrame.className = 'photo-card-frame';
+            newFrame.dataset.photoId = id;
+            newFrame.appendChild(record.img);
+            const credit = document.createElement('div');
+            credit.className = 'photo-credit-bar';
+            credit.textContent = `📸 Subida por ${entry.photo.uploaderName || 'Invitado'}`;
+            newFrame.appendChild(credit);
+            renderPhotoComments(entry.photo, newFrame);
+            stage.appendChild(newFrame);
+
+            if (outgoing) setTimeout(() => outgoing.remove(), 1000); // fuera del rAF a propósito
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    newFrame.classList.add('active');
+                    if (outgoing) outgoing.classList.remove('active');
+                });
+            });
+
+            refillPreloads();
+        }
+
+        function showEmptyState() {
+            const emptyMsg = document.getElementById('empty-message');
+            if (emptyMsg) emptyMsg.style.display = '';
+        }
+
+        // Alta de una foto. Las nuevas van al final de la cola de nuevas; no interrumpen
+        // la foto en pantalla ni reinician nada.
+        function addPhoto(photo, { asNew }) {
+            if (!photo || !photo.id) return;
+            const existing = entries.get(photo.id);
+            if (existing) {
+                existing.photo = { ...existing.photo, ...photo }; // actualiza datos, conserva lastShownAt
+                return;
+            }
+            entries.set(photo.id, { photo, lastShownAt: 0, failures: 0, retryAt: 0 });
+            if (asNew) newQueue.push(photo.id);
+        }
+
+        function removePhoto(id) {
+            if (!entries.has(id)) return;
+            entries.delete(id);
+            newQueue = newQueue.filter(q => q !== id);
+            const p = preloads.get(id);
+            if (p) { p.img.onload = p.img.onerror = null; p.img.src = ''; preloads.delete(id); }
+
+            if (currentId === id) {
+                // Borrada mientras estaba en pantalla: sale ya.
+                currentId = null;
+                const stage = document.getElementById('stage');
+                stage.querySelectorAll(`.photo-card-frame[data-photo-id="${CSS.escape(id)}"]`).forEach(f => {
+                    f.classList.remove('active');
+                    setTimeout(() => f.remove(), 600);
+                });
+                if (entries.size === 0) showEmptyState();
+                advance();
+            } else {
+                refillPreloads();
+            }
+        }
+
+        function handlePublishedPhoto(photo) {
+            const wasEmpty = entries.size === 0;
+            addPhoto(photo, { asNew: true });
+            refillPreloads();
+            if (wasEmpty || currentId === null) advance();
+        }
+
+        // Resync completo (todas las páginas). Si falla a mitad, no se toca nada: una red
+        // cortada no puede vaciar la pantalla.
+        async function resyncPhotos({ initial }) {
+            let serverPhotos = [];
+            try {
+                for (let page = 0; ; page++) {
+                    const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=${PAGE_SIZE}`, { cache: 'no-store' });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
+                    serverPhotos = serverPhotos.concat(data.content || []);
+                    if (data.last !== false) break;
+                }
+            } catch (err) {
+                console.warn('Resync de fotos fallido; se conserva el estado actual:', err);
+                return;
+            }
+
+            const serverIds = new Set(serverPhotos.map(p => p.id));
+            [...entries.keys()].filter(id => !serverIds.has(id)).forEach(removePhoto);
+
+            // Las que faltaban entran como nuevas en orden de llegada (el servidor las
+            // devuelve de más nueva a más vieja). En la carga inicial todas son "viejas".
+            const missing = serverPhotos.filter(p => !entries.has(p.id))
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            serverPhotos.filter(p => entries.has(p.id)).forEach(p => addPhoto(p, { asNew: false }));
+            missing.forEach(p => addPhoto(p, { asNew: !initial }));
+
+            if (missing.length > 0 && !initial) {
+                console.info(`Resync: ${missing.length} foto(s) que faltaban entran a la cola de nuevas.`);
+            }
+            refillPreloads();
+            if (currentId === null) advance();
+        }
+
+        // Renderiza comentarios rotativos en lotes de a 2 si la foto tiene muchas dedicatorias
+        function renderPhotoComments(photo, frameElement) {
+            if (!photo.comments || photo.comments.length === 0) return;
+
+            const comments = photo.comments;
+            let commentIndex = 0;
+            const pageSize = 2;
+
+            const container = document.createElement('div');
+            container.className = 'photo-comments-container';
+            frameElement.appendChild(container);
+
+            function updateBatch() {
+                const batch = comments.slice(commentIndex, commentIndex + pageSize);
+                const total = comments.length;
+                const badge = total > pageSize
+                    ? `<div class="comments-badge">💬 Dedicatorias (${commentIndex + 1}-${Math.min(commentIndex + batch.length, total)} de ${total})</div>`
+                    : '';
+
+                const bubblesHtml = batch.map(c => `
+                    <div class="comment-bubble">
+                        <span class="comment-author-name">💬 ${escapeHtml(c.authorName)}:</span>"${escapeHtml(c.text)}"
+                    </div>
+                `).join('');
+
+                container.innerHTML = badge + bubblesHtml;
+
+                if (total > pageSize) {
+                    commentIndex = (commentIndex + pageSize) % total;
+                }
+            }
+
+            updateBatch();
+
+            if (comments.length > pageSize) {
+                commentRotationInterval = setInterval(updateBatch, 3500);
+            }
+        }
+
+        // Extraer payload SSE
+        function extractPayload(eventData) {
+            try {
+                const parsed = JSON.parse(eventData);
+                return parsed.payload ? parsed.payload : parsed;
+            } catch (e) {
+                return {};
+            }
+        }
+
+        // Nuevo mensaje en vivo
+        function handleNewMessage(msgPayload) {
+            const author = msgPayload.authorName || 'Invitado';
+            const text = msgPayload.text || '';
+
+            if (!text) return;
+
+            const banner = document.getElementById('msg-banner');
+            document.getElementById('banner-author').innerText = `💬 Mensaje de ${escapeHtml(author)}`;
+            document.getElementById('banner-text').innerText = `"${escapeHtml(text)}"`;
+
+            banner.classList.add('visible');
+
+            setTimeout(() => {
+                banner.classList.remove('visible');
+            }, 9000);
+        }
+
+        // Conexión SSE con autoreconexión + resync al reconectar (Test 11)
+        function setupSSE() {
+            if (!!window.EventSource) {
+                const eventSource = new EventSource(`/api/v1/events/${SLUG}/stream`);
+
+                eventSource.addEventListener('PHOTO_PUBLISHED', (e) => {
+                    handlePublishedPhoto(extractPayload(e.data));
+                });
+
+                eventSource.addEventListener('PHOTO_DELETED', (e) => {
+                    const payload = extractPayload(e.data);
+                    if (payload.photoId) removePhoto(payload.photoId);
+                });
+
+                eventSource.addEventListener('MESSAGE_CREATED', (e) => {
+                    const payload = extractPayload(e.data);
+                    handleNewMessage(payload);
+                    addMessageToTicker(payload);
+                });
+
+                eventSource.addEventListener('MESSAGE_DELETED', (e) => {
+                    const payload = extractPayload(e.data);
+                    const msgId = payload.id || (payload.data ? payload.data.id : null);
+                    if (msgId) {
+                        removeMessageFromTicker(msgId);
+                    }
+                });
+
+                // Cualquier evento emitido mientras la conexión estaba caída se pierde (el
+                // servidor no tiene replay): al reconectar se pide el estado completo.
+                eventSource.onopen = () => {
+                    if (sseWasDisconnected) {
+                        console.warn('SSE reconectado tras un corte: resincronizando fotos.');
+                        sseWasDisconnected = false;
+                        resyncPhotos({ initial: false });
+                    }
+                };
+
+                eventSource.onerror = (err) => {
+                    sseWasDisconnected = true;
+                    console.warn('Reconectando canal SSE del salón...', err);
+                };
+            }
+        }
+
+        // Solo para inspección desde DevTools (verificación manual); no altera el estado.
+        window.__screenState = () => ({
+            currentId,
+            newQueue: [...newQueue],
+            preloaded: [...preloads.entries()].map(([id, p]) => ({ id, status: p.status })),
+            photos: [...entries.entries()].map(([id, e]) => ({ id, uploader: e.photo.uploaderName, lastShownAt: e.lastShownAt, failures: e.failures })),
+            framesInDom: document.querySelectorAll('.photo-card-frame').length,
+            imgsInDom: document.querySelectorAll('img.slide-img').length
+        });
+
+        // 8. Cargar mensajes iniciales para el ticker del zócalo
+        async function fetchTickerMessages() {
+            try {
+                const res = await fetch(`/api/v1/events/${SLUG}/messages?page=0&size=20`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.content && data.content.length > 0) {
+                        tickerQueue = data.content.map(m => ({
+                            id: m.id,
+                            authorName: m.authorName && m.authorName.trim() ? m.authorName.trim() : 'Invitado',
+                            text: m.text ? m.text.trim() : ''
+                        })).filter(m => m.text);
+                    }
+                }
+            } catch (err) {
+                console.warn('Error al cargar mensajes del zócalo:', err);
+            }
+
+            if (tickerQueue.length === 0) {
+                tickerQueue = [DEFAULT_TICKER_MESSAGE];
+            }
+
+            renderTickerTrack();
+        }
+
+        // 9. Renderizar zócalo con duplicación (Set 1 + Set 2) para loop suave e infinito sin saltos
+        function renderTickerTrack() {
+            const track = document.getElementById('ticker-track');
+            if (!track) return;
+
+            const itemsHtml = tickerQueue.map(m => {
+                const authorHtml = m.authorName ? `<span class="ticker-author">${escapeHtml(m.authorName)}:</span>` : '';
+                return `<div class="ticker-item">${authorHtml}"${escapeHtml(m.text)}"</div><span class="ticker-separator">✨</span>`;
+            }).join('');
+
+            track.innerHTML = itemsHtml + itemsHtml;
+
+            // Calcular duración dinámica basada en la longitud total del texto (~70px/s)
+            const textLength = tickerQueue.reduce((acc, m) => acc + (m.authorName ? m.authorName.length : 0) + m.text.length, 0);
+            const duration = Math.max(18, Math.round(textLength * 0.32));
+            track.style.animationDuration = `${duration}s`;
+        }
+
+        // 10. Agregar nuevo mensaje en tiempo real al ticker
+        function addMessageToTicker(msgPayload) {
+            if (!msgPayload || !msgPayload.text) return;
+
+            if (tickerQueue.length === 1 && tickerQueue[0] === DEFAULT_TICKER_MESSAGE) {
+                tickerQueue = [];
+            }
+
+            const author = msgPayload.authorName && msgPayload.authorName.trim() ? msgPayload.authorName.trim() : 'Invitado';
+            const newMsg = { id: msgPayload.id, authorName: author, text: msgPayload.text.trim() };
+
+            const lastMsg = tickerQueue[tickerQueue.length - 1];
+            if (lastMsg && lastMsg.text === newMsg.text && lastMsg.authorName === newMsg.authorName) {
+                return;
+            }
+
+            tickerQueue.push(newMsg);
+
+            // Mantener máximo 50 mensajes en memoria descartando los más antiguos
+            if (tickerQueue.length > MAX_TICKER_MESSAGES) {
+                tickerQueue.shift();
+            }
+
+            renderTickerTrack();
+        }
+
+        // 11. Remover mensaje eliminado del ticker en tiempo real
+        function removeMessageFromTicker(messageId) {
+            if (!messageId) return;
+            tickerQueue = tickerQueue.filter(m => m.id !== messageId);
+            if (tickerQueue.length === 0) {
+                tickerQueue = [DEFAULT_TICKER_MESSAGE];
+            }
+            renderTickerTrack();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

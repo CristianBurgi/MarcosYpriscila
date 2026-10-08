@@ -102,9 +102,9 @@ class GuestPagesTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(html).contains("id=\"cameraFile\"", "id=\"galleryFile\"", "id=\"uploaderName\"", "id=\"btn-submit\"", "id=\"progress-label\"");
-        assertThat(html).contains("const SLUG = window.EVENT_SLUG;");
+        // Fase 9.7-B: las URLs salen de EVENT_API (event-context.js lo arma con el slug de la URL).
         assertThat(html).doesNotContain("const SLUG = '");
-        assertThat(html).contains("/api/v1/events/${SLUG}/photos/upload-url");
+        assertThat(html).contains("${EVENT_API}/photos/upload-url");
     }
 
     @Test

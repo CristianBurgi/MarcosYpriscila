@@ -84,6 +84,11 @@ public class AppUrls {
     }
 
     /** A donde vuelve Mercado Pago después del pago (back_urls). Trae el external_reference en la query: no loguearla. */
+    /** Menú de invitados de una demo (Fase 9.7-B): el QR de su pantalla. El sid ya viene validado. */
+    public String demoMenuUrl(String sid) {
+        return baseUrl + "/demo/" + sid;
+    }
+
     public String checkoutReturnUrl() {
         return baseUrl + "/compra/retorno";
     }

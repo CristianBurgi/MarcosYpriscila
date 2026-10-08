@@ -41,6 +41,12 @@ public class RateLimiterService {
     // para dos pestañas o un "Volver a consultar".
     private static final int CHECKOUT_RETURN_LIMIT_PER_MINUTE = 40;
 
+    // === DEMO (fase 9.7-B), por IP: más estricto que un evento real, pero con margen para el CGNAT de las redes
+    // móviles (muchos celulares salen por la misma IP). Tope por IP: 20 demos x 5 fotos = 100 fotos por hora.
+    private static final int DEMO_UPLOAD_LIMIT_PER_IP_PER_MINUTE = 10;
+    private static final int DEMO_SESSION_LIMIT_PER_IP_PER_HOUR = 20;
+    private static final long ONE_HOUR_IN_MS = 60 * 60 * 1000L;
+
     private static final long ONE_MINUTE_IN_MS = 60_000L;
     private static final long FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000L;
 
@@ -68,6 +74,9 @@ public class RateLimiterService {
     // Página de retorno: confirmar el pago y consultar el estado, cada uno con su bucket por IP
     private final Map<String, Queue<Long>> checkoutConfirmBuckets = new ConcurrentHashMap<>();
     private final Map<String, Queue<Long>> checkoutStatusBuckets = new ConcurrentHashMap<>();
+    // Demo: subidas y sesiones nuevas, por IP
+    private final Map<String, Queue<Long>> demoUploadBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Queue<Long>> demoSessionBuckets = new ConcurrentHashMap<>();
 
     /**
      * Chequea rate limit para presigned URLs de foto.
@@ -158,6 +167,18 @@ public class RateLimiterService {
                 "Demasiadas consultas seguidas. Esperá un momento y volvé a intentar.");
     }
 
+    /** POST /api/v1/demo/{sid}/photos: 10 subidas por IP por minuto, entre todas las demos de esa IP. */
+    public void checkDemoUploadRateLimit(String clientIp) {
+        checkRateLimit(clientIp, demoUploadBuckets, DEMO_UPLOAD_LIMIT_PER_IP_PER_MINUTE, ONE_MINUTE_IN_MS,
+                "Subiste muchas fotos seguidas. Esperá un minuto y probá de nuevo.");
+    }
+
+    /** POST /api/v1/demo/sessions: 20 demos nuevas por IP por hora. */
+    public void checkDemoSessionRateLimit(String clientIp) {
+        checkRateLimit(clientIp, demoSessionBuckets, DEMO_SESSION_LIMIT_PER_IP_PER_HOUR, ONE_HOUR_IN_MS,
+                "Creaste muchas demos en poco tiempo. Probá de nuevo en un rato.");
+    }
+
     // === DEPRECATED: Métodos antiguos que solo usan IP ===
     // Mantenerlos para compatibilidad si algo aún los usa
     @Deprecated
@@ -203,6 +224,8 @@ public class RateLimiterService {
         adminCheckoutBuckets.clear();
         checkoutConfirmBuckets.clear();
         checkoutStatusBuckets.clear();
+        demoUploadBuckets.clear();
+        demoSessionBuckets.clear();
     }
 }
 

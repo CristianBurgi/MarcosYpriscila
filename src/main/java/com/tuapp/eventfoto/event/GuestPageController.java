@@ -122,35 +122,16 @@ public class GuestPageController {
      * La pantalla del salón no se personaliza todavía (9.8).
      */
     private Resource withBranding(Resource page, Event event) {
-        EventPalette palette = EventPalette.derive(event.getBackgroundColor() != null ? event.getBackgroundColor() : DEFAULT_COLOR);
-        StringBuilder vars = new StringBuilder(":root{")
-                .append("--brand-primary:").append(palette.primary()).append(';')
-                .append("--brand-primary-deep:").append(palette.primaryDeep()).append(';')
-                .append("--brand-primary-light:").append(palette.primaryLight()).append(';')
-                .append("--brand-secondary:").append(palette.secondary()).append(';')
-                .append("--brand-on-primary:").append(palette.textOnPrimary()).append(';')
-                .append("--brand-on-secondary:").append(palette.textOnSecondary()).append(';')
-                .append("--gold:").append(palette.primaryLight()).append(';')
-                .append("--gold-soft:").append(palette.primaryLight()).append(';')
-                .append("--accent-rgb:").append(EventPalette.rgbTriplet(palette.primaryLight())).append(';');
         String imageKey = event.getBackgroundImageKey();
         // La URL sale solo de una clave generada por nosotros con el formato exacto (UUID), nunca de un input;
-        // igual se valida y se escapa para el string CSS.
-        if (imageKey != null && StorageKeys.isBrandingKeyOf(event.getId(), imageKey)) {
-            String url = storageService.generatePublicUrl(imageKey).replace("\\", "\\\\").replace("\"", "\\\"");
-            vars.append("--brand-bg:url(\"").append(url).append("\") center/cover no-repeat;");
-        } else {
-            vars.append("--brand-bg:linear-gradient(165deg,").append(palette.primaryLight()).append(" 0%,")
-                    .append(palette.primary()).append(" 55%,").append(palette.primaryDeep()).append(" 100%);");
-        }
-        vars.append('}');
-
-        String injected = "<link rel=\"stylesheet\" href=\"/css/event-branding.css?v=1\">\n"
-                + "<style id=\"event-palette\">" + vars + "</style>\n";
+        // igual se valida (y EventBrandingHead la escapa para el string CSS).
+        String imageUrl = imageKey != null && StorageKeys.isBrandingKeyOf(event.getId(), imageKey)
+                ? storageService.generatePublicUrl(imageKey) : null;
+        String color = event.getBackgroundColor() != null ? event.getBackgroundColor() : DEFAULT_COLOR;
         try {
             String html = page.getContentAsString(StandardCharsets.UTF_8);
-            int head = html.indexOf("</head>");
-            return new ByteArrayResource((html.substring(0, head) + injected + html.substring(head)).getBytes(StandardCharsets.UTF_8));
+            return new ByteArrayResource(EventBrandingHead.injectBeforeHeadEnd(html, EventBrandingHead.of(color, imageUrl))
+                    .getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

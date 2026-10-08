@@ -72,6 +72,7 @@ La aplicación está desplegada en producción en Railway:
 | **Subida de fotos** | `https://tu-dominio.up.railway.app/e/{slug}/subir` |
 | **Libro de Visitas** | `https://tu-dominio.up.railway.app/e/{slug}/mensajes` |
 | **Pantalla del salón** | `https://tu-dominio.up.railway.app/e/{slug}/pantalla` |
+| **Demo en vivo** | `https://tu-dominio.up.railway.app/demo` |
 | **Panel del organizador** | `https://tu-dominio.up.railway.app/admin/login` → `/admin/eventos` (Mis eventos) → `/admin/eventos/{slug}` |
 
 ---
@@ -562,6 +563,23 @@ Formulario para dejar un mensaje con nombre y texto. Lista de mensajes con el no
 - **Tarjeta QR flotante** — Verticalmente centrada en el lado derecho de la pantalla con la leyenda *"Escaneá el QR y subí tu foto"*.
 - **Actualización automática** — Sin recargar la página: `PHOTO_PUBLISHED` encola la foto nueva y `PHOTO_DELETED` la saca al instante (si está en pantalla, pasa a la siguiente).
 - **Resync tras cortes** (Test 11) — Al reconectar el SSE y cada 4 minutos se piden todas las fotos: las que llegaron durante el corte entran a la cola de nuevas, las borradas salen y se actualizan los datos, sin reiniciar la vuelta. Durante un corte la pantalla sigue rotando con las fotos que el navegador ya tiene en caché.
+
+---
+
+## 🎬 Demo en vivo (Fase 9.7-B)
+
+`/demo` deja probar el producto entero sin comprar: wizard → menú de invitados con su personalización → subir fotos → libro de visitas → pantalla. Cada demo dura **30 minutos** y después se borra sola.
+
+- **No es un evento.** Tiene sus tablas (`demo_session`, `demo_photo`, `demo_message`, migración V19), sus claves en R2 (`demo/{sid}/…`) y su canal SSE (`SseBroadcaster.DemoChannel`). Por eso no pasa por la ventana de subida, la purga de la 9.6, el listado del superadmin ni "Mis eventos".
+- **La llave es la URL.** El `sid` son 32 bytes aleatorios en base64url (`^[A-Za-z0-9_-]{43}$`, se valida antes de ir a la base y antes de inyectarlo en el HTML). Uno inexistente o vencido lleva a `/demo?fin=1` ("Tu demo terminó").
+- **Mismas páginas que un evento real.** `DemoPageController` sirve `menu`, `album`, `messages` y `screen` de `guest-pages/` con un `<script>` antes de `event-context.js` que define `EVENT_API`, `EVENT_BASE` y `EVENT_STORAGE_PREFIX`; en un evento real `event-context.js` los arma del slug con los valores de siempre (lo prueban `EventPagesRequestContractTest` y `RealGuestPagesSnapshotTest`). La subida es propia (`demo-upload.html`, solo multipart) y el wizard reusa los fragmentos del real (`RealWizardSnapshotTest`).
+- **Mismas validaciones.** Tope de 15 MB, extensión, firma binaria, HEIC → JPEG, filtro de contenido y largos de los mensajes. Topes de la demo: **5 fotos y 5 mensajes**, atómicos con `unique(sid, slot)`. Todo JPEG (fotos y fondo) se guarda sin metadatos.
+- **Rate limit por IP:** 10 subidas por minuto y 20 demos nuevas por hora (más estricto que un evento, con margen para el CGNAT de las redes móviles).
+- **Limpieza:** `DemoCleanupJob` cada 5 minutos borra las demos de más de 30: R2 primero, después la base; una que falla se reintenta en la próxima corrida. En `/superadmin/eventos`, la sección "Demo" muestra demos activas y fotos, y "Vaciar demo" borra todo.
+- **Interruptor:** `DEMO_ENABLED=false` (`app.demo.enabled`) muestra "La demo no está disponible en este momento" y la API responde 503.
+- **Fotos de ejemplo:** `static/img/demo/demo-01.webp` … `demo-10.webp`, 1600 px de lado mayor, sin EXIF/XMP/ICC. Las personas dieron su OK.
+
+> **Pendiente (privacidad, PR aparte):** en un **evento real**, una foto de invitado de menos de 1,5 MB no se recodifica en el navegador y el servidor no le saca el EXIF (`ImageContent.stripJpegMetadata` hoy solo se usa en la imagen de fondo y en la demo). El GPS del celular de un invitado puede quedar en el álbum que descargan los demás. Aplicarlo en `/confirm` y `/upload-direct` (en `/confirm` el objeto ya está en R2: hay que leerlo, limpiarlo y reescribirlo).
 
 ---
 

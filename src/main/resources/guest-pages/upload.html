@@ -99,7 +99,6 @@
     </main>
 
     <script>
-        const SLUG = window.EVENT_SLUG;
         let selectedFile = null;
         // true desde que handleSubmit() arranca (incluida la compresión) hasta que el intento
         // termina (éxito o fallo definitivo): ignora nuevos change y evita el doble envío.
@@ -156,7 +155,7 @@
 
         // El nombre se recuerda en el navegador para que desde la segunda foto sea un toque.
         // localStorage puede fallar (modo privado, almacenamiento bloqueado): todo va en try/catch.
-        const UPLOADER_NAME_KEY = 'eventfoto_uploader_name';
+        const UPLOADER_NAME_KEY = window.EVENT_STORAGE_PREFIX + 'eventfoto_uploader_name';
         function readSavedName() {
             try { return (localStorage.getItem(UPLOADER_NAME_KEY) || '').trim(); } catch (e) { return ''; }
         }
@@ -206,7 +205,7 @@
             document.getElementById('galleryFile').value = '';
         }
 
-        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        const GUEST_TOKEN_KEY = window.EVENT_STORAGE_PREFIX + 'eventfoto_guest_token';
         function getOrCreateGuestToken() {
             let token = localStorage.getItem(GUEST_TOKEN_KEY);
             if (!token) {
@@ -363,7 +362,7 @@
         async function requestPresignedUrl(contentType, filename) {
             let res;
             try {
-                res = await fetch(`/api/v1/events/${SLUG}/photos/upload-url`, {
+                res = await fetch(`${EVENT_API}/photos/upload-url`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contentType, filename, guestToken: GUEST_TOKEN })
@@ -408,7 +407,7 @@
         async function confirmUploadStep(key, uploaderName) {
             let res;
             try {
-                res = await fetch(`/api/v1/events/${SLUG}/photos/confirm`, {
+                res = await fetch(`${EVENT_API}/photos/confirm`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key, uploaderName, guestToken: GUEST_TOKEN })
@@ -469,7 +468,7 @@
 
             let res;
             try {
-                res = await fetch(`/api/v1/events/${SLUG}/photos/upload-direct`, { method: 'POST', body: formData });
+                res = await fetch(`${EVENT_API}/photos/upload-direct`, { method: 'POST', body: formData });
             } catch (networkErr) {
                 dbg(`fallback: FALLÓ ${describeError(networkErr)} (cuerpo: ${describeFile(state.file)})`);
                 throw tagError(nonRetryableError('No se pudo enviar la fotografía. Revisá tu conexión e intentá de nuevo.'), 'fallback', { cause: networkErr });
@@ -691,7 +690,7 @@
 
         async function checkEventStatus() {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}`);
+                const res = await fetch(EVENT_API);
                 if (res.ok) {
                     const eventData = await res.json();
                     // Ventana de subida (fecha del evento o cierre del organizador): se bloquea ANTES de elegir una foto.
@@ -706,7 +705,7 @@
 
         async function fetchGuestQuota() {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/guest-quota?token=${encodeURIComponent(GUEST_TOKEN)}`);
+                const res = await fetch(`${EVENT_API}/guest-quota?token=${encodeURIComponent(GUEST_TOKEN)}`);
                 if (res.ok) return await res.json(); // { unlimited, maxPhotosPerGuest, remainingPhotos }
             } catch (err) {
                 console.warn('No se pudo verificar el cupo de fotos del invitado:', err);

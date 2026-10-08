@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.superadmin;
 
+import com.tuapp.eventfoto.demo.DemoService;
 import com.tuapp.eventfoto.event.EventLifecycleService;
 import com.tuapp.eventfoto.superadmin.dto.CreateFreeEventRequestDTO;
 import com.tuapp.eventfoto.superadmin.dto.CreateFreeEventResponseDTO;
@@ -33,6 +34,7 @@ public class SuperadminEventController {
     private final SuperadminEventService superadminEventService;
     private final SuperadminPanelService panelService;
     private final EventLifecycleService eventLifecycleService;
+    private final DemoService demoService;
 
     public record RetentionRequest(LocalDate until) {
     }
@@ -113,6 +115,13 @@ public class SuperadminEventController {
         return result
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Ya hay una corrida en curso.")));
+    }
+
+    /** Borra todas las demos (R2 + base). No hay nada que confirmar del lado del servidor: el panel pide confirmación. */
+    @PostMapping("/demo/clear")
+    public DemoService.PurgeResult clearDemo(Authentication auth) {
+        return audited(auth, "vaciar-demo", "-", demoService::purgeAll,
+                r -> r.sessions() + " demo(s), " + r.objects() + " objeto(s), " + r.failed() + " con error");
     }
 
     private static <T> T audited(Authentication auth, String action, String object, Supplier<T> body, Function<T, String> describe) {

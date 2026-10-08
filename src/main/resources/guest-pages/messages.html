@@ -121,11 +121,10 @@
     </main>
 
     <script>
-        const SLUG = window.EVENT_SLUG;
 
         // Misma identidad de invitado que usa upload.html para las fotos: así el rate
         // limiting por guestToken (15 mensajes/min) es por invitado y no compartido.
-        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        const GUEST_TOKEN_KEY = window.EVENT_STORAGE_PREFIX + 'eventfoto_guest_token';
         function getOrCreateGuestToken() {
             let token = localStorage.getItem(GUEST_TOKEN_KEY);
             if (!token) {
@@ -146,7 +145,7 @@
         // formulario queda deshabilitado, en vez de dejar escribir y recién ahí mostrar el error.
         async function checkGuestbookOpen() {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}`);
+                const res = await fetch(EVENT_API);
                 if (!res.ok) return;
                 const eventData = await res.json();
                 if (!eventData.guestbookMessage) return;
@@ -166,7 +165,7 @@
         // 1. Cargar mensajes
         async function loadMessages() {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/messages?page=0&size=100`);
+                const res = await fetch(`${EVENT_API}/messages?page=0&size=100`);
                 const data = await res.json();
                 const container = document.getElementById('messages-list');
 
@@ -212,7 +211,7 @@
                     btn.disabled = true;
                     btn.innerText = 'Enviando...';
 
-                    const res = await fetch(`/api/v1/events/${SLUG}/messages`, {
+                    const res = await fetch(`${EVENT_API}/messages`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ authorName, text, guestToken: GUEST_TOKEN })

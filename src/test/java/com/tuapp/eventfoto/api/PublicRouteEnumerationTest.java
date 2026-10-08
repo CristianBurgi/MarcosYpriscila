@@ -52,6 +52,7 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
  * Fase 9.1 Bloque 4: el equivalente, para el lado invitado, del test de enumeración del panel.
@@ -83,6 +84,29 @@ class PublicRouteEnumerationTest {
             new RouteException("/api/v1/storage/files",
                     "Solo existe con app.storage.mode=local y sirve únicamente claves con formato events/{uuid}/{uuid}.ext del directorio local. "
                             + "Lo prueba LocalStorageRestrictionTest."));
+
+    /**
+     * Fase 9.7-B: la demo es pública A PROPÓSITO, ruta por ruta. No lleva {slug} porque no es un evento: la llave es el
+     * {sid} (256 bits aleatorios, se valida el formato antes de ir a la base) y cada consulta va acotada a ese sid.
+     * Una ruta nueva bajo /demo o /api/v1/demo hace fallar demoRoutesArePublicOnPurpose hasta sumarla acá con su motivo.
+     */
+    private static final Map<String, String> DELIBERATELY_PUBLIC_DEMO = Map.ofEntries(
+            Map.entry("GET /demo", "Wizard de la demo: no tiene datos de nadie."),
+            Map.entry("GET /demo/{sid}", "Menú de invitados de una demo; sid inexistente o vencido -> /demo?fin=1."),
+            Map.entry("GET /demo/{sid}/subir", "Subida de la demo (misma regla del sid)."),
+            Map.entry("GET /demo/{sid}/album", "Álbum de la demo: solo las fotos de ese sid y las de ejemplo."),
+            Map.entry("GET /demo/{sid}/mensajes", "Libro de visitas de la demo: solo los mensajes de ese sid y los de ejemplo."),
+            Map.entry("GET /demo/{sid}/pantalla", "Pantalla de la demo."),
+            Map.entry("POST /api/v1/demo/sessions", "Crea una demo; rate limit 20/h por IP."),
+            Map.entry("GET /api/v1/demo/rules", "Texto de reglas calculado de una fecha; no lee la base."),
+            Map.entry("GET /api/v1/demo/{sid}", "Datos de la demo (expiresAt, topes) de ese sid."),
+            Map.entry("GET /api/v1/demo/{sid}/photos", "Fotos de ese sid + ejemplo (DemoFlowTest: privacidad entre demos)."),
+            Map.entry("POST /api/v1/demo/{sid}/photos", "Subida a ese sid: tope 5 por slot, rate limit 10/min por IP."),
+            Map.entry("GET /api/v1/demo/{sid}/photos/{photoId}/comments", "Siempre vacío: la demo no tiene comentarios; no lee ningún id."),
+            Map.entry("GET /api/v1/demo/{sid}/messages", "Mensajes de ese sid + ejemplo."),
+            Map.entry("POST /api/v1/demo/{sid}/messages", "Mensaje a ese sid: mismo DTO, filtro y rate limit que un evento; tope 5."),
+            Map.entry("GET /api/v1/demo/{sid}/stream", "SSE del canal DemoChannel(sid), nunca el de otra demo ni un evento."),
+            Map.entry("GET /api/v1/demo/{sid}/qr", "QR al menú de ese sid."));
 
     private static final Pattern PATH_VARIABLE = Pattern.compile("\\{([^}:]+)(?::[^}]*)?}");
     private static final Set<String> CHILD_VARIABLES = Set.of("photoId", "messageId", "commentId");
@@ -240,6 +264,31 @@ class PublicRouteEnumerationTest {
             assertThat(exception.reason()).isNotBlank();
             assertThat(realPatterns).as("la excepción '%s' no coincide con ninguna ruta pública real (¿sobra?)", exception.pattern())
                     .contains(exception.pattern());
+        }
+    }
+
+    @Test
+    @DisplayName("Demo: las rutas bajo /demo y /api/v1/demo son exactamente las de la lista pública a propósito, y entran sin login")
+    void demoRoutesArePublicOnPurpose() throws Exception {
+        Set<String> actual = new java.util.TreeSet<>();
+        for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : handlerMapping.getHandlerMethods().entrySet()) {
+            RequestMappingInfo info = entry.getKey();
+            Set<String> patterns = info.getPathPatternsCondition() != null ? info.getPathPatternsCondition().getPatternValues() : Set.of();
+            for (String pattern : patterns) {
+                if (pattern.equals("/demo") || pattern.startsWith("/demo/") || pattern.startsWith("/api/v1/demo/")) {
+                    info.getMethodsCondition().getMethods().forEach(m -> actual.add(m + " " + pattern));
+                }
+            }
+        }
+        assertThat(actual).as("rutas de la demo vs. lista DELIBERATELY_PUBLIC_DEMO")
+                .containsExactlyInAnyOrderElementsOf(DELIBERATELY_PUBLIC_DEMO.keySet());
+        DELIBERATELY_PUBLIC_DEMO.values().forEach(reason -> assertThat(reason).isNotBlank());
+
+        // Sin login: un sid inexistente da "Tu demo terminó" (302 o 404), nunca 401/403.
+        String sid = "a".repeat(43);
+        for (String path : List.of("/demo", "/demo/" + sid, "/api/v1/demo/" + sid, "/api/v1/demo/" + sid + "/photos")) {
+            int code = mockMvc.perform(get(path)).andReturn().getResponse().getStatus();
+            assertThat(code).as(path).isIn(200, 302, 404);
         }
     }
 

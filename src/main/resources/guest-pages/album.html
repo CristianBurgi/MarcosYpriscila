@@ -275,7 +275,6 @@
     </dialog>
 
     <script>
-        const SLUG = window.EVENT_SLUG;
         const PAGE_SIZE = 12;
         let activePhotoId = null;
 
@@ -289,7 +288,7 @@
 
         // Misma identidad de invitado que usa upload.html para las fotos: así el rate
         // limiting por guestToken (15 comentarios/min) es por invitado y no compartido.
-        const GUEST_TOKEN_KEY = 'eventfoto_guest_token';
+        const GUEST_TOKEN_KEY = window.EVENT_STORAGE_PREFIX + 'eventfoto_guest_token';
         function getOrCreateGuestToken() {
             let token = localStorage.getItem(GUEST_TOKEN_KEY);
             if (!token) {
@@ -348,7 +347,7 @@
         }
 
         // Con la subida cerrada (antes o después de la ventana, o cerrada por el organizador) el álbum vacío no invita a subir.
-        const UPLOAD_OPEN = fetch(`/api/v1/events/${SLUG}`)
+        const UPLOAD_OPEN = fetch(EVENT_API)
             .then(res => res.ok ? res.json() : null)
             .then(eventData => !eventData || eventData.uploadStatus === 'OPEN')
             .catch(() => true);
@@ -365,7 +364,7 @@
         // 1. Cargar página de la galería
         async function loadGalleryPage(page) {
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=${page}&size=${PAGE_SIZE}`);
+                const res = await fetch(`${EVENT_API}/photos?page=${page}&size=${PAGE_SIZE}`);
                 const data = await res.json();
                 const container = document.getElementById('gallery-container');
                 const btnMore = document.getElementById('btn-load-more');
@@ -396,7 +395,7 @@
             const size = Math.min(cards.length + PAGE_SIZE, MAX_POLL_SIZE);
             let data;
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/photos?page=0&size=${size}`, { cache: 'no-store' });
+                const res = await fetch(`${EVENT_API}/photos?page=0&size=${size}`, { cache: 'no-store' });
                 if (!res.ok) return;
                 data = await res.json();
             } catch (err) {
@@ -472,7 +471,7 @@
             const countSpan = document.getElementById('modal-comments-count');
 
             try {
-                const res = await fetch(`/api/v1/events/${SLUG}/photos/${photoId}/comments`);
+                const res = await fetch(`${EVENT_API}/photos/${photoId}/comments`);
                 const comments = await res.json();
 
                 const total = comments ? comments.length : 0;
@@ -517,7 +516,7 @@
                     btn.disabled = true;
                     btn.innerText = 'Enviando...';
 
-                    const res = await fetch(`/api/v1/events/${SLUG}/photos/${activePhotoId}/comments`, {
+                    const res = await fetch(`${EVENT_API}/photos/${activePhotoId}/comments`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ authorName, text, guestToken: GUEST_TOKEN })

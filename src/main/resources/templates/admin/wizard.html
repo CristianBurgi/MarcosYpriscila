@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <script src="/js/event-palette.js"></script>
     <script src="/js/image-compress.js"></script>
-    <style>
+    <style th:fragment="styles">
         /* Layout y colores del mockup aprobado: docs/mockups/wizard-onboarding.dc.html */
         :root {
             --bg: #FAFAF7;
@@ -160,7 +160,7 @@
 
     <!-- Izquierda: los pasos -->
     <div class="panel">
-        <div class="brand">
+        <div class="brand" th:fragment="brand">
             <svg width="30" height="30" viewBox="0 0 200 200" aria-hidden="true">
                 <rect x="6" y="6" width="188" height="188" rx="42" fill="#1E2E52"/>
                 <g transform="translate(100,110) rotate(-9)">
@@ -173,7 +173,7 @@
             <span>Event<span>Foto</span></span>
         </div>
 
-        <div class="stepper" aria-hidden="true">
+        <div class="stepper" aria-hidden="true" th:fragment="stepper">
             <div class="step" data-step="1"><div class="step-dot">1</div><span class="step-label">Fecha</span></div>
             <div class="step-line"></div>
             <div class="step" data-step="2"><div class="step-dot">2</div><span class="step-label">Estilo</span></div>
@@ -193,7 +193,7 @@
                 </div>
             </section>
 
-            <section id="step2" hidden>
+            <section id="step2" hidden th:fragment="step2">
                 <span class="eyebrow">Paso 2 de 3</span>
                 <h2>Sumale el estilo de tu evento</h2>
                 <p class="lead">Elegí el color que represente la temática de tu evento y, si querés, una imagen de fondo. Nosotros armamos el resto de la paleta.</p>
@@ -249,7 +249,7 @@
             <div class="status" id="status" role="status" aria-live="polite"></div>
         </div>
 
-        <div class="nav">
+        <div class="nav" th:fragment="nav">
             <button type="button" class="btn btn-ghost" id="btnBack" hidden>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="4" y2="12"/><polyline points="10 6 4 12 10 18"/></svg>
                 Atrás
@@ -262,7 +262,7 @@
     </div>
 
     <!-- Derecha: vista previa en vivo -->
-    <div class="preview-side">
+    <div class="preview-side" th:fragment="preview">
         <div class="phone">
             <div class="screen" id="pvScreen">
                 <img id="pvImage" alt="" hidden>
