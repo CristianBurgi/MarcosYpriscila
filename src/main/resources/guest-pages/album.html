@@ -311,6 +311,12 @@
 
             setInterval(() => { if (!document.hidden) pollGallery(); }, POLL_MS);
             document.addEventListener('visibilitychange', () => { if (!document.hidden) pollGallery(); });
+            // En vivo: el mismo stream que la pantalla avisa altas y bajas y se sincroniza al toque; el polling queda de respaldo.
+            if (window.EventSource) {
+                const stream = new EventSource(`${EVENT_API}/stream`);
+                stream.addEventListener('PHOTO_PUBLISHED', () => pollGallery());
+                stream.addEventListener('PHOTO_DELETED', () => pollGallery());
+            }
 
             document.getElementById('btn-close-modal').addEventListener('click', () => {
                 document.getElementById('photo-modal').close();

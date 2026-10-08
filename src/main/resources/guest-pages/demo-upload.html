@@ -57,6 +57,7 @@
     </div>
     <button type="button" id="btn-submit" class="btn-primary-elegant" style="margin-top: 1.6rem; display: none;">Subir y Compartir Foto</button>
     <div id="status-message" role="status" aria-live="polite"></div>
+    <a href="#" data-event-path="/album" id="btn-live-album" class="btn-elegant" style="display: none; margin-top: 1.2rem;"><i class="fa-solid fa-images"></i> Ver el álbum en vivo</a>
     <p class="footer-note" id="remaining"></p>
 </main>
 
@@ -131,6 +132,7 @@
             if (!res.ok) throw new Error(data.message || 'No pudimos subir la foto. Probá de nuevo.');
 
             status('ok', `¡Foto subida! Ya está en el álbum y en <a href="${EVENT_BASE}/pantalla">la pantalla</a>. 📸`);
+            $('btn-live-album').style.display = '';
             selectedFile = null;
             $('preview-box').style.display = 'none';
             btn.style.display = 'none';

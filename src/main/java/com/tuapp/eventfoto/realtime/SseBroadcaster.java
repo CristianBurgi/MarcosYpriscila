@@ -32,6 +32,10 @@ public class SseBroadcaster {
         }
     }
 
+    // ponytail: no hay tope de conexiones por evento. Desde la 9.8 el álbum también se suscribe: cada celular con el
+    // álbum abierto es una conexión (async, sin hilo bloqueado). Para una boda de ~150 invitados alcanza; agregar un tope
+    // por canal (y que el álbum caiga al polling al superarlo) si un evento pasa de ~1000 conexiones o Railway muestra
+    // presión de memoria o de file descriptors.
     private final Map<Object, List<SseEmitter>> eventEmitters = new ConcurrentHashMap<>();
 
     /**

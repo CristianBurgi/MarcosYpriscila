@@ -94,6 +94,7 @@
         </form>
 
         <div id="status-message"></div>
+        <a href="#" data-event-path="/album" id="btn-live-album" class="btn-elegant" style="display: none; margin-top: 1.2rem;"><i class="fa-solid fa-images"></i> Ver el álbum en vivo</a>
 
         <div class="footer-note" id="quota-badge" style="display: none;"></div>
     </main>
@@ -586,6 +587,7 @@
 
             progressFill.style.width = '100%';
             statusDiv.innerHTML = '<div class="alert-box alert-success" style="background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); color: #86efac; padding: 10px; border-radius: 8px; margin-top: 10px;">¡Foto subida con éxito! Ya está en el álbum y en la pantalla del salón. 📸</div>';
+            document.getElementById('btn-live-album').style.display = '';
 
             loadGuestQuota();
 

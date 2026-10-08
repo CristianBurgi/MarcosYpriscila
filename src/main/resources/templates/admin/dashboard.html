@@ -408,6 +408,15 @@
             border: 1px solid rgba(168, 85, 247, 0.5);
         }
 
+        /* Checklist previa (9.8) */
+        .checklist { list-style: none; margin: 10px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+        .checklist label { display: flex; gap: 10px; align-items: flex-start; color: #e2e8f0; line-height: 1.45; cursor: pointer; }
+        .checklist input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: #10b981; }
+        .checklist input:checked + span { color: #94a3b8; text-decoration: line-through; }
+        .checklist-link { display: inline-block; margin: 4px 0 0 28px; font-size: 0.88rem; color: #c084fc; }
+        .checklist-quote { margin: 8px 0 0 28px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+            background: rgba(168, 85, 247, 0.1); padding: 8px 12px; border-radius: 8px; color: #e9d5ff; font-style: italic; }
+
         /* .btn lleva display: inline-flex, que le ganaba al atributo hidden (tarjeta Personalización). */
         [hidden] { display: none !important; }
     </style>
@@ -459,6 +468,47 @@
             <i class="fa-regular fa-trash-can" style="margin-right: 6px;"></i>
             <span th:text="|Tu álbum se borra el ${deletionDay}.|">Tu álbum se borra el ...</span>
         </p>
+    </div>
+
+    <!-- Checklist previa (Fase 9.8): desde el wizard hasta que cierra la subida; en un evento vencido no se muestra. -->
+    <div class="metric-card" id="checklistCard" th:if="${checklist != null}" style="margin-bottom: 24px;">
+        <div class="title"><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> Antes de la fiesta</div>
+        <ul class="checklist">
+            <li><label><input type="checkbox" data-item="pantalla" th:checked="${#lists.contains(checklist, 'pantalla')}">
+                <span>Coordiná con el salón que la pantalla quede prendida toda la fiesta, también durante el baile. Es lo que hace que la gente suba fotos.</span></label></li>
+            <li><label><input type="checkbox" data-item="tarjetas" th:checked="${#lists.contains(checklist, 'tarjetas')}">
+                <span>Imprimí las tarjetas y poné una en cada mesa.</span></label>
+                <a href="#kitCard" class="checklist-link">Ir a la descarga</a></li>
+            <li><label><input type="checkbox" data-item="moderador" th:checked="${#lists.contains(checklist, 'moderador')}">
+                <span>Pasale el link de moderador a alguien de confianza.</span></label>
+                <a href="#moderatorCard" class="checklist-link">Ir al link de moderador</a></li>
+            <li><label><input type="checkbox" data-item="dj" th:checked="${#lists.contains(checklist, 'dj')}">
+                <span>Pedile al DJ o al animador que invite a subir fotos en algún momento de la noche.</span></label>
+                <div class="checklist-quote">
+                    <span id="djText">¡Saquen fotos y súbanlas escaneando el QR de su mesa! Aparecen en la pantalla al instante.</span>
+                    <button type="button" class="btn btn-toggle-event" id="btnCopyDjText"><i class="fa-solid fa-copy"></i> Copiar</button>
+                </div></li>
+            <li><label><input type="checkbox" data-item="prueba" th:checked="${#lists.contains(checklist, 'prueba')}">
+                <span>Probá la pantalla antes del evento en la TV o el proyector del salón.</span></label>
+                <a th:href="@{'/e/' + ${slug} + '/pantalla'}" target="_blank" class="checklist-link">Abrir la pantalla</a></li>
+        </ul>
+        <div id="checklistStatus" style="color: #94a3b8; font-size: 0.88rem; min-height: 1.2em;"></div>
+    </div>
+
+    <!-- Kit para imprimir (Fase 9.8) -->
+    <div class="metric-card" id="kitCard" style="margin-bottom: 24px;">
+        <div class="title"><i class="fa-solid fa-print" style="margin-right: 6px;"></i> Para imprimir</div>
+        <p style="color: #cbd5e1; line-height: 1.5; margin-bottom: 14px;">
+            Con el QR a la vista, tus invitados se acuerdan de subir fotos toda la noche. Las tarjetas vienen de a 4 por hoja A4: imprimí y cortá por las líneas.
+        </p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <a class="btn btn-primary-action" id="btnDownloadCards" style="text-decoration: none;"
+               th:href="@{'/api/v1/admin/events/' + ${slug} + '/tarjetas.pdf'}" download="tarjetas-para-las-mesas.pdf">
+                <i class="fa-solid fa-download"></i> Descargar tarjetas para las mesas</a>
+            <a class="btn btn-toggle-event" id="btnDownloadPoster" style="text-decoration: none;"
+               th:href="@{'/api/v1/admin/events/' + ${slug} + '/cartel.pdf'}" download="cartel-para-la-entrada.pdf">
+                <i class="fa-solid fa-download"></i> Descargar cartel para la entrada</a>
+        </div>
     </div>
 
     <!-- Tarjeta Moderador: beneficio, no configuración técnica -->
@@ -728,6 +778,10 @@
                 <div style="font-family: monospace; font-size: 0.82rem; color: #a855f7; word-break: break-all; margin-bottom: 20px; background: rgba(168, 85, 247, 0.1); padding: 8px 12px; border-radius: 8px;">
                     <span th:text="${guestMenuUrl}">(APP_BASE_URL)/menu.html?slug=...</span>
                 </div>
+                <!-- Este PNG tiene una quiet zone de 1 módulo: para imprimir van las tarjetas (9.8). -->
+                <p style="color: #94a3b8; font-size: 0.82rem; margin-bottom: 12px;">
+                    Para imprimir, usá las <a href="#kitCard" onclick="closeQrModal()" style="color: #c084fc;">tarjetas para las mesas</a>.
+                </p>
             </div>
             <div class="modal-actions" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
                 <button type="button" class="btn btn-cancel" onclick="closeQrModal()">Cerrar</button>
@@ -1027,6 +1081,32 @@
                 renderImage(null);
                 show('Listo, quitamos la imagen.', 'ok');
             } catch (e) { show(e.message, 'error'); }
+        });
+    })();
+
+    // ---- Checklist previa (9.8) ----
+    (function setupChecklist() {
+        const card = document.getElementById('checklistCard');
+        if (!card) return;
+        const status = document.getElementById('checklistStatus');
+        card.querySelectorAll('input[data-item]').forEach(box => box.addEventListener('change', async () => {
+            const url = `/api/v1/admin/events/${encodeURIComponent(slug)}/checklist/${box.dataset.item}`;
+            try {
+                const res = await fetch(url, { method: box.checked ? 'PUT' : 'DELETE' });
+                if (!res.ok) throw new Error(res.status);
+                status.textContent = '';
+            } catch (e) {
+                box.checked = !box.checked; // no quedó guardado: la casilla vuelve a como estaba
+                status.textContent = 'No se pudo guardar. Reintentá.';
+            }
+        }));
+        document.getElementById('btnCopyDjText').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(document.getElementById('djText').textContent.trim());
+                status.textContent = 'Texto copiado.';
+            } catch (e) {
+                status.textContent = 'No se pudo copiar automáticamente: seleccioná el texto y copialo a mano.';
+            }
         });
     })();
 

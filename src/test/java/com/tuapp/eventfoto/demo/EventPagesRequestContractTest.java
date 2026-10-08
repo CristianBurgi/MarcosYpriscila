@@ -84,17 +84,59 @@ class EventPagesRequestContractTest {
                 .replaceAll("(?m)^[ \\t]*const SLUG = window\\.EVENT_SLUG;[ \\t]*\\r?\\n", "");
     }
 
+    static final String LIVE_ALBUM_LINK = "<a href=\"#\" data-event-path=\"/album\" id=\"btn-live-album\" class=\"btn-elegant\" "
+            + "style=\"display: none; margin-top: 1.2rem;\"><i class=\"fa-solid fa-images\"></i> Ver el álbum en vivo</a>";
+    static final String UPLOAD_SUCCESS = "¡Foto subida con éxito! Ya está en el álbum y en la pantalla del salón. 📸</div>';\n";
+    static final String VISIBILITY = "            document.addEventListener('visibilitychange', () => { if (!document.hidden) pollGallery(); });\n";
+
+    /**
+     * Fase 9.8: lo único que cambió después de la 9.7-B, sobre el resultado de {@link #applyDocumentedChanges} (texto en LF).
+     * <ul>
+     *   <li>upload.html: el link "Ver el álbum en vivo" (oculto) debajo de #status-message y la línea que lo muestra al
+     *       terminar una subida. Ninguna request nueva salvo que el invitado toque el link (navega al álbum).</li>
+     *   <li>album.html: la suscripción al stream (GET {EVENT_API}/stream, el mismo de la pantalla). Cada aviso llama al
+     *       mismo pollGallery() de siempre: las requests de fotos son las de main, solo que antes.</li>
+     *   <li>screen.html: el texto de la tarjeta del QR. Ninguna request.</li>
+     * </ul>
+     */
+    static String applyFase98Changes(String page, String after97b) {
+        return switch (page) {
+            case "upload" -> after97b
+                    .replace("        <div id=\"status-message\"></div>\n",
+                            "        <div id=\"status-message\"></div>\n        " + LIVE_ALBUM_LINK + "\n")
+                    .replace(UPLOAD_SUCCESS, UPLOAD_SUCCESS + "            document.getElementById('btn-live-album').style.display = '';\n");
+            case "album" -> after97b.replace(VISIBILITY, VISIBILITY
+                    + "            // En vivo: el mismo stream que la pantalla avisa altas y bajas y se sincroniza al toque; el polling queda de respaldo.\n"
+                    + "            if (window.EventSource) {\n"
+                    + "                const stream = new EventSource(`${EVENT_API}/stream`);\n"
+                    + "                stream.addEventListener('PHOTO_PUBLISHED', () => pollGallery());\n"
+                    + "                stream.addEventListener('PHOTO_DELETED', () => pollGallery());\n"
+                    + "            }\n");
+            case "screen" -> after97b.replace(
+                    "            <div class=\"qr-title\"><i class=\"fa-solid fa-qrcode\" style=\"color: #e5cfb3; font-size: 0.95rem; margin-right: 4px;\"></i> ESCANEÁ EL QR</div>\n"
+                            + "            <div class=\"qr-subtitle\">¡y subí tu foto en vivo!</div>\n",
+                    "            <div class=\"qr-title\">Sacá una foto y aparecé en la pantalla 📸</div>\n"
+                            + "            <div class=\"qr-subtitle\">Escaneá el código con la cámara de tu celular</div>\n");
+            default -> after97b;
+        };
+    }
+
     private static String lf(String s) {
         return s.replace("\r\n", "\n");
     }
 
     @Test
-    @DisplayName("Las 5 páginas difieren de main solo en EVENT_API, las claves con EVENT_STORAGE_PREFIX y el SLUG que ya no se usa")
+    @DisplayName("Las 5 páginas difieren de main solo en EVENT_API, las claves con EVENT_STORAGE_PREFIX, el SLUG que ya no se usa y lo de la 9.8")
     void pagesChangedOnlyAsDocumented() throws IOException {
         for (String page : PAGES) {
             String main = Files.readString(Path.of("src/test/resources/golden/guest-pages/raw-" + page + ".html"), StandardCharsets.UTF_8);
             String branch = new ClassPathResource("guest-pages/" + page + ".html").getContentAsString(StandardCharsets.UTF_8);
-            assertThat(lf(branch)).as(page).isEqualTo(lf(applyDocumentedChanges(main)));
+            String after97b = lf(applyDocumentedChanges(main));
+            String expected = applyFase98Changes(page, after97b);
+            if (List.of("upload", "album", "screen").contains(page)) {
+                assertThat(expected).as(page + ": el cambio de la 9.8 encontró su lugar en main").isNotEqualTo(after97b);
+            }
+            assertThat(lf(branch)).as(page).isEqualTo(expected);
             assertThat(branch).as(page).doesNotContain("/api/v1/events/${", "/e/${", "const SLUG", "${SLUG}");
         }
     }
