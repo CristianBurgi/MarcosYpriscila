@@ -74,7 +74,7 @@
             });
 
             if (response.ok) {
-                window.location.href = '/superadmin/events/new';
+                window.location.href = '/superadmin/eventos';
             } else {
                 const errData = await response.json().catch(() => ({}));
                 alertError.innerText = errData.message || 'Credenciales inválidas.';

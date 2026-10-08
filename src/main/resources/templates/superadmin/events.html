@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventos — Superadmin EventFoto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg-gradient); background-attachment: fixed; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px 60px; color: var(--text-primary); }
+        .card { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; width: 100%; max-width: 1400px; margin-bottom: 20px; }
+        h1 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #fbbf24, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; }
+        .muted { color: var(--text-muted); font-size: 0.85rem; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 18px; }
+        .toolbar .spacer { flex: 1; }
+        select, input[type=text], input[type=date] { padding: 9px 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-primary); font-size: 0.9rem; font-family: inherit; }
+        input[type=date] { color-scheme: dark; }
+        .btn { padding: 9px 14px; border: 1px solid var(--glass-border); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; }
+        .btn:hover { background: rgba(255, 255, 255, 0.12); }
+        .btn-primary { background: linear-gradient(135deg, #f59e0b, #8b5cf6); border: none; color: #fff; }
+        .btn-danger { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); color: #fecaca; }
+        .btn-sm { padding: 5px 9px; font-size: 0.78rem; border-radius: 8px; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+        th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--glass-border); white-space: nowrap; }
+        td { padding: 9px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); vertical-align: top; }
+        td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        td.actions { display: flex; flex-wrap: wrap; gap: 5px; }
+        a { color: var(--accent-purple); }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; white-space: nowrap; background: rgba(148, 163, 184, 0.18); color: #cbd5e1; }
+        .tag-warn { background: rgba(251, 191, 36, 0.18); color: #fde68a; }
+        .st-OPEN { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .st-WAITING { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .st-NOT_CONFIGURED, .st-CLOSED_BY_ORGANIZER { background: rgba(251, 191, 36, 0.18); color: #fde68a; }
+        .st-EXPIRED { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .st-PURGED { background: rgba(100, 116, 139, 0.3); color: #94a3b8; }
+        .reason { display: block; color: var(--text-muted); font-size: 0.78rem; max-width: 220px; }
+        .empty { color: var(--text-muted); padding: 14px 4px; font-size: 0.9rem; }
+        .pager { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; align-items: center; }
+        code { font-family: ui-monospace, monospace; font-size: 0.82rem; }
+        dialog { margin: auto; background: #1e1b4b; color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 18px; padding: 24px; width: min(480px, calc(100vw - 32px)); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
+        dialog::backdrop { background: rgba(2, 6, 23, 0.7); }
+        dialog h3 { font-size: 1.1rem; margin-bottom: 10px; }
+        dialog p { color: #cbd5e1; font-size: 0.92rem; margin-bottom: 14px; line-height: 1.45; }
+        dialog .field { width: 100%; margin-bottom: 14px; }
+        dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
+        .dlg-result { display: none; padding: 12px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 0.9rem; overflow-wrap: anywhere; }
+        .dlg-result.ok { background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #a7f3d0; }
+        .dlg-result.err { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fecaca; }
+        .link-box { display: flex; gap: 8px; margin-top: 10px; }
+        .link-box input { flex: 1; min-width: 0; }
+    </style>
+</head>
+<body>
+
+<nav th:replace="~{superadmin/nav :: nav('eventos')}"></nav>
+
+<div class="card">
+    <h1>Eventos</h1>
+    <p class="muted">Toda la plataforma, más nuevo primero. El estado se calcula al servir la página.</p>
+
+    <div class="toolbar">
+        <form method="get" action="/superadmin/eventos" class="toolbar" style="margin:0">
+            <select name="scope" aria-label="Estado">
+                <option value="ACTIVE" th:selected="${scope.name() == 'ACTIVE'}">Activos</option>
+                <option value="EXPIRED" th:selected="${scope.name() == 'EXPIRED'}">Vencidos o borrados</option>
+                <option value="ALL" th:selected="${scope.name() == 'ALL'}">Todos</option>
+            </select>
+            <select name="origin" aria-label="Origen">
+                <option value="" th:selected="${origin == null}">Pago y cortesía</option>
+                <option value="PAID" th:selected="${origin != null and origin.name() == 'PAID'}">Pago</option>
+                <option value="COURTESY" th:selected="${origin != null and origin.name() == 'COURTESY'}">Cortesía</option>
+            </select>
+            <button type="submit" class="btn">Filtrar</button>
+        </form>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-action="confirm-payment">Marcar pago aprobado</button>
+        <button type="button" class="btn btn-danger" data-action="lifecycle">Correr el ciclo de vida ahora</button>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+            <tr>
+                <th>Evento</th><th>Organizador</th><th>Fecha</th><th>Origen</th><th>Estado</th>
+                <th>Fotos</th><th>Mensajes</th><th>Borrado</th><th>Recordatorio</th><th>Creado</th><th>Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="v : ${result.events()}" th:with="e=${v.event()}">
+                <td><a th:href="@{/e/{slug}(slug=${e.slug()})}" target="_blank" rel="noopener" th:text="${e.name()}">Evento</a></td>
+                <td>
+                    <span th:text="${e.organizerEmail()}">mail</span>
+                    <span th:if="${e.organizerPending()}" class="tag tag-warn">sin activar</span>
+                </td>
+                <td th:text="${fmt.day(e.eventDate())}">—</td>
+                <td>
+                    <span th:if="${e.origin().name() == 'PAID'}">pago</span>
+                    <span th:unless="${e.origin().name() == 'PAID'}">cortesía<span class="reason" th:text="${e.originReason()}"></span></span>
+                </td>
+                <td><span class="tag" th:classappend="'st-' + ${v.status().name()}" th:text="${v.status().label}">estado</span></td>
+                <td class="num" th:text="${v.photos()}">0</td>
+                <td class="num" th:text="${v.messages()}">0</td>
+                <td>
+                    <span th:text="${fmt.day(v.deletionDate())}">—</span>
+                    <span th:if="${e.retentionOverrideUntil() != null}" class="tag tag-warn">extendida</span>
+                </td>
+                <td th:text="${e.expiryReminderSentAt() != null} ? 'sí' : 'no'">no</td>
+                <td th:text="${fmt.at(e.createdAt())}">—</td>
+                <td class="actions">
+                    <button type="button" class="btn btn-sm" data-action="retention"
+                            th:if="${e.eventDate() != null}"
+                            th:data-id="${e.id()}" th:data-name="${e.name()}"
+                            th:data-current="${v.deletionDate()}" th:data-purged="${e.purgedAt() != null}"
+                            th:data-max="${e.eventDate().plusDays(30).plusYears(1)}">Extender</button>
+                    <button type="button" class="btn btn-sm" data-action="activation"
+                            th:if="${e.organizerPending()}"
+                            th:data-id="${e.organizerId()}" th:data-email="${e.organizerEmail()}">Link de activación</button>
+                    <button type="button" class="btn btn-sm" data-action="resend-mail"
+                            th:if="${v.purchased()}"
+                            th:data-id="${e.id()}" th:data-name="${e.name()}" th:data-email="${e.organizerEmail()}">Reenviar mail</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p th:if="${result.events().isEmpty()}" class="empty">No hay eventos con este filtro.</p>
+    </div>
+
+    <div class="pager" th:if="${result.page() > 0 or result.hasNext()}">
+        <a th:if="${result.page() > 0}" class="btn btn-sm"
+           th:href="@{/superadmin/eventos(scope=${scope}, origin=${origin}, page=${result.page() - 1})}">← Anterior</a>
+        <span class="muted" th:text="'Página ' + ${result.page() + 1}">Página 1</span>
+        <a th:if="${result.hasNext()}" class="btn btn-sm"
+           th:href="@{/superadmin/eventos(scope=${scope}, origin=${origin}, page=${result.page() + 1})}">Siguiente →</a>
+    </div>
+</div>
+
+<div class="card" id="compras">
+    <h2>Compras pendientes</h2>
+    <p class="muted">Sin procesar y todavía no descartadas por el job. La referencia son los primeros 8 caracteres del external_reference.</p>
+    <div class="table-wrap" style="margin-top:12px">
+        <table>
+            <thead>
+            <tr><th>Creada</th><th>Email</th><th>Evento</th><th>Monto</th><th>Preferencia</th><th>payment_id</th><th>Último estado</th><th>Ref.</th><th></th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="p : ${purchases}">
+                <td th:text="${fmt.at(p.createdAt())}">—</td>
+                <td th:text="${p.email()}">mail</td>
+                <td th:text="${p.eventName()}">evento</td>
+                <td class="num" th:text="'$ ' + ${#numbers.formatDecimal(p.amount(), 1, 'POINT', 2, 'COMMA')}">0</td>
+                <td th:text="${p.hasPreference()} ? 'sí' : 'no'">no</td>
+                <td><code th:text="${p.mpPaymentId() ?: '—'}">—</code></td>
+                <td th:text="${p.lastPaymentStatus() ?: '—'}">—</td>
+                <td><code th:text="${p.reference()}">ref</code></td>
+                <td>
+                    <button type="button" class="btn btn-sm" data-action="confirm-payment"
+                            th:if="${p.mpPaymentId() != null}" th:data-payment="${p.mpPaymentId()}">Marcar aprobado</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p th:if="${purchases.isEmpty()}" class="empty">No hay compras pendientes.</p>
+    </div>
+</div>
+
+<div class="card" id="incidentes">
+    <h2>Incidentes de pago</h2>
+    <p class="muted">Pagos aprobados que no crearon nada y esperan revisión manual. Nunca hay reembolso automático.</p>
+    <div class="table-wrap" style="margin-top:12px">
+        <table>
+            <thead>
+            <tr><th>Fecha</th><th>Motivo</th><th>payment_id</th><th>Ref.</th><th></th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="i : ${incidents}">
+                <td th:text="${fmt.at(i.createdAt())}">—</td>
+                <td><span class="tag tag-warn" th:text="${i.reason()}">motivo</span></td>
+                <td><code th:text="${i.paymentId()}">id</code></td>
+                <td><code th:text="${i.reference() ?: '—'}">ref</code></td>
+                <td>
+                    <button type="button" class="btn btn-sm" data-action="resolve"
+                            th:data-id="${i.id()}" th:data-payment="${i.paymentId()}">Marcar resuelto</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p th:if="${incidents.isEmpty()}" class="empty">No hay incidentes sin resolver.</p>
+    </div>
+</div>
+
+<dialog id="dlg">
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgText"></p>
+    <input id="dlgInput" class="field">
+    <div id="dlgResult" class="dlg-result"></div>
+    <div class="buttons">
+        <button type="button" class="btn" id="dlgCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="dlgOk">Confirmar</button>
+    </div>
+</dialog>
+
+<script th:inline="javascript">
+    const dlg = document.getElementById('dlg');
+    const $ = id => document.getElementById(id);
+    let current = null;
+    let changed = false;
+
+    // Cada acción: textos de la confirmación, si pide un dato, a qué endpoint va y cómo mostrar el resultado.
+    const ACTIONS = {
+        'retention': d => ({
+            title: 'Extender vigencia',
+            text: d.purged === 'true'
+                ? `"${d.name}" ya se borró el ${day(d.current)}.`
+                : `Nueva fecha de borrado de "${d.name}". Hoy se borra el ${day(d.current)}. Si el recordatorio ya salió, sale otro 5 días antes de la fecha nueva.`,
+            input: {type: 'date', value: d.current, min: TODAY, max: d.max},
+            url: `/api/v1/superadmin/events/${d.id}/retention`,
+            body: v => ({until: v}),
+            ok: r => `Listo: se borra el ${day(r.deletionDate)}.` + (r.reminderReset ? ' El recordatorio se reinició.' : '')
+        }),
+        'activation': d => ({
+            title: 'Generar link de activación',
+            text: `Se genera un link nuevo para ${d.email}. El anterior deja de funcionar. El link se muestra una sola vez.`,
+            url: `/api/v1/superadmin/organizers/${d.id}/resend-activation`,
+            okHtml: r => linkBox(r.activationLink)
+        }),
+        'resend-mail': d => ({
+            title: 'Reenviar mail de confirmación',
+            text: `Se reenvía "Tu evento está listo" de "${d.name}" a ${d.email}.`,
+            url: `/api/v1/superadmin/events/${d.id}/resend-confirmation`,
+            ok: () => 'Mail reenviado.'
+        }),
+        'confirm-payment': d => ({
+            title: 'Marcar pago aprobado',
+            text: 'Consulta el pago real en Mercado Pago y, si está aprobado y todo cierra, crea la cuenta y el evento (la misma validación que el webhook).',
+            input: {type: 'text', value: d.payment || '', placeholder: 'payment_id', inputmode: 'numeric'},
+            url: '/api/v1/superadmin/payments/confirm',
+            body: v => ({paymentId: v}),
+            ok: r => OUTCOMES[r.outcome] || r.outcome
+        }),
+        'resolve': d => ({
+            title: 'Marcar incidente resuelto',
+            text: `El incidente del pago ${d.payment} sale de la lista. No hace nada más: la revisión y un reembolso, si corresponde, son a mano.`,
+            url: `/api/v1/superadmin/incidents/${d.id}/resolve`,
+            ok: r => r.resolvedNow ? 'Incidente resuelto.' : 'Ya estaba resuelto.'
+        }),
+        'lifecycle': () => ({
+            title: 'Correr el ciclo de vida ahora',
+            text: 'Manda los recordatorios pendientes y BORRA los álbumes vencidos (fotos, mensajes y comentarios). No se puede deshacer.',
+            url: '/api/v1/superadmin/lifecycle/run',
+            ok: r => `Recordatorios: ${r.reminders} · Borrados: ${r.purged} · Con error: ${r.failed}`
+        })
+    };
+
+    const OUTCOMES = {
+        CREATED: 'Creado: la cuenta y el evento ya existen y salió el mail.',
+        ALREADY_PROCESSED: 'Ya procesado: esa compra ya estaba confirmada con este pago.',
+        NOT_APPROVED: 'No aprobado: Mercado Pago no da ese pago como aprobado. No se creó nada.',
+        INCIDENT: 'Incidente: el pago necesita revisión manual. No se creó nada.',
+        UNKNOWN_PAYMENT: 'Pago desconocido: Mercado Pago no conoce ese payment_id.'
+    };
+
+    const TODAY = /*[[${today}]]*/ '';
+    const day = iso => iso.split('-').reverse().join('/');
+
+    function linkBox(link) {
+        const wrap = document.createElement('div');
+        wrap.textContent = 'Link nuevo (copialo ahora, no se vuelve a mostrar):';
+        const box = document.createElement('div');
+        box.className = 'link-box';
+        const input = Object.assign(document.createElement('input'), {type: 'text', readOnly: true, value: link});
+        const copy = Object.assign(document.createElement('button'), {type: 'button', className: 'btn btn-sm', textContent: 'Copiar'});
+        copy.onclick = () => { input.select(); navigator.clipboard.writeText(link).then(() => copy.textContent = 'Copiado'); };
+        box.append(input, copy);
+        wrap.append(box);
+        return wrap;
+    }
+
+    function open(action, data) {
+        current = ACTIONS[action](data);
+        $('dlgTitle').textContent = current.title;
+        $('dlgText').textContent = current.text;
+        const input = $('dlgInput');
+        input.style.display = current.input ? '' : 'none';
+        if (current.input) {
+            ['min', 'max', 'placeholder', 'inputmode'].forEach(a => input.removeAttribute(a));
+            Object.entries(current.input).forEach(([k, v]) => v != null && input.setAttribute(k, v));
+            input.value = current.input.value || '';
+        }
+        const result = $('dlgResult');
+        result.style.display = 'none';
+        result.replaceChildren();
+        $('dlgOk').style.display = '';
+        $('dlgOk').disabled = false;
+        $('dlgCancel').textContent = 'Cancelar';
+        dlg.showModal();
+    }
+
+    function show(kind, content) {
+        const result = $('dlgResult');
+        result.className = 'dlg-result ' + kind;
+        result.replaceChildren(typeof content === 'string' ? document.createTextNode(content) : content);
+        result.style.display = 'block';
+    }
+
+    $('dlgOk').onclick = async () => {
+        const value = $('dlgInput').value.trim();
+        if (current.input && !value) {
+            show('err', 'Completá el dato.');
+            return;
+        }
+        $('dlgOk').disabled = true;
+        try {
+            const res = await fetch(current.url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(current.body ? current.body(value) : {})
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 401) {
+                location.href = '/superadmin/login';
+                return;
+            }
+            if (!res.ok) {
+                show('err', data.message || `Error ${res.status}`);
+                $('dlgOk').disabled = false;
+                return;
+            }
+            changed = true;
+            show('ok', current.okHtml ? current.okHtml(data) : current.ok(data));
+            $('dlgOk').style.display = 'none';
+            $('dlgCancel').textContent = 'Cerrar';
+        } catch (e) {
+            show('err', 'Error de conexión con el servidor.');
+            $('dlgOk').disabled = false;
+        }
+    };
+
+    $('dlgCancel').onclick = () => dlg.close();
+    dlg.addEventListener('close', () => { if (changed) location.reload(); });
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('button[data-action]');
+        if (btn) open(btn.dataset.action, btn.dataset);
+    });
+</script>
+</body>
+</html>

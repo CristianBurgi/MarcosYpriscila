@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<body>
+<!-- Menú mínimo de las páginas del superadmin. "active" marca la página actual. -->
+<nav th:fragment="nav(active)" class="sa-nav">
+    <style>
+        .sa-nav { width: 100%; max-width: 1400px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; padding: 10px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; }
+        .sa-nav .brand { font-weight: 700; margin-right: 12px; background: linear-gradient(135deg, #fbbf24, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sa-nav a, .sa-nav button { color: #94a3b8; text-decoration: none; font-size: 0.92rem; font-weight: 600; padding: 8px 12px; border-radius: 10px; background: none; border: none; cursor: pointer; font-family: inherit; }
+        .sa-nav a:hover, .sa-nav button:hover { color: #f8fafc; background: rgba(255, 255, 255, 0.06); }
+        .sa-nav a.active { color: #f8fafc; background: rgba(192, 132, 252, 0.18); }
+        .sa-nav .spacer { flex: 1; }
+    </style>
+    <span class="brand">Superadmin</span>
+    <a href="/superadmin/eventos" th:classappend="${active == 'eventos'} ? 'active'">Eventos</a>
+    <a href="/superadmin/events/new" th:classappend="${active == 'nuevo'} ? 'active'">Crear evento sin costo</a>
+    <span class="spacer"></span>
+    <button type="button" onclick="fetch('/api/v1/superadmin/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'}).finally(() => location.href = '/superadmin/login')">Cerrar sesión</button>
+</nav>
+</body>
+</html>

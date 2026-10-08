@@ -27,6 +27,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -255,12 +256,12 @@ class EventLifecycleTest {
                 .andExpect(status().isForbidden());
         assertThat(eventRepository.findById(eventA.getId()).orElseThrow().getPurgedAt()).isNull();
 
-        mockMvc.perform(post("/api/v1/superadmin/lifecycle/run").with(user("superadmin@boda.com").roles("SUPERADMIN")))
+        mockMvc.perform(post("/api/v1/superadmin/lifecycle/run").contentType(MediaType.APPLICATION_JSON).with(user("superadmin@boda.com").roles("SUPERADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reminders").value(1)) // el vecino: se borra mañana
                 .andExpect(jsonPath("$.purged").value(1))
                 .andExpect(jsonPath("$.failed").value(0));
-        mockMvc.perform(post("/api/v1/superadmin/lifecycle/run").with(user("superadmin@boda.com").roles("SUPERADMIN")))
+        mockMvc.perform(post("/api/v1/superadmin/lifecycle/run").contentType(MediaType.APPLICATION_JSON).with(user("superadmin@boda.com").roles("SUPERADMIN")))
                 .andExpect(jsonPath("$.reminders").value(0))
                 .andExpect(jsonPath("$.purged").value(0));
     }

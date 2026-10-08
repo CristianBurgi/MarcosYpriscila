@@ -5,7 +5,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,4 +28,10 @@ public interface PaymentIncidentRepository extends JpaRepository<PaymentIncident
     boolean existsByExternalReferenceAndResolvedAtIsNull(String externalReference);
 
     Optional<PaymentIncident> findByPaymentId(String paymentId);
+
+    /** Marca resuelto (9.7, a mano por el superadmin): 1 si lo resolvió esta llamada, 0 si ya estaba resuelto o no existe. */
+    @Modifying
+    @Transactional
+    @Query("update PaymentIncident i set i.resolvedAt = :now where i.id = :id and i.resolvedAt is null")
+    int resolve(@Param("id") UUID id, @Param("now") Instant now);
 }

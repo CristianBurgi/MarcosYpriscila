@@ -45,7 +45,7 @@ public class SuperadminAuthController {
         return ResponseEntity.ok(authResponse);
     }
 
-    @PostMapping("/logout")
+    @PostMapping(path = "/logout", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> logout(HttpServletResponse response) {
         ResponseCookie jwtCookie = ResponseCookie.from(JwtAuthenticationFilter.SUPERADMIN_COOKIE_NAME, "")
                 .httpOnly(true)
