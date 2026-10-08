@@ -60,7 +60,7 @@ public class GuestbookPdfService {
         readOnly.setReadOnly(true);
         GuestbookData data = readOnly.execute(status -> {
             Event event = eventService.getEventEntityBySlug(slug);
-            List<GuestbookEntry> loaded = messageRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtAsc(event.getId())
+            List<GuestbookEntry> loaded = messageRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtAscIdAsc(event.getId())
                     .stream()
                     .map(this::toEntry)
                     .filter(entry -> !entry.text().isEmpty())

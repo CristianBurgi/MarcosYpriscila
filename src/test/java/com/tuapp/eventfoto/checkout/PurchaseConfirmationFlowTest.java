@@ -474,12 +474,12 @@ class PurchaseConfirmationFlowTest {
 
     @Test
     @DisplayName("Una compra procesada ya no la toca el descarte, aunque tenga más de 72 hs")
-    void processedPurchasesSurviveTheDiscard(@Autowired CheckoutService checkoutService) throws Exception {
+    void processedPurchasesSurviveTheDiscard(@Autowired PendingPurchaseCleanupJob cleanupJob) throws Exception {
         PendingPurchase purchase = newPurchase(EMAIL);
         apiReturns(1022L, payment(1022L, "approved", purchase.getId()));
         webhook(1022L, 200);
 
-        assertThat(checkoutService.discardStale(Instant.now().plus(java.time.Duration.ofDays(30)))).isZero();
+        assertThat(cleanupJob.discardStale(Instant.now().plus(java.time.Duration.ofDays(30)))).isZero();
         assertThat(purchases.findById(purchase.getId())).isPresent();
     }
 }

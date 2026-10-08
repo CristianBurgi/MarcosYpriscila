@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
-    Page<Photo> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
+    Page<Photo> findByEventIdOrderByCreatedAtDescIdDesc(UUID eventId, Pageable pageable);
 
     List<Photo> findByEventId(UUID eventId);
 

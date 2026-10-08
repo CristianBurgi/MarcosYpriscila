@@ -318,7 +318,7 @@ public class PhotoServiceImpl implements PhotoService {
     @Transactional(readOnly = true)
     public Page<PhotoResponseDTO> getPhotos(String slug, Pageable pageable) {
         Event event = eventService.getEventEntityBySlug(slug);
-        return photoRepository.findByEventIdOrderByCreatedAtDesc(event.getId(), pageable)
+        return photoRepository.findByEventIdOrderByCreatedAtDescIdDesc(event.getId(), pageable)
                 .map(photo -> {
                     List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDesc(photo.getId());
                     return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);

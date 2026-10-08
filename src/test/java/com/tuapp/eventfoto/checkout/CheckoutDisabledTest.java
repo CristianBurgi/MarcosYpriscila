@@ -36,20 +36,38 @@ class CheckoutDisabledTest {
     @Autowired private ApplicationContext context;
     @Autowired private OrganizerRepository organizerRepository;
     @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private PendingPurchaseCleanupJob cleanupJob;
+    @Autowired private PendingPurchaseRepository purchases;
 
     @AfterEach
     void cleanUp() {
+        purchases.deleteAll();
         organizerRepository.deleteAll();
     }
 
     @Test
-    @DisplayName("La app arranca sin credenciales y no registra ningún bean del checkout")
+    @DisplayName("Checkout apagado: el job de limpieza corre igual; una compra de más de 72 hs se descarta y una reciente no")
+    void cleanupRunsWithCheckoutOff() {
+        PendingPurchase old = purchases.save(PendingPurchase.builder().email("vieja@test.com").passwordHash("$2a$10$hash")
+                .eventName("Evento").amount(new java.math.BigDecimal("50000.00")).mpPreferenceId("pref-1")
+                .createdAt(java.time.Instant.now().minus(java.time.Duration.ofHours(73))).build());
+        PendingPurchase recent = purchases.save(PendingPurchase.builder().email("reciente@test.com").passwordHash("$2a$10$hash")
+                .eventName("Evento").amount(new java.math.BigDecimal("50000.00")).mpPreferenceId("pref-2")
+                .createdAt(java.time.Instant.now().minus(java.time.Duration.ofHours(2))).build());
+
+        cleanupJob.run();
+
+        assertThat(purchases.findById(old.getId())).isEmpty();
+        assertThat(purchases.findById(recent.getId())).isPresent();
+    }
+
+    @Test
+    @DisplayName("La app arranca sin credenciales y no registra ningún bean del checkout (salvo la limpieza, que no depende de MP)")
     void startsWithoutCredentialsAndWithoutCheckoutBeans() {
         assertThat(context.getBeansOfType(CheckoutService.class)).isEmpty();
         assertThat(context.getBeansOfType(CheckoutController.class)).isEmpty();
         assertThat(context.getBeansOfType(CheckoutViewController.class)).isEmpty();
         assertThat(context.getBeansOfType(PaymentPreferenceGateway.class)).isEmpty();
-        assertThat(context.getBeansOfType(PendingPurchaseCleanupJob.class)).isEmpty();
         assertThat(context.getBeansOfType(PurchaseConfirmationService.class)).isEmpty();
         assertThat(context.getBeansOfType(PurchaseConfirmationController.class)).isEmpty();
         assertThat(context.getBeansOfType(PaymentLookupGateway.class)).isEmpty();
