@@ -113,6 +113,7 @@ class AdminRouteEnumerationTest {
         foreignFixtures.put("photoId", photoB.getId().toString());
         foreignFixtures.put("messageId", messageB.getId().toString());
         foreignFixtures.put("commentId", commentB.getId().toString());
+        foreignFixtures.put("item", "tarjetas"); // casilla de la checklist (9.8): una clave válida
 
         cookieOfA = new Cookie(JwtAuthenticationFilter.ORGANIZER_COOKIE_NAME,
                 jwtTokenProvider.generateOrganizerToken(organizerA.getId(), organizerA.getEmail(), organizerA.getTokenVersion()));

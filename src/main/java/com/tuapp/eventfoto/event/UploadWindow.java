@@ -106,6 +106,11 @@ public class UploadWindow {
         return eventDate.plusDays(2).atStartOfDay(ZONE).toInstant();
     }
 
+    /** La subida todavía no cerró (sin gracia). Hasta acá se muestra la checklist previa del panel (9.8). */
+    public boolean hasNotClosed(LocalDate eventDate) {
+        return clock.instant().isBefore(closesAt(eventDate));
+    }
+
     public boolean hasOpened(LocalDate eventDate) {
         return !clock.instant().isBefore(opensAt(eventDate));
     }

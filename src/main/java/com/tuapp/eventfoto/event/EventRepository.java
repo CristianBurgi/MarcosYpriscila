@@ -102,4 +102,21 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     @Modifying(clearAutomatically = true)
     @Query("update Event e set e.wizardCompletedAt = :now where e.id = :id and e.wizardCompletedAt is null")
     int markWizardCompleted(@Param("id") UUID id, @Param("now") Instant now);
+
+    // --- Checklist previa (9.8): marcar y desmarcar son UPDATEs atómicos sobre el bit, sin leer-modificar-escribir ---
+    // (dos pestañas o dos clicks rápidos no se pisan). Sumar o restar el bit solo si está en el estado contrario es un OR
+    // y un AND NOT sin operadores de bits, que H2 (los tests) no tiene; Postgres reevalúa el WHERE sobre la fila bloqueada.
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(value = "update events set checklist = checklist + :bit where id = :id and mod(checklist / :bit, 2) = 0", nativeQuery = true)
+    int markChecklistItem(@Param("id") UUID id, @Param("bit") int bit);
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query(value = "update events set checklist = checklist - :bit where id = :id and mod(checklist / :bit, 2) = 1", nativeQuery = true)
+    int unmarkChecklistItem(@Param("id") UUID id, @Param("bit") int bit);
+
+    @Query("select e.checklist from Event e where e.id = :id")
+    short findChecklist(@Param("id") UUID id);
 }

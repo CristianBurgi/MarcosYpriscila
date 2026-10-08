@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${eventName}">Kit de visibilidad</title>
+    <!-- Fase 9.8: tarjetas para las mesas (k=1: A4 con 4 tarjetas A6) y cartel A4 (k=2: la misma tarjeta, todo x2).
+         Medidas en mm de la tarjeta, multiplicadas por k. El QR va negro sobre blanco con quiet zone (quietMm, 4
+         módulos) dentro de un recuadro blanco; el texto, sobre el primario con textOnPrimary. -->
+    <style th:inline="css">
+        @page { size: A4; margin: 0; }
+        body {
+            margin: 0;
+            font-family: 'Playfair Display', 'Noto Serif', 'Noto Emoji';
+        }
+        .card {
+            position: absolute;
+            width: [(${105 * k})]mm;
+            height: [(${148 * k})]mm;
+            background-color: [(${palette.primary})];
+            color: [(${palette.textOnPrimary})];
+            text-align: center;
+        }
+        /* Alto fijo y overflow oculto: un nombre larguísimo nunca empuja el QR (el tamaño de letra baja con el largo). */
+        .name {
+            margin: [(${7 * k})]mm [(${8 * k})]mm 0 [(${8 * k})]mm;
+            height: [(${20 * k})]mm;
+            overflow: hidden;
+            font-weight: 600;
+            font-size: [(${nameSizePt})]pt;
+            line-height: 1.15;
+            word-wrap: break-word;
+        }
+        .band {
+            margin-top: [(${3 * k})]mm;
+            padding: [(${3 * k})]mm 0;
+            background-color: [(${palette.primaryLight})];
+        }
+        .qr-box {
+            width: [(${qrMm})]mm;
+            margin: 0 auto;
+            padding: [(${quietMm})]mm;
+            background-color: #ffffff;
+        }
+        .qr-box img {
+            display: block;
+            width: [(${qrMm})]mm;
+            height: [(${qrMm})]mm;
+        }
+        .call {
+            margin: [(${4 * k})]mm [(${7 * k})]mm 0 [(${7 * k})]mm;
+            font-size: [(${12 * k})]pt;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        .hint {
+            margin: [(${1.5 * k})]mm [(${7 * k})]mm 0 [(${7 * k})]mm;
+            font-size: [(${8 * k})]pt;
+        }
+        .brand {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: [(${4 * k})]mm;
+            font-size: [(${6.5 * k})]pt;
+            letter-spacing: 0.08em;
+        }
+        /* Líneas de corte: finas, en gris medio para que se vean con paletas claras y oscuras. Son cajas con fondo:
+           openhtmltopdf no dibuja el borde de una caja absoluta de alto o ancho cero. */
+        .cut-v { position: absolute; left: 105mm; top: 0; width: 0.3mm; height: 296mm; background-color: #8c8c8c; }
+        .cut-h { position: absolute; top: 148mm; left: 0; width: 210mm; height: 0.3mm; background-color: #8c8c8c; }
+    </style>
+</head>
+<body>
+<div th:each="i : ${#numbers.sequence(0, copies - 1)}" class="card"
+     th:style="'left: ' + ${i % 2 * 105} + 'mm; top: ' + ${i / 2 * 148} + 'mm;'">
+    <div class="name" th:text="${eventName}">Nombre del evento</div>
+    <div class="band">
+        <div class="qr-box"><img th:src="${qrSrc}" alt=""></div>
+    </div>
+    <div class="call">Sacá una foto y aparecé en la pantalla 📸</div>
+    <div class="hint">Escaneá el código con la cámara de tu celular</div>
+    <div class="brand">EventFoto</div>
+</div>
+<th:block th:if="${copies > 1}">
+    <div class="cut-v"></div>
+    <div class="cut-h"></div>
+</th:block>
+</body>
+</html>

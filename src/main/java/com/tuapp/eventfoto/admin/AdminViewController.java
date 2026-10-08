@@ -6,6 +6,7 @@ import com.tuapp.eventfoto.common.config.AppUrls;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventAccessService;
 import com.tuapp.eventfoto.event.EventSettingsService;
+import com.tuapp.eventfoto.event.ChecklistItem;
 import com.tuapp.eventfoto.event.UploadWindow;
 import com.tuapp.eventfoto.event.OwnedEvent;
 import com.tuapp.eventfoto.event.dto.EventResponseDTO;
@@ -97,6 +98,9 @@ public class AdminViewController {
         model.addAttribute("uploadFrom", UploadWindow.day(eventDate.minusDays(1)));
         model.addAttribute("uploadUntil", UploadWindow.day(eventDate.plusDays(1)));
         model.addAttribute("deletionDay", UploadWindow.day(uploadWindow.deletionDate(ownedEvent)));
+        // Checklist previa (9.8): hasta el cierre de la subida; null = no se muestra. Un evento vencido ni llega acá
+        // (EventAccessInterceptor muestra "no disponible").
+        model.addAttribute("checklist", uploadWindow.hasNotClosed(eventDate) ? ChecklistItem.marked(ownedEvent.getChecklist()) : null);
 
         return "admin/dashboard";
     }

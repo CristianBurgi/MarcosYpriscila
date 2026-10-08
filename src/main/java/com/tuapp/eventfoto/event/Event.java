@@ -92,6 +92,11 @@ public class Event {
     @Column(name = "background_image_key")
     private String backgroundImageKey;
 
+    /** Checklist previa del panel (9.8): máscara de bits de {@link ChecklistItem}. Se escribe solo con UPDATEs atómicos. */
+    @Builder.Default
+    @Column(nullable = false)
+    private short checklist = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

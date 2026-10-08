@@ -39,7 +39,7 @@ public class GuestPageController {
     private static final Pattern SLUG_FORMAT = Pattern.compile("[a-z0-9-]{1,100}");
 
     /** Color de la paleta cuando hay imagen de fondo pero no color: el vino de la app. */
-    static final String DEFAULT_COLOR = "#3a0f14";
+    public static final String DEFAULT_COLOR = "#3a0f14";
 
     private final EventService eventService;
     private final StorageService storageService;
