@@ -71,7 +71,7 @@ public class MessageServiceImpl implements MessageService {
     @Transactional(readOnly = true)
     public Page<MessageResponseDTO> getMessages(String slug, Pageable pageable) {
         Event event = eventService.getEventEntityBySlug(slug);
-        return messageRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(event.getId(), pageable)
+        return messageRepository.findByEventIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(event.getId(), pageable)
                 .map(MessageResponseDTO::fromEntity);
     }
 

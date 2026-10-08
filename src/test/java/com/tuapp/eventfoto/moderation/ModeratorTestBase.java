@@ -92,8 +92,13 @@ abstract class ModeratorTestBase {
                 .isActive(true).origin(EventOrigin.PAID).wizardCompletedAt(Instant.now()).build());
     }
 
+    private Instant lastPhotoAt = Instant.EPOCH;
+
+    /** Cada foto, estrictamente más nueva que la anterior: dos creadas en el mismo instante empatarían en created_at. */
     protected Photo photo(Event event, String uploader) {
-        return photoRepository.save(Photo.builder().event(event)
+        Instant now = Instant.now();
+        lastPhotoAt = now.isAfter(lastPhotoAt) ? now : lastPhotoAt.plusMillis(1);
+        return photoRepository.save(Photo.builder().event(event).createdAt(lastPhotoAt)
                 .storageKey("events/" + event.getId() + "/" + UUID.randomUUID() + ".jpg").uploaderName(uploader).build());
     }
 

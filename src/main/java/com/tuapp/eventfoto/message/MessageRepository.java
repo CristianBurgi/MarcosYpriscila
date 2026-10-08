@@ -12,14 +12,14 @@ import java.util.UUID;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, UUID> {
 
-    List<Message> findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID eventId);
+    List<Message> findByEventIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(UUID eventId);
 
     /** Mensajes publicados en orden cronológico (libro de visitas en PDF). */
-    List<Message> findByEventIdAndIsApprovedTrueOrderByCreatedAtAsc(UUID eventId);
+    List<Message> findByEventIdAndIsApprovedTrueOrderByCreatedAtAscIdAsc(UUID eventId);
 
-    Page<Message> findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
+    Page<Message> findByEventIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(UUID eventId, Pageable pageable);
 
-    Page<Message> findByEventIdOrderByCreatedAtDesc(UUID eventId, Pageable pageable);
+    Page<Message> findByEventIdOrderByCreatedAtDescIdDesc(UUID eventId, Pageable pageable);
 
     long countByEventId(UUID eventId);
 

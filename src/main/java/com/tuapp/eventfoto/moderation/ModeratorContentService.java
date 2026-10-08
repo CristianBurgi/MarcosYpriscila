@@ -37,7 +37,7 @@ public class ModeratorContentService {
     @Transactional(readOnly = true)
     public ModeratorPage<ModeratorPhotoDTO> listPhotos(UUID eventId, int page, int size) {
         Page<ModeratorPhotoDTO> result = photoRepository
-                .findByEventIdOrderByCreatedAtDesc(eventId, pageRequest(page, size))
+                .findByEventIdOrderByCreatedAtDescIdDesc(eventId, pageRequest(page, size))
                 .map(photo -> new ModeratorPhotoDTO(photo.getId(), storageService.generatePublicUrl(photo.getStorageKey()),
                         photo.getUploaderName(), photo.getCreatedAt()));
         return new ModeratorPage<>(result.getContent(), result.hasNext());
@@ -46,7 +46,7 @@ public class ModeratorContentService {
     @Transactional(readOnly = true)
     public ModeratorPage<ModeratorMessageDTO> listMessages(UUID eventId, int page, int size) {
         Page<ModeratorMessageDTO> result = messageRepository
-                .findByEventIdAndIsApprovedTrueOrderByCreatedAtDesc(eventId, pageRequest(page, size))
+                .findByEventIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(eventId, pageRequest(page, size))
                 .map(message -> new ModeratorMessageDTO(message.getId(), message.getAuthorName(), message.getText(), message.getCreatedAt()));
         return new ModeratorPage<>(result.getContent(), result.hasNext());
     }

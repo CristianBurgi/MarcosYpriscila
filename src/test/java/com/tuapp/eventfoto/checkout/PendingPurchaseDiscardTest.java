@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 class PendingPurchaseDiscardTest {
 
-    @Autowired private CheckoutService checkoutService;
+    @Autowired private PendingPurchaseCleanupJob cleanupJob;
     @Autowired private PendingPurchaseRepository purchases;
     @MockBean private PaymentPreferenceGateway gateway;
 
@@ -50,7 +50,7 @@ class PendingPurchaseDiscardTest {
         UUID withPayment = purchase(Duration.ofHours(200), "pref-3", null, "98765");
         UUID processedWithPayment = purchase(Duration.ofHours(200), "pref-4", now.minus(Duration.ofHours(100)), "98766");
 
-        int discarded = checkoutService.discardStale(now);
+        int discarded = cleanupJob.discardStale(now);
 
         assertThat(discarded).isEqualTo(1);
         assertThat(purchases.findById(expired)).isEmpty();
@@ -66,7 +66,7 @@ class PendingPurchaseDiscardTest {
         UUID dayOld = purchase(Duration.ofHours(25), "pref-2", null, null);
         UUID insideMargin = purchase(Duration.ofHours(71), "pref-3", null, null);
 
-        assertThat(checkoutService.discardStale(now)).isZero();
+        assertThat(cleanupJob.discardStale(now)).isZero();
         assertThat(purchases.findAllById(java.util.List.of(justCreated, dayOld, insideMargin))).hasSize(3);
     }
 
@@ -76,7 +76,7 @@ class PendingPurchaseDiscardTest {
         UUID inFlight = purchase(Duration.ofMinutes(1), null, null, null);
         UUID failedAttempt = purchase(Duration.ofMinutes(20), null, null, null);
 
-        assertThat(checkoutService.discardStale(now)).isEqualTo(1);
+        assertThat(cleanupJob.discardStale(now)).isEqualTo(1);
         assertThat(purchases.findById(inFlight)).isPresent();
         assertThat(purchases.findById(failedAttempt)).isEmpty();
     }
@@ -87,7 +87,7 @@ class PendingPurchaseDiscardTest {
         UUID paid = purchase(Duration.ofHours(5), null, null, "55555");
         UUID processed = purchase(Duration.ofHours(5), null, now.minus(Duration.ofHours(1)), null);
 
-        assertThat(checkoutService.discardStale(now)).isZero();
+        assertThat(cleanupJob.discardStale(now)).isZero();
         assertThat(purchases.findAllById(java.util.List.of(paid, processed))).hasSize(2);
     }
 }

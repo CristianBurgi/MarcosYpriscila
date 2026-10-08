@@ -31,10 +31,6 @@ public class CheckoutService {
 
     /** Vigencia de la preferencia en MP: pasado ese momento nadie puede iniciar un pago nuevo. */
     static final Duration PREFERENCE_TTL = Duration.ofHours(24);
-    /** Margen sobre el vencimiento antes de descartar: un pago iniciado a último momento todavía puede aprobarse. */
-    static final Duration DISCARD_MARGIN = Duration.ofHours(48);
-    /** Una compra sin preferencia más vieja que esto es un intento que falló (el pedido a MP dura segundos). */
-    static final Duration ORPHAN_GRACE = Duration.ofMinutes(15);
 
     static final int MAX_EVENT_NAME = 100;
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
@@ -123,10 +119,5 @@ public class CheckoutService {
             log.warn("No se pudo borrar la compra pendiente external_reference={}; la limpieza periódica se encarga ({})",
                     id, e.getClass().getSimpleName());
         }
-    }
-
-    /** Ver {@link PendingPurchaseRepository#discard}. Devuelve cuántas compras se descartaron. */
-    public int discardStale(Instant now) {
-        return purchases.discard(now.minus(ORPHAN_GRACE), now.minus(PREFERENCE_TTL).minus(DISCARD_MARGIN));
     }
 }
