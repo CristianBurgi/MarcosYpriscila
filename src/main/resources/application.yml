@@ -125,4 +125,8 @@ server:
     # del body para poder entregar la respuesta 413 con el mensaje para el invitado. Con
     # el default (2MB) cierra la conexión y el navegador ve un error de red genérico.
     max-swallow-size: 64MB
+    # Location relativo en los redirects (sendRedirect). Spring Boot lo deja en false y Tomcat arma el Location con el
+    # esquema y host de la request: detrás de Railway salía http://event-foto.up.railway.app/admin/login (verificado con
+    # curl). No usamos forward-headers-strategy: confiaría en el header Forwarded, que Railway deja pasar sin tocar.
+    use-relative-redirects: true
 
