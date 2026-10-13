@@ -125,4 +125,8 @@ server:
     # del body para poder entregar la respuesta 413 con el mensaje para el invitado. Con
     # el default (2MB) cierra la conexión y el navegador ve un error de red genérico.
     max-swallow-size: 64MB
+    # Location relativo en los redirects (sendRedirect): sin esto, detrás del proxy Tomcat armaba el redirect con http://
+    # y el host de la request (verificado con curl en producción). No usamos forward-headers-strategy: confiaría en el
+    # header Forwarded, que Railway deja pasar sin tocar.
+    use-relative-redirects: true
 
