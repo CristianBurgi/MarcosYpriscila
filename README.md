@@ -902,13 +902,14 @@ Para las pruebas, el bucket de R2 puede tener CORS configurado con `*`. **Antes 
 ```
 
 ### Mudanza de dominio a `eventfoto.com.ar` (pendiente, no aplicado)
-Toda URL absoluta que genera la app (QR, link del panel) sale de `APP_BASE_URL`; no hay dominios escritos en el código. El día de la mudanza:
+Toda URL absoluta que genera la app (QR, links del panel, links de activación y de los mails, back_urls de Mercado Pago) sale de `AppUrls`, que lee `APP_BASE_URL`; nunca se deriva del host de la request. **No imprimir tarjetas ni carteles reales antes del paso 2**: el QR sale con el dominio que tenga `APP_BASE_URL` en ese momento. El día de la mudanza:
 
+0. **DNS en Cloudflare en modo DNS only (nube gris)**, con el CNAME hacia el dominio personalizado de Railway (el certificado lo emite Railway). Con proxy (nube naranja) el `X-Real-IP` que pone Railway pasa a ser la IP del borde de Cloudflare y el rate limiting por IP vuelve a agrupar a todos los invitados (ver `ClientIpResolver`); `CF-Connecting-IP` tampoco sirve, porque el dominio de Railway sigue accesible directo y ese header se puede falsificar.
 1. **CORS de R2** (Cloudflare → R2 → bucket → Settings → CORS policy): **agregar** `https://eventfoto.com.ar` a `AllowedOrigins` **conservando** el dominio de Railway, para que las subidas sigan funcionando desde ambos mientras dura la transición:
    ```json
    [{
      "AllowedOrigins": [
-       "https://tu-dominio.up.railway.app",
+       "https://event-foto.up.railway.app",
        "https://eventfoto.com.ar"
      ],
      "AllowedMethods": ["PUT"],
@@ -916,9 +917,9 @@ Toda URL absoluta que genera la app (QR, link del panel) sale de `APP_BASE_URL`;
    }]
    ```
 2. **Railway → Variables**: cambiar `APP_BASE_URL` a `https://eventfoto.com.ar` (sin barra final) y redeployar. Desde ese deploy, el QR y el link del panel apuntan al dominio nuevo.
-3. Verificar: descargar el QR desde el panel, escanearlo y confirmar que abre `https://eventfoto.com.ar/menu.html?slug=...`; hacer una subida de prueba desde el dominio nuevo.
+3. Verificar: descargar el QR desde el panel, escanearlo y confirmar que abre `https://eventfoto.com.ar/e/{slug}`; hacer una subida de prueba desde el dominio nuevo; loguearse como organizador (la cookie de sesión es por host: en el dominio nuevo hay que volver a loguearse una vez).
 
-> Los QR ya impresos siguen apuntando al dominio de Railway: no lo des de baja mientras haya eventos activos con QR viejos.
+> Los QR ya impresos siguen apuntando al dominio de Railway: nunca borrar ni recrear el servicio de Railway (el subdominio `up.railway.app` está atado a él). La redirección del dominio viejo al nuevo es un paso aparte, después de verificar el nuevo.
 
 ### Seguridad
 El `SecurityConfig` actualmente termina con `.anyRequest().permitAll()` para facilitar el desarrollo. Para producción, considerar endurecer a `.anyRequest().authenticated()` con las excepciones necesarias para las rutas públicas.

@@ -776,7 +776,7 @@
                     <img th:src="@{'/api/v1/events/' + ${slug} + '/qr?size=350'}" alt="Código QR del evento" style="width: 240px; height: 240px; display: block; margin: 0 auto;">
                 </div>
                 <div style="font-family: monospace; font-size: 0.82rem; color: #a855f7; word-break: break-all; margin-bottom: 20px; background: rgba(168, 85, 247, 0.1); padding: 8px 12px; border-radius: 8px;">
-                    <span th:text="${guestMenuUrl}">(APP_BASE_URL)/menu.html?slug=...</span>
+                    <span th:text="${guestMenuUrl}">(APP_BASE_URL)/e/{slug}</span>
                 </div>
                 <!-- Este PNG tiene una quiet zone de 1 módulo: para imprimir van las tarjetas (9.8). -->
                 <p style="color: #94a3b8; font-size: 0.82rem; margin-bottom: 12px;">
