@@ -53,7 +53,7 @@ public class SuperadminEventService {
         String activationLink = null;
         if (isNew) {
             var issued = organizerTokenService.issue(organizer, OrganizerTokenPurpose.ACCOUNT_ACTIVATION);
-            activationLink = buildActivationLink(issued.rawToken());
+            activationLink = appUrls.activationUrl(issued.rawToken());
         }
 
         log.info("Evento sin costo '{}' (slug '{}') creado para {} -- organizer {} ({}), motivo: {}",
@@ -73,10 +73,6 @@ public class SuperadminEventService {
         }
         var issued = organizerTokenService.issue(organizer, OrganizerTokenPurpose.ACCOUNT_ACTIVATION);
         log.info("Link de activación regenerado para organizer {} ({})", organizer.getId(), organizer.getEmail());
-        return buildActivationLink(issued.rawToken());
-    }
-
-    private String buildActivationLink(String rawToken) {
-        return appUrls.baseUrl() + "/activar-cuenta?token=" + rawToken;
+        return appUrls.activationUrl(issued.rawToken());
     }
 }

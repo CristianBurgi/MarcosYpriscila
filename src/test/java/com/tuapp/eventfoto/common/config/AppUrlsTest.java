@@ -15,6 +15,7 @@ class AppUrlsTest {
 
         assertThat(urls.baseUrl()).isEqualTo("https://eventfoto.com.ar");
         assertThat(urls.guestMenuUrl("evento-demo-k7m2xq9p")).isEqualTo("https://eventfoto.com.ar/e/evento-demo-k7m2xq9p");
+        assertThat(urls.activationUrl("tok123")).isEqualTo("https://eventfoto.com.ar/activar-cuenta?token=tok123");
     }
 
     @Test

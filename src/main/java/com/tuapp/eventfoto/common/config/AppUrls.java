@@ -83,12 +83,12 @@ public class AppUrls {
         return baseUrl + "/e/" + slug;
     }
 
-    /** A donde vuelve Mercado Pago después del pago (back_urls). Trae el external_reference en la query: no loguearla. */
     /** Menú de invitados de una demo (Fase 9.7-B): el QR de su pantalla. El sid ya viene validado. */
     public String demoMenuUrl(String sid) {
         return baseUrl + "/demo/" + sid;
     }
 
+    /** A donde vuelve Mercado Pago después del pago (back_urls). Trae el external_reference en la query: no loguearla. */
     public String checkoutReturnUrl() {
         return baseUrl + "/compra/retorno";
     }
@@ -105,6 +105,11 @@ public class AppUrls {
     /** Login del organizador (botón de la página de retorno y mail "tu evento está listo"). */
     public String loginUrl() {
         return baseUrl + "/admin/login";
+    }
+
+    /** Link de activación de cuenta del organizador (panel del superadmin). Contiene la credencial: no loguearla. */
+    public String activationUrl(String rawToken) {
+        return baseUrl + "/activar-cuenta?token=" + rawToken;
     }
 
     /** URL absoluta del link de moderador. Contiene la credencial: no loguearla. */
