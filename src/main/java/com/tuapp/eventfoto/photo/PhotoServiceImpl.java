@@ -44,10 +44,12 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -320,11 +322,15 @@ public class PhotoServiceImpl implements PhotoService {
     @Transactional(readOnly = true)
     public Page<PhotoResponseDTO> getPhotos(String slug, Pageable pageable) {
         Event event = eventService.getEventEntityBySlug(slug);
-        return photoRepository.findByEventIdOrderByCreatedAtDescIdDesc(event.getId(), pageable)
-                .map(photo -> {
-                    List<Comment> comments = commentRepository.findByPhotoIdAndIsApprovedTrueOrderByCreatedAtDescIdDesc(photo.getId());
-                    return PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()), comments);
-                });
+        Page<Photo> page = photoRepository.findByEventIdOrderByCreatedAtDescIdDesc(event.getId(), pageable);
+        // Auditoría #7: los comentarios de toda la página en una sola consulta (antes, una por foto). groupingBy mantiene
+        // el orden de la consulta dentro de cada foto: del más nuevo al más viejo, con el id como desempate.
+        Map<UUID, List<Comment>> commentsByPhoto = page.isEmpty() ? Map.of()
+                : commentRepository.findByPhotoIdInAndIsApprovedTrueOrderByCreatedAtDescIdDesc(
+                                page.map(Photo::getId).getContent()).stream()
+                        .collect(Collectors.groupingBy(comment -> comment.getPhoto().getId()));
+        return page.map(photo -> PhotoResponseDTO.fromEntity(photo, storageService.generatePublicUrl(photo.getStorageKey()),
+                commentsByPhoto.getOrDefault(photo.getId(), List.of())));
     }
 
     /**

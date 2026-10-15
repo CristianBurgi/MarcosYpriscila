@@ -105,8 +105,11 @@ public class R2StorageService implements StorageService {
             return presignedUrl;
 
         } catch (Exception e) {
-            log.error("Error al generar Presigned URL en R2. Usando fallback local para desarrollo: {}", e.getMessage());
-            return "/api/v1/storage/local-upload?key=" + URLEncoder.encode(key, StandardCharsets.UTF_8);
+            // Auditoría #5a: antes devolvía la URL de subida local, que en producción no existe (la foto terminaba en un
+            // 404). El modo local ya volvió arriba; acá solo se llega en r2. 500 al invitado: el cliente reintenta y
+            // después prueba upload-direct.
+            log.error("Error al generar Presigned URL de subida en R2 para la clave '{}': {}", key, e.getMessage(), e);
+            throw new StorageException("No se pudo preparar la subida de la foto. Probá de nuevo en un momento.", e);
         }
     }
 

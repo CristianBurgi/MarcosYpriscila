@@ -211,20 +211,6 @@ public class RateLimiterService {
                 "Creaste muchas demos en poco tiempo. Probá de nuevo en un rato.");
     }
 
-    // === DEPRECATED: Métodos antiguos que solo usan IP ===
-    // Mantenerlos para compatibilidad si algo aún los usa
-    @Deprecated
-    public void checkUploadUrlRateLimit(String clientIp) {
-        // Usar el nuevo método que requiere guestToken
-        checkUploadUrlRateLimit(clientIp, "unknown-guest");
-    }
-
-    @Deprecated
-    public void checkCommentMessageRateLimit(String clientIp) {
-        // Usar el nuevo método que requiere guestToken
-        checkCommentMessageRateLimit(clientIp, "unknown-guest");
-    }
-
     private static Cache<String, Deque<Long>> buckets(long windowMs) {
         return Caffeine.newBuilder().expireAfterWrite(Duration.ofMillis(windowMs)).maximumSize(MAX_TRACKED_KEYS).build();
     }
