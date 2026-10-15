@@ -1,5 +1,6 @@
 package com.tuapp.eventfoto.photo;
 
+import com.tuapp.eventfoto.common.exception.ZipPartChangedException;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,26 @@ public class AlbumReader {
         List<Photo> photos = (photoIds != null && !photoIds.isEmpty())
                 ? photoRepository.findByEventIdAndIdIn(event.getId(), photoIds)
                 : photoRepository.findByEventId(event.getId());
+        return toZipPhotos(photos);
+    }
+
+    /**
+     * Fotos de una parte del ZIP (ver ZipPartPlanner): desde la foto de corte {@code from} (incluida) hasta {@code to}
+     * (excluida; null = hasta el final). Las fotos de corte se buscan acotadas al evento: si una se borró o es de otro
+     * evento, 409 y el panel recalcula las partes. Así un borrado entre parte y parte no deja fotos afuera.
+     */
+    @Transactional(readOnly = true)
+    public List<ZipPhoto> loadPart(UUID eventId, UUID from, UUID to) {
+        Photo first = photoRepository.findByIdAndEventId(from, eventId).orElseThrow(ZipPartChangedException::new);
+        if (to == null) {
+            return toZipPhotos(photoRepository.findPartFrom(eventId, first.getCreatedAt(), first.getId()));
+        }
+        Photo next = photoRepository.findByIdAndEventId(to, eventId).orElseThrow(ZipPartChangedException::new);
+        return toZipPhotos(photoRepository.findPartBetween(eventId, first.getCreatedAt(), first.getId(),
+                next.getCreatedAt(), next.getId()));
+    }
+
+    private static List<ZipPhoto> toZipPhotos(List<Photo> photos) {
         return photos.stream()
                 .map(photo -> new ZipPhoto(photo.getId(), photo.getStorageKey(), photo.getUploaderName()))
                 .toList();

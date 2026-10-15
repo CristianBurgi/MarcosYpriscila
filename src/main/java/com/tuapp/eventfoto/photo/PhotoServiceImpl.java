@@ -404,19 +404,23 @@ public class PhotoServiceImpl implements PhotoService {
      */
     @Override
     public void streamPhotosZip(String slug, List<UUID> photoIds, OutputStream outputStream) {
-        List<AlbumReader.ZipPhoto> photosToZip = albumReader.loadPhotos(slug, photoIds);
+        // Álbum completo (sin selección): lleva el libro de visitas.
+        streamZip(slug, albumReader.loadPhotos(slug, photoIds), photoIds == null || photoIds.isEmpty(), outputStream);
+    }
 
+    @Override
+    public void streamZip(String slug, List<AlbumReader.ZipPhoto> photosToZip, boolean includeGuestbook, OutputStream outputStream) {
         if (photosToZip.isEmpty()) {
             log.info("No se encontraron fotografías para empaquetar en el archivo ZIP del evento '{}'", slug);
         }
 
         Set<String> usedEntryNames = new HashSet<>();
 
-        // Álbum completo (sin selección): el libro de visitas va en la raíz del ZIP. Se genera
-        // ANTES de empezar a escribir: si falla, el ZIP de fotos sale igual y el error va a
-        // Sentry -- un problema con el PDF no puede impedir que el organizador baje sus fotos.
+        // El libro de visitas va en la raíz del ZIP. Se genera ANTES de empezar a escribir: si
+        // falla, el ZIP de fotos sale igual y el error va a Sentry -- un problema con el PDF no
+        // puede impedir que el organizador baje sus fotos.
         byte[] guestbookPdf = null;
-        if (photoIds == null || photoIds.isEmpty()) {
+        if (includeGuestbook) {
             try {
                 guestbookPdf = guestbookPdfService.generate(slug);
             } catch (Exception e) {

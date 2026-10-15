@@ -35,4 +35,7 @@ public interface PhotoService {
     String generateDownloadUrl(UUID eventId, UUID photoId);
 
     void streamPhotosZip(String slug, List<UUID> photoIds, OutputStream outputStream);
+
+    /** ZIP de fotos ya leídas (una parte del álbum, ver ZipPartPlanner); el libro de visitas solo si se pide. */
+    void streamZip(String slug, List<AlbumReader.ZipPhoto> photos, boolean includeGuestbook, OutputStream outputStream);
 }

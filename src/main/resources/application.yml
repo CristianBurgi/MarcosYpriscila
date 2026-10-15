@@ -62,6 +62,10 @@ app:
     # Tope de SEGURIDAD de fotos por evento (no un límite de plan): frena el abuso aun con "sin límite por invitado".
     # Cuenta las fotos persistidas (borrar libera lugar). Es un tope blando: ver GuestQuotaService.assertEventHasRoom.
     max-photos: 5000
+  zip:
+    # ZIP del álbum por partes (ZipPartPlanner): con más fotos que esto, el panel ofrece "Parte k de N" para que cada
+    # descarga termine antes del corte de 15 minutos de Railway. 500 fotos de ~1,5 MB (peor caso) son unos 750 MB.
+    photos-per-part: 500
   guest-quota:
     # Límite de fotos por invitado de los eventos NUEVOS (cada evento guarda el suyo en events.max_photos_per_guest;
     # el organizador lo pasa a "sin límite" desde el panel). VIGENTE: default-max-photos-per-guest. La propiedad

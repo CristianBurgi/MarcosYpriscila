@@ -30,6 +30,7 @@ import java.util.UUID;
 public class AdminPhotoController {
 
     private final PhotoService photoService;
+    private final AlbumReader albumReader;
 
     /**
      * GET /api/v1/admin/events/{slug}/photos
@@ -91,6 +92,32 @@ public class AdminPhotoController {
         response.setHeader("Content-Disposition", String.format("attachment; filename=\"album-%s.zip\"", event.getSlug()));
 
         photoService.streamPhotosZip(event.getSlug(), parsedUuids, response.getOutputStream());
+    }
+
+    /**
+     * GET /api/v1/admin/events/{slug}/photos/download-zip?from=uuid&to=uuid&part=k&parts=N
+     * Una parte del álbum (ver ZipPartPlanner): de la foto de corte "from" (incluida) a "to" (excluida; sin "to", hasta
+     * el final). Las fotos se leen ANTES de escribir los headers: si una foto de corte se borró o no es de este evento,
+     * la respuesta es el 409 en JSON y no un .zip roto. El libro de visitas va solo en la parte 1.
+     */
+    @GetMapping(value = "/download-zip", params = "from")
+    public void downloadZipPart(
+            @OwnedEvent Event event,
+            @RequestParam String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(defaultValue = "0") int part,
+            @RequestParam(defaultValue = "0") int parts,
+            HttpServletResponse response) throws IOException {
+
+        // La última parte no tiene "to" (o llega vacío): va hasta el final del álbum.
+        UUID next = to == null || to.isBlank() ? null : parseUUID(to);
+        List<AlbumReader.ZipPhoto> photos = albumReader.loadPart(event.getId(), parseUUID(from), next);
+
+        String suffix = part >= 1 && part <= parts ? String.format("-parte-%d-de-%d", part, parts) : "";
+        response.setContentType("application/zip");
+        response.setHeader("Content-Disposition", String.format("attachment; filename=\"album-%s%s.zip\"", event.getSlug(), suffix));
+
+        photoService.streamZip(event.getSlug(), photos, part == 1, response.getOutputStream());
     }
 
     private UUID parseUUID(String rawId) {

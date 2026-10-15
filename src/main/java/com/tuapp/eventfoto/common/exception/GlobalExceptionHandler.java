@@ -232,6 +232,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(ZipPartChangedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleZipPartChanged(ZipPartChangedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ErrorResponseDTO.of(
+                HttpStatus.CONFLICT.value(), "Conflict - Album Changed", ex.getMessage(), TokenMasker.mask(request.getRequestURI())));
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponseDTO> handleMaxUploadSizeExceeded(
             MaxUploadSizeExceededException ex, HttpServletRequest request) {

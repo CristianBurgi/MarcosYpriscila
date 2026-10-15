@@ -191,6 +191,24 @@
             background: rgba(59, 130, 246, 0.4);
         }
 
+        /* ZIP por partes (álbumes grandes): un link por parte, en varias líneas si no entran. */
+        .zip-parts {
+            margin: 0 0 20px;
+        }
+
+        .zip-parts p {
+            margin: 0 0 10px;
+            color: #cbd5e1;
+        }
+
+        .zip-parts .actions-group {
+            flex-wrap: wrap;
+        }
+
+        .zip-parts a.btn {
+            text-decoration: none;
+        }
+
         .btn-download {
             background: rgba(59, 130, 246, 0.2);
             border: 1px solid rgba(59, 130, 246, 0.4);
@@ -604,9 +622,23 @@
                 <button class="btn btn-download-selected" id="btnDownloadSelectedZip">
                     📥 Descargar Seleccionadas (ZIP)
                 </button>
-                <button class="btn btn-download-zip" id="btnDownloadFullZip">
+                <button th:if="${#lists.isEmpty(zipParts)}" class="btn btn-download-zip" id="btnDownloadFullZip">
                     📦 Descargar Álbum Completo (ZIP)
                 </button>
+            </div>
+        </div>
+        <!-- Álbum grande: en partes, para que cada descarga termine antes del corte de 15 minutos del servidor. -->
+        <div class="zip-parts" th:unless="${#lists.isEmpty(zipParts)}"
+             th:with="photoCount=${zipParts[zipParts.size() - 1].lastPhoto}">
+            <p th:text="|El álbum tiene ${#numbers.formatInteger(photoCount, 1, 'POINT')} fotos. Para que cada descarga termine, va en ${zipParts.size()} partes:|">
+                El álbum tiene 1.850 fotos. Para que cada descarga termine, va en 4 partes:
+            </p>
+            <div class="actions-group">
+                <a th:each="p : ${zipParts}" class="btn btn-download-zip"
+                   th:href="@{/api/v1/admin/events/{slug}/photos/download-zip(slug=${slug}, from=${p.from}, to=${p.to}, part=${p.number}, parts=${p.total})}"
+                   th:text="|📦 Parte ${p.number} de ${p.total} (fotos ${#numbers.formatInteger(p.firstPhoto, 1, 'POINT')}–${#numbers.formatInteger(p.lastPhoto, 1, 'POINT')})|">
+                    📦 Parte 1 de 4 (fotos 1–500)
+                </a>
             </div>
         </div>
 

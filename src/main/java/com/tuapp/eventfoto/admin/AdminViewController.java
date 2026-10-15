@@ -14,6 +14,7 @@ import com.tuapp.eventfoto.message.MessageService;
 import com.tuapp.eventfoto.message.dto.MessageResponseDTO;
 import com.tuapp.eventfoto.photo.GuestQuotaService;
 import com.tuapp.eventfoto.photo.PhotoService;
+import com.tuapp.eventfoto.photo.ZipPartPlanner;
 import com.tuapp.eventfoto.photo.dto.GuestPhotoLimitDTO;
 import com.tuapp.eventfoto.photo.dto.PhotoResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class AdminViewController {
     private final GuestQuotaService guestQuotaService;
     private final EventSettingsService eventSettingsService;
     private final UploadWindow uploadWindow;
+    private final ZipPartPlanner zipPartPlanner;
 
     /** Con el checkout apagado no aparece el botón "Crear nuevo evento". */
     @org.springframework.beans.factory.annotation.Value("${app.checkout.enabled:false}")
@@ -85,6 +87,8 @@ public class AdminViewController {
         model.addAttribute("totalMessages", totalMessages);
         model.addAttribute("photos", photos);
         model.addAttribute("guestMenuUrl", appUrls.guestMenuUrl(slug));
+        // Vacío = un solo ZIP; si no, "Parte k de N" para que cada descarga termine antes del corte de Railway.
+        model.addAttribute("zipParts", zipPartPlanner.plan(ownedEvent.getId()));
         // Estado inicial del selector de límite de fotos por invitado: el que tiene el evento hoy.
         Integer guestLimit = ownedEvent.getMaxPhotosPerGuest();
         model.addAttribute("guestPhotoLimit", new GuestPhotoLimitDTO(guestLimit == null, guestLimit));
