@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -145,11 +146,12 @@ class GuestPagesTest {
     }
 
     @Test
-    @DisplayName("/ ya no redirige a una boda: muestra una pantalla neutra con 200")
+    @DisplayName("/ ya no redirige a una boda: es la landing (Fase L6), con 200 y sin ningún evento")
     void rootIsNeutral() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Escaneá el código QR")));
+                .andExpect(content().string(containsString("Las fotos de tu evento")))
+                .andExpect(content().string(not(containsString("/e/" + SLUG))));
     }
 
     @Test

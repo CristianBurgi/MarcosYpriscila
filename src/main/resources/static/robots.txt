@@ -1,0 +1,11 @@
+# Fase L6: solo la landing y la demo se indexan. Álbumes, links con credencial y paneles, no.
+User-agent: *
+Disallow: /e/
+Disallow: /moderar/
+Disallow: /admin/
+Disallow: /superadmin/
+Disallow: /compra/
+Disallow: /activar-cuenta
+Disallow: /restablecer-contrasena
+Disallow: /demo/
+Disallow: /api/

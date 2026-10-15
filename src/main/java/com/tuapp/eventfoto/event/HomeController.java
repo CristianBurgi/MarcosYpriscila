@@ -1,16 +1,71 @@
 package com.tuapp.eventfoto.event;
 
+import com.tuapp.eventfoto.common.config.AppUrls;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-/** "/" no pertenece a ningún evento: solo indica cómo llegar a uno. */
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.text.NumberFormat;
+import java.util.Locale;
+
+/**
+ * "/" es la landing comercial (Fase L6). No pertenece a ningún evento: los QR apuntan a /e/{slug}.
+ * El botón de compra depende del checkout: prendido va a /comprar; apagado, a WhatsApp si SUPPORT_WHATSAPP está
+ * cargada; si no, solo queda la demo. El precio se lee de app.checkout.price-ars aunque el checkout esté apagado.
+ */
+@Slf4j
 @Controller
 public class HomeController {
 
+    static final String WHATSAPP_MESSAGE = "Hola, quiero contratar EventFoto para mi evento.";
+
+    private final String baseUrl;
+    private final boolean checkoutEnabled;
+    private final String price;
+    private final String whatsappUrl;
+
+    public HomeController(AppUrls appUrls,
+                          @Value("${app.checkout.enabled:false}") boolean checkoutEnabled,
+                          @Value("${app.checkout.price-ars:}") String rawPrice,
+                          @Value("${app.support.whatsapp:}") String supportWhatsapp) {
+        this.baseUrl = appUrls.baseUrl();
+        this.checkoutEnabled = checkoutEnabled;
+        this.price = formatPrice(rawPrice);
+        String digits = supportWhatsapp == null ? "" : supportWhatsapp.replaceAll("\\D", "");
+        this.whatsappUrl = digits.isEmpty() ? null
+                : "https://wa.me/" + digits + "?text=" + URLEncoder.encode(WHATSAPP_MESSAGE, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    /**
+     * "50000" -> "50.000" (es-AR). Con el checkout apagado CheckoutSettings no valida el precio, así que uno inválido
+     * no puede tumbar el arranque: la landing lo oculta y avisa en el log. Con el checkout prendido ya viene validado.
+     */
+    static String formatPrice(String rawPrice) {
+        try {
+            BigDecimal value = new BigDecimal(rawPrice == null ? "" : rawPrice.trim());
+            if (value.signum() > 0) {
+                NumberFormat format = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-AR"));
+                format.setMaximumFractionDigits(2);
+                return format.format(value);
+            }
+        } catch (NumberFormatException ignored) {
+            // cae al aviso de abajo
+        }
+        log.warn("app.checkout.price-ars (CHECKOUT_PRICE_ARS) no es un número mayor que cero: la landing no muestra el precio.");
+        return null;
+    }
+
     @GetMapping("/")
     public String home(Model model) {
-        model.addAttribute("message", "Escaneá el código QR de tu evento para entrar.");
-        return "event-not-found";
+        model.addAttribute("baseUrl", baseUrl);
+        model.addAttribute("checkoutEnabled", checkoutEnabled);
+        model.addAttribute("price", price);
+        model.addAttribute("whatsappUrl", checkoutEnabled ? null : whatsappUrl);
+        return "landing";
     }
 }

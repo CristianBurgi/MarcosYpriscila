@@ -86,6 +86,17 @@ class CheckoutDisabledTest {
     }
 
     @Test
+    @DisplayName("Landing (L6) con checkout apagado y sin WhatsApp: ningún botón roto a /comprar, queda la demo y el precio igual se muestra")
+    void landingHasNoBrokenBuyButton() throws Exception {
+        mockMvc.perform(get("/")).andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("/comprar"))))
+                .andExpect(content().string(not(containsString("wa.me"))))
+                .andExpect(content().string(not(containsString("Mercado Pago"))))
+                .andExpect(content().string(containsString("href=\"/demo\"")))
+                .andExpect(content().string(containsString("$50.000")));
+    }
+
+    @Test
     @DisplayName("Con sesión de organizador, POST /api/v1/admin/checkout -> 404 y \"Mis eventos\" no muestra el botón")
     void adminRouteIs404AndTheButtonIsHidden() throws Exception {
         Organizer organizer = organizerRepository.save(Organizer.builder().email("apagado@test.com").build());

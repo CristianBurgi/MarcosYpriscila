@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<!--/* Landing comercial en "/" (Fase L6, propuesta A "Pantalla encendida"). Regla: no prometer nada que el producto no
+     haga; LandingPromisesTest frena las promesas que ya fueron falsas. URLs absolutas solo desde AppUrls (baseUrl). */-->
+<html lang="es-AR" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventFoto: las fotos de tu evento, en vivo y sin apps</title>
+<meta name="description" th:content="'Tus invitados escanean un QR y sus fotos aparecen al instante en la pantalla del evento. Álbum online 30 días.' + (${price} != null ? ' $' + ${price} + ' por evento, pago único.' : '')">
+<link rel="canonical" th:href="${baseUrl} + '/'">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_AR">
+<meta property="og:site_name" content="EventFoto">
+<meta property="og:title" content="EventFoto: las fotos de tu evento, en vivo y sin apps">
+<meta property="og:description" content="Tus invitados escanean un QR y sus fotos aparecen al instante en la pantalla del salón. Álbum online 30 días.">
+<meta property="og:url" th:content="${baseUrl} + '/'">
+<meta property="og:image" th:content="${baseUrl} + '/images/og-eventfoto.jpg'">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="/images/landing/pantalla-1.webp" fetchpriority="high">
+<style>
+  :root{
+    --night:#12081F;
+    --night-2:#2B0F45;
+    --violet:#A855F7;
+    --pink:#EC4899;
+    --btn-a:#9333EA;
+    --btn-b:#DB2777;
+    --text:#F5F0FF;
+    --muted:#C4B5DF;
+    --panel:#1F0E33;
+    --line:rgba(255,255,255,.14);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;font-family:'Outfit',system-ui,sans-serif;font-weight:300;font-size:1.0625rem;line-height:1.55;color:var(--text);
+    background:radial-gradient(120% 60% at 80% 0%,#3B1366 0%,transparent 60%),linear-gradient(180deg,var(--night) 0%,var(--night-2) 55%,var(--night) 100%);
+    background-color:var(--night);
+  }
+  a{color:inherit}
+  h1,h2,h3{font-weight:800;line-height:1.05;margin:0;letter-spacing:-.02em}
+  p{margin:0}
+  .wrap{max-width:1120px;margin:0 auto;padding-left:20px;padding-right:20px}
+  :focus-visible{outline:3px solid var(--pink);outline-offset:3px;border-radius:6px}
+
+  /* Blanco sobre #9333EA/#DB2777: contraste AA para texto normal. */
+  .btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 28px;border-radius:14px;
+    font:600 1.02rem 'Outfit',sans-serif;text-decoration:none;border:1px solid transparent;text-align:center}
+  .btn-main{background:linear-gradient(135deg,var(--btn-a),var(--btn-b));color:#fff}
+  .btn-soft{border-color:var(--line);background:rgba(255,255,255,.06);color:var(--text)}
+
+  .nav{display:flex;align-items:center;justify-content:space-between;padding-top:18px;padding-bottom:18px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:1.2rem;text-decoration:none}
+  .logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--violet),var(--pink));display:block;position:relative}
+  .logo i::after{content:"";position:absolute;inset:9px;border:2px solid #fff;border-radius:50%}
+  .nav .login{font-weight:400;font-size:.95rem;color:var(--muted);padding:8px 0}
+
+  /* Portada: la pantalla del salón es la protagonista. */
+  .hero{padding-top:28px;padding-bottom:64px}
+  .hero h1{font-size:clamp(2.4rem,7.4vw,4.6rem);max-width:15ch}
+  .hero .sub{margin-top:18px;max-width:46ch;color:var(--muted);font-size:1.12rem}
+  .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+  .ctas .btn{flex:1 1 200px}
+  .facts{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:22px;font-size:.95rem;color:var(--muted)}
+  .facts b{color:var(--text);font-weight:600}
+
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .screen{margin:40px 0 0;border-radius:22px;padding:10px;background:#07030D;border:1px solid var(--line);
+    box-shadow:0 40px 90px -30px rgba(168,85,247,.55)}
+  .screen-in{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#000}
+  .shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:show 12s infinite}
+  .shot:first-child{opacity:1}
+  .shot:nth-child(2){animation-delay:4s}.shot:nth-child(3){animation-delay:8s}
+  @keyframes show{0%{opacity:0}5%{opacity:1}33%{opacity:1}38%{opacity:0}100%{opacity:0}}
+  .ticker{position:absolute;left:0;right:0;bottom:0;padding:28px 16px 12px;font-size:.92rem;background:linear-gradient(transparent,rgba(7,3,13,.88))}
+  .ticker b{font-weight:600}
+  .qr{position:absolute;top:12px;right:12px;width:64px;height:64px;border-radius:10px;background:#fff;padding:6px}
+  .qr span{display:block;width:100%;height:100%;background:conic-gradient(#000 25%,#fff 0 50%,#000 0 75%,#fff 0) 0 0/12px 12px}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .shot{animation:none;opacity:0}
+    .shot:first-child{opacity:1}
+  }
+  @media (min-width:960px){
+    .hero{display:grid;grid-template-columns:1fr 1.05fr;gap:56px;align-items:center;padding-top:56px;padding-bottom:96px}
+    .screen{margin:0}
+    .ctas .btn{flex:0 0 auto}
+  }
+
+  .band{padding-top:64px;padding-bottom:64px}
+  .h2{font-size:clamp(1.9rem,5vw,2.8rem);max-width:20ch}
+
+  /* Pasos: secuencia real, va numerada. Fondo translúcido sin desenfoque (barato en celulares de gama baja). */
+  .steps{list-style:none;margin:32px 0 0;padding:0;display:grid;gap:14px;counter-reset:s}
+  .steps li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:4px 14px;padding:20px;border-radius:18px;
+    background:rgba(255,255,255,.06);border:1px solid var(--line)}
+  .steps li::before{content:counter(s);grid-row:span 2;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+    font-weight:800;font-size:1.2rem;background:linear-gradient(135deg,var(--btn-a),var(--btn-b))}
+  .steps h3{font-size:1.25rem;font-weight:600;letter-spacing:0}
+  .steps p{color:var(--muted)}
+  @media (min-width:960px){.steps{grid-template-columns:repeat(3,1fr)}}
+
+  /* Precio: el único vidrio con desenfoque de la página; sin soporte queda el fondo sólido. */
+  .price{margin-top:32px;border-radius:26px;padding:28px 22px;background:var(--panel);border:1px solid var(--line)}
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .price{background:rgba(255,255,255,.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  }
+  .amount{font-size:clamp(3.2rem,12vw,4.6rem);font-weight:800;letter-spacing:-.03em;line-height:1}
+  .amount small{font-size:1.1rem;font-weight:400;color:var(--muted);letter-spacing:0}
+  .per{color:var(--muted);margin-top:6px}
+  .includes{list-style:none;padding:0;margin:24px 0;display:grid;gap:12px}
+  .includes li{padding-left:30px;position:relative}
+  .includes li::before{content:"";position:absolute;left:0;top:.35em;width:18px;height:18px;border-radius:50%;
+    background:linear-gradient(135deg,var(--btn-a),var(--btn-b))}
+  .includes li::after{content:"";position:absolute;left:6px;top:.62em;width:6px;height:3px;border:solid #fff;border-width:0 0 2px 2px;transform:rotate(-45deg)}
+  .price .btn{width:100%}
+  .fine{font-size:.95rem;color:var(--muted);margin-top:14px}
+  .fine a{color:var(--text);font-weight:600}
+  @media (min-width:960px){
+    .price{display:grid;grid-template-columns:1fr 1.2fr;gap:48px;padding:48px}
+    .includes{margin-top:0}
+  }
+
+  /* Preguntas frecuentes */
+  .faq{margin-top:28px;display:grid;gap:10px}
+  details{border-radius:16px;background:rgba(255,255,255,.06);border:1px solid var(--line);padding:0 18px}
+  summary{cursor:pointer;list-style:none;padding:18px 28px 18px 0;font-weight:600;position:relative}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"";position:absolute;right:2px;top:50%;width:10px;height:10px;margin-top:-7px;border:solid var(--muted);
+    border-width:0 2px 2px 0;transform:rotate(45deg)}
+  details[open] summary::after{transform:rotate(-135deg);margin-top:-2px}
+  details p{padding:0 0 18px;color:var(--muted)}
+  @media (min-width:960px){.faq{grid-template-columns:1fr 1fr;align-items:start}}
+
+  .foot{padding-top:40px;padding-bottom:56px;color:var(--muted);font-size:.92rem}
+</style>
+</head>
+<body>
+
+<nav class="wrap nav" aria-label="Principal">
+  <a href="/" class="logo"><i aria-hidden="true"></i>EventFoto</a>
+  <a class="login" href="/admin/login">Ingresar</a>
+</nav>
+
+<main>
+<header class="wrap hero">
+  <div>
+    <h1>Las fotos de tu evento, en vivo, sin que nadie instale nada.</h1>
+    <p class="sub">Tus invitados escanean un QR, sacan la foto con su celular y aparece al instante en la pantalla del salón. Después, el álbum queda online 30 días para que lo descargues.</p>
+    <div class="ctas">
+      <a th:if="${checkoutEnabled}" class="btn btn-main" href="/comprar">Crear mi evento</a>
+      <a th:if="${whatsappUrl}" class="btn btn-main" th:href="${whatsappUrl}">Escribinos por WhatsApp</a>
+      <a class="btn btn-soft" href="/demo">Probar la demo</a>
+    </div>
+    <div class="facts">
+      <span th:if="${price}"><b th:text="'$' + ${price}">$50.000</b> por evento, pago único</span>
+      <span><b>Sin límite</b> de invitados</span>
+      <span><b>Sin apps</b> para nadie</span>
+    </div>
+  </div>
+
+  <figure class="screen">
+    <div class="screen-in">
+      <img class="shot" src="/images/landing/pantalla-1.webp" width="960" height="600" fetchpriority="high"
+           alt="Los novios firman el acta frente a sus invitados">
+      <img class="shot" src="/images/landing/pantalla-2.webp" width="960" height="600" loading="lazy"
+           alt="Invitados sentados alrededor de la mesa durante la fiesta">
+      <img class="shot" src="/images/landing/pantalla-3.webp" width="960" height="600" loading="lazy"
+           alt="Los novios posan con su familia junto a la mesa de la ceremonia">
+      <div class="qr" aria-hidden="true"><span></span></div>
+      <p class="ticker"><b>Los primos:</b> ¡Que vivan los novios! Los queremos un montón.</p>
+    </div>
+    <figcaption class="sr-only">Así se ve la pantalla del salón: una foto por vez y los mensajes de los invitados abajo.</figcaption>
+  </figure>
+</header>
+
+<section class="wrap band" aria-labelledby="como">
+  <h2 id="como" class="h2">Tres pasos y listo</h2>
+  <ol class="steps">
+    <li><h3>Escanean el QR</h3><p>Va en las tarjetas de mesa o en el cartel que imprimís desde tu panel. Se abre en el navegador del celular, sin instalar nada.</p></li>
+    <li><h3>Suben la foto</h3><p>La sacan en el momento o la eligen de la galería. También pueden dejarte un mensaje para el libro de visitas.</p></li>
+    <li><h3>Aparece en la pantalla</h3><p>Se publica sola, al instante, en la pantalla y en el álbum. Si algo no va, vos o tu moderador la borran y desaparece en el momento.</p></li>
+  </ol>
+</section>
+
+<section class="wrap band" aria-labelledby="precio">
+  <h2 id="precio" class="h2">Un solo pago por evento</h2>
+  <div class="price">
+    <div>
+      <p th:if="${price}" class="amount"><span th:text="'$' + ${price}">$50.000</span> <small>ARS</small></p>
+      <p class="per" th:text="${checkoutEnabled} ? 'Pago único con Mercado Pago. Sin suscripción.' : 'Pago único por evento. Sin suscripción.'">Pago único con Mercado Pago. Sin suscripción.</p>
+      <p th:if="${checkoutEnabled}" class="fine" style="margin-top:20px">Después del pago te llega un mail, y entrás con el email y la contraseña que elegiste para armar tu evento.</p>
+    </div>
+    <div>
+      <ul class="includes">
+        <li>Sin límite de invitados</li>
+        <li>Hasta 24 fotos por invitado, o sin límite si lo cambiás en tu panel</li>
+        <li>Pantalla en vivo para proyectar en el salón</li>
+        <li>Link de moderador para borrar fotos o mensajes en el momento</li>
+        <li>Tarjetas con QR y cartel listos para imprimir</li>
+        <li>Libro de visitas en PDF con los mensajes</li>
+        <li>Tu color y tu imagen de fondo en las páginas del evento</li>
+        <li>Álbum online hasta 30 días después del evento, con descarga completa</li>
+      </ul>
+      <a th:if="${checkoutEnabled}" class="btn btn-main" href="/comprar">Crear mi evento</a>
+      <a th:if="${whatsappUrl}" class="btn btn-main" th:href="${whatsappUrl}">Escribinos por WhatsApp</a>
+      <p class="fine">¿Querés verlo antes? <a href="/demo">Probá la demo en vivo</a>: gratis, sin registrarte, dura 30 minutos.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap band" aria-labelledby="preguntas">
+  <h2 id="preguntas" class="h2">Preguntas frecuentes</h2>
+  <div class="faq">
+    <details open><summary>¿Los invitados necesitan descargar una app?</summary><p>No. Escanean el QR y suben las fotos desde el navegador del celular.</p></details>
+    <details><summary>¿Cuándo pueden subir fotos?</summary><p>Desde las 00:00 del día anterior al evento hasta las 23:59 del día siguiente.</p></details>
+    <details><summary>¿Cuánto tiempo queda disponible el álbum?</summary><p>Hasta 30 días después de la fecha del evento. Antes de que se borre te avisamos por mail para que descargues todo.</p></details>
+    <details><summary>¿Puedo controlar qué se ve en la pantalla?</summary><p>Las fotos se publican solas, sin esperar aprobación. Vos, o alguien de confianza con el link de moderador, puede borrar cualquier foto o mensaje, y sale de la pantalla y del álbum en el momento.</p></details>
+    <details><summary>¿Qué pasa si alguien sube algo inapropiado?</summary><p>Las fotos no se revisan de forma automática: para eso está el link de moderador. Los mensajes sí pasan por un filtro de palabras ofensivas.</p></details>
+    <details><summary>¿Hay límite de invitados?</summary><p>No. Cada invitado puede subir hasta 24 fotos, y si querés lo pasás a sin límite desde tu panel.</p></details>
+    <details><summary>¿Puedo probarlo antes de pagar?</summary><p>Sí, con la demo en vivo: armás un evento de prueba en segundos y lo usás desde tu celular durante 30 minutos.</p></details>
+    <details><summary>¿Cómo se paga?</summary><p th:text="(${checkoutEnabled} ? 'Con Mercado Pago, un' : 'Un') + ' solo pago' + (${price} != null ? ' de $' + ${price} : '') + ' por evento. Sin suscripción ni cargos recurrentes.'">Con Mercado Pago, un solo pago de $50.000 por evento. Sin suscripción ni cargos recurrentes.</p></details>
+    <details><summary>¿Puedo descargar todas las fotos?</summary><p>Sí, desde tu panel: el álbum completo en un ZIP o fotos sueltas, mientras el álbum esté online.</p></details>
+    <details><summary>¿Qué necesito para la pantalla del salón?</summary><p>Es una página web: la abrís en un smart TV con navegador, una notebook conectada al proyector o una tablet. Solo hace falta internet y una pantalla o un proyector.</p></details>
+  </div>
+</section>
+</main>
+
+<footer class="wrap foot">
+  <p>EventFoto, hecho en Tucumán, Argentina.</p>
+</footer>
+</body>
+</html>
