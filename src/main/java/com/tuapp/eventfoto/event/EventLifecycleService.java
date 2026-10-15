@@ -2,6 +2,7 @@ package com.tuapp.eventfoto.event;
 
 import com.tuapp.eventfoto.common.config.AppUrls;
 import com.tuapp.eventfoto.common.email.EmailService;
+import com.tuapp.eventfoto.common.email.EmailTemplates;
 import com.tuapp.eventfoto.moderation.ModeratorStreamRegistry;
 import com.tuapp.eventfoto.storage.StorageKeys;
 import com.tuapp.eventfoto.storage.StorageService;
@@ -13,11 +14,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.thymeleaf.ITemplateEngine;
-import org.thymeleaf.context.Context;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,7 +45,7 @@ public class EventLifecycleService {
     private final JdbcTemplate jdbcTemplate;
     private final PlatformTransactionManager transactionManager;
     private final EmailService emailService;
-    private final ITemplateEngine templateEngine;
+    private final EmailTemplates emailTemplates;
     private final AppUrls appUrls;
     private final ModeratorStreamRegistry moderatorStreamRegistry;
     private final Clock clock;
@@ -109,13 +109,10 @@ public class EventLifecycleService {
             return false;
         }
         try {
-            Context context = new Context();
-            context.setVariable("eventName", event.getName());
-            context.setVariable("deletionDay", UploadWindow.day(deletion));
-            context.setVariable("loginUrl", appUrls.loginUrl());
-            String html = templateEngine.process("email/expiry-reminder", context);
-            emailService.send(new EmailService.EmailMessage(event.getOrganizer().getEmail(),
-                    "Tu álbum se borra el " + UploadWindow.day(deletion), html, "expiry-reminder:" + event.getId()));
+            emailService.send(emailTemplates.render(event.getOrganizer().getEmail(),
+                    "Tu álbum se borra el " + UploadWindow.day(deletion), "expiry-reminder",
+                    Map.of("eventName", event.getName(), "deletionDay", UploadWindow.day(deletion), "loginUrl", appUrls.loginUrl()),
+                    "expiry-reminder:" + event.getId()));
         } catch (RuntimeException e) {
             eventRepository.releaseExpiryReminder(event.getId());
             throw e;

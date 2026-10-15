@@ -41,6 +41,12 @@ public class RateLimiterService {
 
     // === CHECKOUT (fase 9.3): buckets propios, no comparten cupo con el login ===
     private static final int CHECKOUT_LIMIT_PER_15_MINUTES = 10;
+
+    // === RECUPERACIÓN DE CONTRASEÑA (9.2-B) ===
+    private static final int PASSWORD_RESET_REQUEST_LIMIT_PER_IP_PER_15_MINUTES = 5;
+    private static final int PASSWORD_RESET_REQUEST_LIMIT_PER_EMAIL_PER_HOUR = 3;
+    private static final int PASSWORD_RESET_CONFIRM_LIMIT_PER_IP_PER_15_MINUTES = 10;
+    private static final String PASSWORD_RESET_LIMIT_MESSAGE = "Hiciste demasiados pedidos en poco tiempo. Esperá un rato y probá de nuevo.";
     // Página de retorno (fase 9.4): confirma y consulta cada 3 s durante 90 s (~30 rondas, 20/min); 40/min deja margen
     // para dos pestañas o un "Volver a consultar".
     private static final int CHECKOUT_RETURN_LIMIT_PER_MINUTE = 40;
@@ -80,6 +86,10 @@ public class RateLimiterService {
     private final Cache<String, Deque<Long>> checkoutConfirmBuckets = buckets(ONE_MINUTE_IN_MS);
     private final Cache<String, Deque<Long>> checkoutStatusBuckets = buckets(ONE_MINUTE_IN_MS);
     // Demo: subidas y sesiones nuevas, por IP
+    private final Cache<String, Deque<Long>> passwordResetRequestByIpBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
+    private final Cache<String, Deque<Long>> passwordResetRequestByEmailBuckets = buckets(ONE_HOUR_IN_MS);
+    private final Cache<String, Deque<Long>> passwordResetConfirmBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
+
     private final Cache<String, Deque<Long>> demoUploadBuckets = buckets(ONE_MINUTE_IN_MS);
     private final Cache<String, Deque<Long>> demoSessionBuckets = buckets(ONE_HOUR_IN_MS);
 
@@ -146,6 +156,23 @@ public class RateLimiterService {
     public void checkSuperadminLoginRateLimit(String clientIp) {
         checkRateLimit(clientIp, superadminLoginBuckets, ADMIN_LOGIN_LIMIT_PER_15_MINUTES, FIFTEEN_MINUTES_IN_MS,
                 "Has superado el límite de 5 intentos de inicio de sesión en 15 minutos. Por favor intentá más tarde.");
+    }
+
+    /**
+     * Pedido de recuperación de contraseña: 5 por IP cada 15 minutos y 3 por email por hora. El mensaje es el mismo
+     * exista o no la cuenta (el cupo por email se gasta igual para un email inexistente): no revela nada.
+     */
+    public void checkPasswordResetRequestRateLimit(String clientIp, String normalizedEmail) {
+        checkRateLimit(clientIp, passwordResetRequestByIpBuckets, PASSWORD_RESET_REQUEST_LIMIT_PER_IP_PER_15_MINUTES,
+                FIFTEEN_MINUTES_IN_MS, PASSWORD_RESET_LIMIT_MESSAGE);
+        checkRateLimit(normalizedEmail, passwordResetRequestByEmailBuckets, PASSWORD_RESET_REQUEST_LIMIT_PER_EMAIL_PER_HOUR,
+                ONE_HOUR_IN_MS, PASSWORD_RESET_LIMIT_MESSAGE);
+    }
+
+    /** Confirmación de la contraseña nueva con el link: 10 por IP cada 15 minutos. */
+    public void checkPasswordResetConfirmRateLimit(String clientIp) {
+        checkRateLimit(clientIp, passwordResetConfirmBuckets, PASSWORD_RESET_CONFIRM_LIMIT_PER_IP_PER_15_MINUTES,
+                FIFTEEN_MINUTES_IN_MS, PASSWORD_RESET_LIMIT_MESSAGE);
     }
 
     /** POST /api/v1/checkout (público): 10 intentos por IP cada 15 minutos. */
@@ -240,6 +267,9 @@ public class RateLimiterService {
         checkoutStatusBuckets.invalidateAll();
         demoUploadBuckets.invalidateAll();
         demoSessionBuckets.invalidateAll();
+        passwordResetRequestByIpBuckets.invalidateAll();
+        passwordResetRequestByEmailBuckets.invalidateAll();
+        passwordResetConfirmBuckets.invalidateAll();
     }
 }
 

@@ -35,8 +35,8 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    /** Rutas cuya URL o respuesta contienen la credencial del moderador. */
-    private static final RequestMatcher MODERATOR_SENSITIVE = new OrRequestMatcher(
+    /** Rutas cuya URL o respuesta contienen una credencial: link de moderador, compra y links de cuenta del organizador. */
+    private static final RequestMatcher CREDENTIAL_SENSITIVE = new OrRequestMatcher(
         new AntPathRequestMatcher("/moderar/**"),
         new AntPathRequestMatcher("/api/v1/moderate/**"),
         new AntPathRequestMatcher("/api/v1/admin/events/*/moderator-link/**"),
@@ -44,7 +44,11 @@ public class SecurityConfig {
         new AntPathRequestMatcher("/compra/**"),
         // Confirmación y estado de la compra (fase 9.4): ni cache ni referrer
         new AntPathRequestMatcher("/api/v1/checkout/confirm"),
-        new AntPathRequestMatcher("/api/v1/checkout/status"));
+        new AntPathRequestMatcher("/api/v1/checkout/status"),
+        // Links de cuenta del organizador (9.2-B): el token va en la URL o en el body
+        new AntPathRequestMatcher("/activar-cuenta"),
+        new AntPathRequestMatcher("/restablecer-contrasena"),
+        new AntPathRequestMatcher("/api/v1/organizer/**"));
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -77,13 +81,13 @@ public class SecurityConfig {
             // ni eso (no-referrer) y la respuesta no se cachea (no-store), tampoco la de los errores.
             .headers(headers -> headers
                 .cacheControl(HeadersConfigurer.CacheControlConfig::disable)
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(MODERATOR_SENSITIVE,
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(CREDENTIAL_SENSITIVE,
                     new StaticHeadersWriter(List.of(
                         new Header("Cache-Control", "no-store"),
                         new Header("Referrer-Policy", "no-referrer")))))
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(MODERATOR_SENSITIVE),
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(CREDENTIAL_SENSITIVE),
                     new CacheControlHeadersWriter()))
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(MODERATOR_SENSITIVE),
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(CREDENTIAL_SENSITIVE),
                     new ReferrerPolicyHeaderWriter(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exceptions -> exceptions
@@ -122,6 +126,11 @@ public class SecurityConfig {
                 // Activación de cuenta del organizador (link de un solo uso, público hasta que se consume)
                 .requestMatchers(HttpMethod.GET, "/activar-cuenta").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/organizer/activate").permitAll()
+
+                // Recuperación de contraseña del organizador (9.2-B): formulario, link del mail y sus dos POST
+                .requestMatchers(HttpMethod.GET, "/admin/recuperar", "/restablecer-contrasena").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/organizer/password-reset/request",
+                        "/api/v1/organizer/password-reset/confirm").permitAll()
 
                 // Checkout (fase 9.3), rutas exactas. Solo existen con app.checkout.enabled=true; apagado, no hay handler y dan 404.
                 // /api/v1/admin/checkout NO va acá: es del organizador y cae en /api/v1/admin/** (hasRole ORGANIZER).

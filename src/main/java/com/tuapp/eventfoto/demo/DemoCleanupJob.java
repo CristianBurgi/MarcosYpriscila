@@ -21,7 +21,9 @@ public class DemoCleanupJob {
     // ponytail: una sola réplica en Railway; con más, un lock en la base (como EventLifecycleService).
     private final AtomicBoolean running = new AtomicBoolean();
 
-    @Scheduled(initialDelay = 60_000, fixedDelayString = "${app.demo.cleanup-interval-ms:300000}")
+    // initial-delay configurable: en los tests (application-test.yml) no corre sola. Cada contexto de Spring cacheado tiene
+    // su propio job y su propio reloj, y sobre la H2 compartida borraba las demos que otro test acababa de crear.
+    @Scheduled(initialDelayString = "${app.demo.cleanup-initial-delay-ms:60000}", fixedDelayString = "${app.demo.cleanup-interval-ms:300000}")
     public void run() {
         if (!running.compareAndSet(false, true)) {
             return;

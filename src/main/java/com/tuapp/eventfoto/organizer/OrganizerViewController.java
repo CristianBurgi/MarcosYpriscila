@@ -11,4 +11,16 @@ public class OrganizerViewController {
     public String activationPage() {
         return "organizer/activate";
     }
+
+    /** "¿Olvidaste tu contraseña?" desde el login: formulario de email (9.2-B). */
+    @GetMapping("/admin/recuperar")
+    public String forgotPasswordPage() {
+        return "organizer/forgot-password";
+    }
+
+    /** Link del mail de recuperación: como /activar-cuenta, el token lo lee el JS de la página. */
+    @GetMapping("/restablecer-contrasena")
+    public String resetPasswordPage() {
+        return "organizer/reset-password";
+    }
 }

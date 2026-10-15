@@ -1,0 +1,7 @@
+Tu álbum se borra pronto
+
+Las fotos y los mensajes de [(${eventName})] se borran el [(${deletionDay})]. Después no se pueden recuperar.
+
+Antes de esa fecha, entrá a tu panel y descargá el álbum completo (ZIP) y el libro de visitas (PDF).
+
+Iniciar sesión: [(${loginUrl})]

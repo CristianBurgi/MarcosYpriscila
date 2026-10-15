@@ -14,6 +14,12 @@ spring:
     enabled: false
 
 app:
+  demo:
+    # DemoCleanupJob no corre solo en los tests (los tests llaman a la limpieza a mano); ver el comentario en el job.
+    cleanup-initial-delay-ms: 86400000
+  mail:
+    # Mails en el mismo hilo (MailExecutor): un envío de un test no cae en las verificaciones del siguiente.
+    async: false
   checkout:
     # Prendido en los tests para que las rutas del checkout entren en AdminRouteEnumerationTest y los tests de
     # aislamiento del panel; los tests del interruptor apagado lo pisan. El token es falso: el cliente de MP se mockea.
