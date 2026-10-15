@@ -206,7 +206,7 @@
         <li>Tarjetas con QR y cartel listos para imprimir</li>
         <li>Libro de visitas en PDF con los mensajes</li>
         <li>Tu color y tu imagen de fondo en las páginas del evento</li>
-        <li>Álbum online hasta 30 días después del evento, con descarga completa</li>
+        <li>Álbum online hasta 30 días después del evento: descargás las fotos desde tu panel, en ZIP o una por una</li>
       </ul>
       <a th:if="${checkoutEnabled}" class="btn btn-main" href="/comprar">Crear mi evento</a>
       <a th:if="${whatsappUrl}" class="btn btn-main" th:href="${whatsappUrl}">Escribinos por WhatsApp</a>
@@ -226,7 +226,7 @@
     <details><summary>¿Hay límite de invitados?</summary><p>No. Cada invitado puede subir hasta 24 fotos, y si querés lo pasás a sin límite desde tu panel.</p></details>
     <details><summary>¿Puedo probarlo antes de pagar?</summary><p>Sí, con la demo en vivo: armás un evento de prueba en segundos y lo usás desde tu celular durante 30 minutos.</p></details>
     <details><summary>¿Cómo se paga?</summary><p th:text="(${checkoutEnabled} ? 'Con Mercado Pago, un' : 'Un') + ' solo pago' + (${price} != null ? ' de $' + ${price} : '') + ' por evento. Sin suscripción ni cargos recurrentes.'">Con Mercado Pago, un solo pago de $50.000 por evento. Sin suscripción ni cargos recurrentes.</p></details>
-    <details><summary>¿Puedo descargar todas las fotos?</summary><p>Sí, desde tu panel: el álbum completo en un ZIP o fotos sueltas, mientras el álbum esté online.</p></details>
+    <details><summary>¿Cómo descargo las fotos?</summary><p>Descargás las fotos desde tu panel, en ZIP o una por una, mientras el álbum esté online.</p></details>
     <details><summary>¿Qué necesito para la pantalla del salón?</summary><p>Es una página web: la abrís en un smart TV con navegador, una notebook conectada al proyector o una tablet. Solo hace falta internet y una pantalla o un proyector.</p></details>
   </div>
 </section>

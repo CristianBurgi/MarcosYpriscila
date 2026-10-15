@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -86,6 +87,7 @@ class ZipStreamingFailureTest {
 
         List<String> entries = new ArrayList<>();
         byte[] healthyContent = null;
+        String notice = null;
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(client.toByteArray()))) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
@@ -94,10 +96,59 @@ class ZipStreamingFailureTest {
                 if (entry.getName().contains("Beto")) {
                     healthyContent = content;
                 }
+                if (entry.getName().equals(PhotoServiceImpl.FAILED_PHOTOS_FILENAME)) {
+                    notice = new String(content, StandardCharsets.UTF_8);
+                }
             }
         }
-        assertThat(entries).hasSize(2);
+        // Las dos fotos y, al final, el aviso con la que falló (y no con la sana).
+        assertThat(entries).hasSize(3).last().isEqualTo(PhotoServiceImpl.FAILED_PHOTOS_FILENAME);
+        String brokenEntry = entries.stream().filter(name -> name.contains("Ana")).findFirst().orElseThrow();
+        assertThat(notice).contains(brokenEntry).doesNotContain("Beto");
         assertThat(healthyContent).isEqualTo(PHOTO_OK_BYTES);
+    }
+
+    @Test
+    @DisplayName("Sin fallas de storage el ZIP no lleva el aviso de fotos no descargadas")
+    void noNoticeWhenEverythingIsRead() throws IOException {
+        when(storageService.streamObject(brokenInR2.getStorageKey())).thenAnswer(inv -> new ByteArrayInputStream(PHOTO_OK_BYTES));
+        ByteArrayOutputStream client = new ByteArrayOutputStream();
+
+        photoService.streamPhotosZip("evento-demo-k7m2xq9p", null, client);
+
+        List<String> entries = new ArrayList<>();
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(client.toByteArray()))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) entries.add(entry.getName());
+        }
+        assertThat(entries).hasSize(2).doesNotContain(PhotoServiceImpl.FAILED_PHOTOS_FILENAME);
+    }
+
+    @Test
+    @DisplayName("Las fotos van sin comprimir (ya lo están) y el PDF del libro de visitas sí se comprime")
+    void photosAreStoredWithoutCompressionButThePdfIsCompressed() throws IOException {
+        byte[] compressible = new byte[64 * 1024]; // ceros: deflate lo dejaría en unos pocos bytes
+        when(storageService.streamObject(brokenInR2.getStorageKey())).thenAnswer(inv -> new ByteArrayInputStream(compressible));
+        when(storageService.streamObject(healthy.getStorageKey())).thenAnswer(inv -> new ByteArrayInputStream(compressible));
+        when(guestbookPdfService.generate("evento-demo-k7m2xq9p")).thenReturn(compressible);
+        ByteArrayOutputStream client = new ByteArrayOutputStream();
+
+        photoService.streamPhotosZip("evento-demo-k7m2xq9p", null, client);
+
+        int photos = 0;
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(client.toByteArray()))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                zip.readAllBytes(); // el tamaño comprimido se conoce recién al terminar la entrada
+                if (entry.getName().equals(GuestbookPdfService.FILENAME)) {
+                    assertThat(entry.getCompressedSize()).isLessThan(compressible.length / 10);
+                } else {
+                    photos++;
+                    assertThat(entry.getCompressedSize()).isGreaterThanOrEqualTo(compressible.length);
+                }
+            }
+        }
+        assertThat(photos).isEqualTo(2);
     }
 
     @Test

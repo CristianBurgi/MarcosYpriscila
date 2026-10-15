@@ -68,11 +68,13 @@ public class AdminPhotoController {
     }
 
     /**
-     * GET /api/v1/admin/events/{slug}/photos/download-zip?photoIds=uuid1,uuid2
+     * GET /api/v1/admin/events/{slug}/photos/download-zip (álbum completo) o POST con el form photoIds=uuid1,uuid2 (selección).
      * Transmite en tiempo real (streaming) un archivo ZIP con las fotografías del evento.
      * Los photoIds que no son de este evento se ignoran (la consulta está acotada al evento).
+     * La selección va por POST: cientos de UUID en la query superan el tope de 8 KB de cabecera de Tomcat (400).
+     * Sin token CSRF, como el resto del panel: la cookie de sesión es SameSite=Strict y un POST desde otro sitio llega sin ella.
      */
-    @GetMapping("/download-zip")
+    @RequestMapping(value = "/download-zip", method = {RequestMethod.GET, RequestMethod.POST})
     public void downloadPhotosZip(
             @OwnedEvent Event event,
             @RequestParam(required = false) List<String> photoIds,

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,11 +29,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -125,6 +128,29 @@ class GuestbookEndpointsTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray());
         assertThat(selection).doesNotContain("libro-de-visitas.pdf").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Selección por POST: 500 IDs en el form funcionan (en la URL superaban la cabecera de Tomcat); sin sesión, 401")
+    void selectionByPostAcceptsFiveHundredIds() throws Exception {
+        String photoId = photoRepository.findAll().get(0).getId().toString();
+        List<String> ids = new ArrayList<>(List.of(photoId));
+        while (ids.size() < 500) {
+            ids.add(UUID.randomUUID().toString()); // de otro evento o inexistentes: se ignoran
+        }
+        String form = String.join(",", ids);
+
+        List<String> selection = zipEntries(mockMvc.perform(post("/api/v1/admin/events/libro-endpoint/photos/download-zip")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("photoIds", form).cookie(adminCookie()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"album-libro-endpoint.zip\""))
+                .andReturn().getResponse().getContentAsByteArray());
+        assertThat(selection).hasSize(1).doesNotContain("libro-de-visitas.pdf");
+
+        mockMvc.perform(post("/api/v1/admin/events/libro-endpoint/photos/download-zip")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED).param("photoIds", form))
+                .andExpect(status().isUnauthorized());
     }
 
     private static List<String> zipEntries(byte[] zip) throws IOException {

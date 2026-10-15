@@ -41,6 +41,8 @@ import com.tuapp.eventfoto.common.exception.UploadInProgressException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +52,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -422,7 +425,7 @@ public class PhotoServiceImpl implements PhotoService {
             }
         }
 
-        int failedPhotos = 0;
+        List<String> failedEntries = new ArrayList<>();
         try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
             if (guestbookPdf != null) {
                 usedEntryNames.add(GuestbookPdfService.FILENAME);
@@ -430,17 +433,24 @@ public class PhotoServiceImpl implements PhotoService {
                 zos.write(guestbookPdf);
                 zos.closeEntry();
             }
+            // Las fotos ya vienen comprimidas (JPEG/WebP): deflate solo gastaría CPU. El PDF de arriba sí se comprime.
+            zos.setLevel(Deflater.NO_COMPRESSION);
             for (AlbumReader.ZipPhoto photo : photosToZip) {
                 String entryName = buildZipEntryName(photo, usedEntryNames);
                 zos.putNextEntry(new ZipEntry(entryName));
                 if (!copyPhotoIntoZip(photo, zos)) {
-                    failedPhotos++;
+                    failedEntries.add(entryName);
                 }
+                zos.closeEntry();
+            }
+            if (!failedEntries.isEmpty()) {
+                zos.putNextEntry(new ZipEntry(FAILED_PHOTOS_FILENAME));
+                zos.write(failedPhotosNotice(failedEntries).getBytes(StandardCharsets.UTF_8));
                 zos.closeEntry();
             }
             zos.finish();
             log.info("ZIP streaming completado con {} fotografías ({} con error de lectura en storage) para el evento '{}'",
-                    photosToZip.size(), failedPhotos, slug);
+                    photosToZip.size(), failedEntries.size(), slug);
         } catch (IOException e) {
             // Todas las lecturas de storage se manejan dentro de copyPhotoIntoZip(): una
             // IOException acá solo puede venir de ESCRIBIR al cliente (canceló la descarga,
@@ -492,6 +502,16 @@ public class PhotoServiceImpl implements PhotoService {
                 log.debug("No se pudo cerrar el stream de storage de la foto {}: {}", photo.id(), e.getMessage());
             }
         }
+    }
+
+    /** Al final del ZIP cuando alguna foto no se pudo leer de storage: el organizador se entera de cuáles faltan. */
+    static final String FAILED_PHOTOS_FILENAME = "LEEME-fotos-no-descargadas.txt";
+
+    private static String failedPhotosNotice(List<String> failedEntries) {
+        String lineBreak = "\r\n"; // CRLF: el Bloc de notas viejo no corta líneas con \n solo
+        return "Estas fotos no se pudieron descargar y en este ZIP quedaron vacías o incompletas." + lineBreak
+                + "Probá descargarlas de nuevo desde tu panel, una por una o en otro ZIP." + lineBreak + lineBreak
+                + String.join(lineBreak, failedEntries) + lineBreak;
     }
 
     private void reportZipStorageFailure(AlbumReader.ZipPhoto photo, Exception e) {

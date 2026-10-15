@@ -1408,8 +1408,18 @@
             alert('Por favor selecciona al menos una fotografía para descargar.');
             return;
         }
-        const idsParam = photoIds.join(',');
-        window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/download-zip?photoIds=${encodeURIComponent(idsParam)}`;
+        // POST con un form (no fetch): el navegador baja el ZIP en streaming y cientos de IDs no entran en la URL.
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/download-zip`;
+        const ids = document.createElement('input');
+        ids.type = 'hidden';
+        ids.name = 'photoIds';
+        ids.value = photoIds.join(',');
+        form.appendChild(ids);
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
     }
 
     async function logout() {
