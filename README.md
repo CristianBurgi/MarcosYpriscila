@@ -921,6 +921,19 @@ Toda URL absoluta que genera la app (QR, links del panel, links de activación y
 
 > Los QR ya impresos siguen apuntando al dominio de Railway: nunca borrar ni recrear el servicio de Railway (el subdominio `up.railway.app` está atado a él). La redirección del dominio viejo al nuevo es un paso aparte, después de verificar el nuevo.
 
+#### Redirección del dominio viejo (`APP_LEGACY_HOSTS`)
+`LegacyHostRedirectFilter` responde **302** (no 301 todavía: un 301 queda en la caché del navegador y no se deshace) a toda página GET/HEAD pedida por un host de la lista, hacia `APP_BASE_URL` + la misma ruta y query. No toca `/api/**` (fetch, SSE, subidas, webhook de Mercado Pago), `/actuator/**` ni los estáticos: una pestaña ya abierta en el dominio viejo sigue funcionando hasta que cambia de página.
+
+- **Valor de producción** (Railway → Variables): `APP_LEGACY_HOSTS=event-foto.up.railway.app,www.eventfoto.com.ar` (sin esquema ni puerto, separados por coma; mayúsculas indistintas). `www` solo hace falta si está agregado como dominio en Railway.
+- **Apagarlo**: vaciar o borrar la variable y redeployar. Lista vacía = no redirige nada.
+- **Desplegar sin eventos con subidas abiertas.** El `guestToken` y el nombre del invitado viven en el `localStorage` del navegador, que es por dominio: un invitado que entró por el dominio viejo y navega a otra página llega al nuevo con un token nuevo, así que su cuota de fotos y su límite por invitado arrancan de cero y tiene que volver a escribir su nombre (no pierde fotos ni mensajes). Revisarlo en el panel del superadmin antes de setear la variable.
+- **Verificar** después de setearla:
+  ```bash
+  curl -sI "https://event-foto.up.railway.app/e/algun-slug/album?x=1"   # 302, location: https://eventfoto.com.ar/e/algun-slug/album?x=1
+  curl -sI https://event-foto.up.railway.app/api/v1/events/algun-slug   # sin redirect (200 o 404)
+  curl -sI https://eventfoto.com.ar/e/algun-slug                        # sin redirect: descarta un bucle
+  ```
+
 ### Seguridad
 El `SecurityConfig` actualmente termina con `.anyRequest().permitAll()` para facilitar el desarrollo. Para producción, considerar endurecer a `.anyRequest().authenticated()` con las excepciones necesarias para las rutas públicas.
 
