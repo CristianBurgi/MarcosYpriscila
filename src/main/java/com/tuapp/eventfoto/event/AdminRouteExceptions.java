@@ -19,6 +19,8 @@ public final class AdminRouteExceptions {
     public static final List<Entry> ENTRIES = List.of(
             new Entry("/admin/login",
                     "Página de login: todavía no hay sesión ni evento."),
+            new Entry("/admin/recuperar",
+                    "Recuperación de contraseña (formulario de email): no hay sesión ni evento."),
             new Entry("/api/v1/admin/auth/login",
                     "Login del organizador: no hay evento ni sesión todavía."),
             new Entry("/api/v1/admin/auth/logout",

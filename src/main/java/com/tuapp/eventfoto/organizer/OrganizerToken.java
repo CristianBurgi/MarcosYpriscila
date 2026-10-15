@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * Token de un solo uso del organizador. Se persiste el HASH ({@link #tokenHash}),
  * nunca el token en claro -- el valor real solo existe en memoria el instante en que
- * se genera (para mostrárselo al superadmin) y en el link que recibe el organizador.
+ * se genera (para mostrárselo al superadmin o mandarlo por mail) y en el link que recibe el organizador.
  */
 @Entity
 @Table(name = "organizer_token", indexes = {

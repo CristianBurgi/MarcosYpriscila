@@ -80,6 +80,14 @@ app:
     # y /api/v1/demo/** responde 503. Cada demo dura 30 minutos (DemoCleanupJob, cada 5 minutos).
     enabled: ${DEMO_ENABLED:true}
     cleanup-interval-ms: 300000
+  mail:
+    # Fase 9.2-B. log = no manda nada (desarrollo y tests); resend = envío real (obligatorio en producción: con
+    # STORAGE_MODE=r2 la app no arranca sin MAIL_PROVIDER=resend, RESEND_API_KEY y MAIL_REPLY_TO).
+    provider: ${MAIL_PROVIDER:log}
+    from: ${MAIL_FROM:EventFoto <hola@eventfoto.com.ar>}
+    # El dominio no recibe mails: las respuestas van a esta casilla.
+    reply-to: ${MAIL_REPLY_TO:}
+    resend-api-key: ${RESEND_API_KEY:}
   support:
     # WhatsApp de contacto para la página de retorno cuando un pago queda en revisión (solo dígitos, con código de país).
     whatsapp: ${SUPPORT_WHATSAPP:}

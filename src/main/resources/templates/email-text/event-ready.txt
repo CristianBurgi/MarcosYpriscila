@@ -1,0 +1,9 @@
+¡Tu evento está listo!
+
+Recibimos tu pago y ya creamos [(${eventName})].
+[# th:if="${!repurchase}"]
+Entrá con el email y la contraseña que elegiste al comprar.
+[/][# th:if="${repurchase}"]
+Ya lo vas a ver en "Mis eventos".
+[/]
+Iniciar sesión: [(${loginUrl})]

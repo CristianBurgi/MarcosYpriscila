@@ -112,6 +112,11 @@ public class AppUrls {
         return baseUrl + "/activar-cuenta?token=" + rawToken;
     }
 
+    /** Link de recuperación de contraseña (mail de la 9.2-B). Contiene la credencial: no loguearla. */
+    public String passwordResetUrl(String rawToken) {
+        return baseUrl + "/restablecer-contrasena?token=" + rawToken;
+    }
+
     /** URL absoluta del link de moderador. Contiene la credencial: no loguearla. */
     public String moderatorUrl(String moderatorToken) {
         return baseUrl + "/moderar/" + moderatorToken;

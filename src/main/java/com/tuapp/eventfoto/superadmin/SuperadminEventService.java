@@ -5,12 +5,14 @@ import com.tuapp.eventfoto.common.exception.ResourceNotFoundException;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventCreationService;
 import com.tuapp.eventfoto.event.EventOrigin;
+import com.tuapp.eventfoto.organizer.ActivationLinkIssued;
 import com.tuapp.eventfoto.organizer.Organizer;
 import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.organizer.OrganizerTokenPurpose;
 import com.tuapp.eventfoto.organizer.OrganizerTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,7 @@ public class SuperadminEventService {
     private final OrganizerTokenService organizerTokenService;
     private final EventCreationService eventCreationService;
     private final AppUrls appUrls;
+    private final ApplicationEventPublisher events;
 
     public record FreeEventResult(Event event, Organizer organizer, boolean newOrganizer, String activationLink) {
     }
@@ -54,6 +57,8 @@ public class SuperadminEventService {
         if (isNew) {
             var issued = organizerTokenService.issue(organizer, OrganizerTokenPurpose.ACCOUNT_ACTIVATION);
             activationLink = appUrls.activationUrl(issued.rawToken());
+            // El mail sale después del commit (OrganizerAccountMailer); si falla, el link igual vuelve en la respuesta.
+            events.publishEvent(new ActivationLinkIssued(organizer.getId(), organizer.getEmail(), activationLink, event.getName()));
         }
 
         log.info("Evento sin costo '{}' (slug '{}') creado para {} -- organizer {} ({}), motivo: {}",
@@ -73,6 +78,8 @@ public class SuperadminEventService {
         }
         var issued = organizerTokenService.issue(organizer, OrganizerTokenPurpose.ACCOUNT_ACTIVATION);
         log.info("Link de activación regenerado para organizer {} ({})", organizer.getId(), organizer.getEmail());
-        return appUrls.activationUrl(issued.rawToken());
+        String activationLink = appUrls.activationUrl(issued.rawToken());
+        events.publishEvent(new ActivationLinkIssued(organizer.getId(), organizer.getEmail(), activationLink, null));
+        return activationLink;
     }
 }

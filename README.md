@@ -706,10 +706,40 @@ Todas las variables sensibles se cargan desde un archivo `.env` en la raíz grac
 | `PORT` | Puerto del servidor (Railway lo setea automáticamente) | Railway auto |
 | `SENTRY_DSN` | DSN del proyecto en Sentry (ver [Monitoreo de Errores](#-monitoreo-de-errores-sentry)) | Opcional (recomendado) |
 | `SENTRY_ENVIRONMENT` | Etiqueta de ambiente en Sentry (`production` en Railway, `development` en local) | Opcional |
+| `MAIL_PROVIDER` | Fase 9.2-B: `resend` (envío real) o `log` (no manda nada; default de desarrollo y tests). Con `STORAGE_MODE=r2` la app no arranca si no es `resend` | ✅ |
+| `RESEND_API_KEY` | API key de Resend (restringida al dominio, permiso de envío). Nunca se loguea | ✅ |
+| `MAIL_REPLY_TO` | Casilla real que recibe las respuestas a los mails (el dominio no recibe mails) | ✅ |
+| `MAIL_FROM` | Remitente. Default `EventFoto <hola@eventfoto.com.ar>` | Opcional |
 
 > Ver [`.env.example`](.env.example) para la plantilla completa.
 
 > **Checklist L6 (pasar Mercado Pago a producción).** Cambian **dos** valores, no uno: `MP_ACCESS_TOKEN` (credenciales productivas) y `MP_WEBHOOK_SECRET` (la clave secreta de Webhooks del modo producción, que es otro valor que la de prueba). Configurar también la URL del webhook en el modo producción del panel. La confirmación del pago no compara `collector_id`: con nuestro access token la API solo devuelve pagos de nuestra cuenta.
+
+### Mails (Fase 9.2-B)
+
+Salen por la API HTTP de Resend (`ResendEmailService`, con `RestClient`: sin SDK ni dependencias nuevas; timeouts de 3 s de conexión y 8 s de lectura; sin reintentos automáticos). Cada mail tiene versión HTML y de texto plano (`templates/email/` y `templates/email-text/`). Todos los links salen de `APP_BASE_URL`.
+
+| Mail | Cuándo sale |
+|---|---|
+| Activá tu cuenta | El superadmin crea un evento sin costo para un email sin cuenta, o genera un link de activación nuevo. Sale después del commit y fuera del request: si falla, el evento se crea igual y el link se sigue viendo en el panel. |
+| Elegí una contraseña nueva | El organizador lo pide en `/admin/recuperar` ("¿Olvidaste tu contraseña?" del login). Solo si la cuenta existe y está activada; la respuesta es siempre la misma. Link de un solo uso, vence en 1 hora, pedir otro invalida el anterior. Al cambiar la contraseña se cierran todas las sesiones abiertas. Límites: 5 pedidos por IP cada 15 min, 3 por email por hora, 10 confirmaciones por IP cada 15 min. |
+| Tu evento está listo | Pago confirmado (9.4). |
+| Tu álbum se borra pronto | Job de ciclo de vida, 5 días antes del borrado (9.6). |
+
+El superadmin no tiene recuperación por mail: sus credenciales son `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD`.
+
+**Variables de Railway, a cargar antes del merge** (con `STORAGE_MODE=r2` la app no arranca si falta alguna de las tres primeras):
+
+```
+MAIL_PROVIDER=resend
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+MAIL_REPLY_TO=una-casilla-real@ejemplo.com
+MAIL_FROM=EventFoto <hola@eventfoto.com.ar>
+```
+
+`MAIL_FROM` es opcional (ese es el default). Al activarlo, también pasan a salir de verdad "Tu evento está listo" y el recordatorio de borrado.
+
+**Verificar después del deploy:** pedir recuperación desde `/admin/recuperar` con una cuenta de prueba, confirmar que el mail llega a Gmail y en "Mostrar original" que SPF, DKIM y DMARC digan `PASS`.
 
 > **Producción no arranca con valores de ejemplo.** Con `STORAGE_MODE=r2`, la app se niega a arrancar si `ADMIN_PASSWORD`, `JWT_SECRET`, `DB_PASSWORD`, `R2_ACCESS_KEY` o `R2_SECRET_KEY` coinciden con algún valor de ejemplo publicado en el repo (defaults de `application.yml`, `.env.example`, `application-test.yml`, `docker-compose.yml`), si están vacías, o si `JWT_SECRET` tiene menos de 32 caracteres. Lo mismo si `APP_BASE_URL` parece un ejemplo (`tu-boda`, `example`, `placeholder`...). El error nombra la variable, nunca el valor. En modo `local` no se valida.
 

@@ -1,0 +1,10 @@
+Tu cuenta de EventFoto
+[# th:if="${eventName != null}"]
+Te creamos una cuenta para que manejes el álbum de [(${eventName})].
+[/][# th:if="${eventName == null}"]
+Te mandamos un link nuevo para activar tu cuenta. El anterior ya no funciona.
+[/]
+Para empezar, elegí tu contraseña en este link:
+[(${activationUrl})]
+
+El link sirve una sola vez y vence en 7 días. Si no esperabas este mail, ignoralo.
