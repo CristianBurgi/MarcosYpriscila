@@ -74,10 +74,10 @@
   .screen{margin:40px 0 0;border-radius:22px;padding:10px;background:#07030D;border:1px solid var(--line);
     box-shadow:0 40px 90px -30px rgba(168,85,247,.55)}
   .screen-in{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#000}
-  .shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:show 16s infinite}
+  .shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:show 12s infinite}
   .shot:first-child{opacity:1}
-  .shot:nth-child(2){animation-delay:4s}.shot:nth-child(3){animation-delay:8s}.shot:nth-child(4){animation-delay:12s}
-  @keyframes show{0%{opacity:0}4%{opacity:1}25%{opacity:1}29%{opacity:0}100%{opacity:0}}
+  .shot:nth-child(2){animation-delay:4s}.shot:nth-child(3){animation-delay:8s}
+  @keyframes show{0%{opacity:0}5%{opacity:1}33%{opacity:1}38%{opacity:0}100%{opacity:0}}
   .ticker{position:absolute;left:0;right:0;bottom:0;padding:28px 16px 12px;font-size:.92rem;background:linear-gradient(transparent,rgba(7,3,13,.88))}
   .ticker b{font-weight:600}
   .qr{position:absolute;top:12px;right:12px;width:64px;height:64px;border-radius:10px;background:#fff;padding:6px}
@@ -151,7 +151,7 @@
 <main>
 <header class="wrap hero">
   <div>
-    <h1>Las fotos de tu evento, en vivo, sin que nadie descargue nada.</h1>
+    <h1>Las fotos de tu evento, en vivo, sin que nadie instale nada.</h1>
     <p class="sub">Tus invitados escanean un QR, sacan la foto con su celular y aparece al instante en la pantalla del salón. Después, el álbum queda online 30 días para que lo descargues.</p>
     <div class="ctas">
       <a th:if="${checkoutEnabled}" class="btn btn-main" href="/comprar">Crear mi evento</a>
@@ -168,13 +168,11 @@
   <figure class="screen">
     <div class="screen-in">
       <img class="shot" src="/images/landing/pantalla-1.webp" width="960" height="600" fetchpriority="high"
-           alt="Tres invitados se sacan una selfie en la fiesta">
-      <img class="shot" src="/images/landing/pantalla-2.webp" width="960" height="600" loading="lazy"
-           alt="Una mesa de invitados posa para la foto">
-      <img class="shot" src="/images/landing/pantalla-3.webp" width="960" height="600" loading="lazy"
            alt="Los novios firman el acta frente a sus invitados">
-      <img class="shot" src="/images/landing/pantalla-4.webp" width="960" height="600" loading="lazy"
-           alt="Invitados sentados a la mesa durante la fiesta">
+      <img class="shot" src="/images/landing/pantalla-2.webp" width="960" height="600" loading="lazy"
+           alt="Invitados sentados alrededor de la mesa durante la fiesta">
+      <img class="shot" src="/images/landing/pantalla-3.webp" width="960" height="600" loading="lazy"
+           alt="Una mesa de invitados posa para la foto">
       <div class="qr" aria-hidden="true"><span></span></div>
       <p class="ticker"><b>Los primos:</b> ¡Que vivan los novios! Los queremos un montón.</p>
     </div>
@@ -206,7 +204,7 @@
         <li>Pantalla en vivo para proyectar en el salón</li>
         <li>Link de moderador para borrar fotos o mensajes en el momento</li>
         <li>Tarjetas con QR y cartel listos para imprimir</li>
-        <li>Libro de visitas en PDF con todos los mensajes</li>
+        <li>Libro de visitas en PDF con los mensajes</li>
         <li>Tu color y tu imagen de fondo en las páginas del evento</li>
         <li>Álbum online hasta 30 días después del evento, con descarga completa</li>
       </ul>
@@ -229,7 +227,7 @@
     <details><summary>¿Puedo probarlo antes de pagar?</summary><p>Sí, con la demo en vivo: armás un evento de prueba en segundos y lo usás desde tu celular durante 30 minutos.</p></details>
     <details><summary>¿Cómo se paga?</summary><p th:text="(${checkoutEnabled} ? 'Con Mercado Pago, un' : 'Un') + ' solo pago' + (${price} != null ? ' de $' + ${price} : '') + ' por evento. Sin suscripción ni cargos recurrentes.'">Con Mercado Pago, un solo pago de $50.000 por evento. Sin suscripción ni cargos recurrentes.</p></details>
     <details><summary>¿Puedo descargar todas las fotos?</summary><p>Sí, desde tu panel: el álbum completo en un ZIP o fotos sueltas, mientras el álbum esté online.</p></details>
-    <details><summary>¿Qué necesito para la pantalla del salón?</summary><p>Es una página web: la abrís en un smart TV con navegador, una notebook conectada al proyector o una tablet. Solo hace falta internet.</p></details>
+    <details><summary>¿Qué necesito para la pantalla del salón?</summary><p>Es una página web: la abrís en un smart TV con navegador, una notebook conectada al proyector o una tablet. Solo hace falta internet y una pantalla o un proyector.</p></details>
   </div>
 </section>
 </main>
