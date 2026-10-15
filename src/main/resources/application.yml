@@ -51,6 +51,9 @@ app:
   # Única fuente de URLs absolutas (QR, links del panel). En producción se setea en
   # Railway; con STORAGE_MODE=r2 la app no arranca si queda apuntando a localhost.
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  # Hosts viejos (separados por coma) cuyas páginas redirigen con 302 a base-url (LegacyHostRedirectFilter).
+  # Vacío = no redirige nada (interruptor de apagado). El valor real va solo en la variable de Railway.
+  legacy-hosts: ${APP_LEGACY_HOSTS:}
   upload:
     # Tope de tamaño por archivo (15 MB). Lo aplica /confirm (HeadObject sobre lo que el cliente subió directo a R2,
     # antes de leer un solo byte) y /upload-direct; spring.servlet.multipart.max-file-size usa este mismo valor.

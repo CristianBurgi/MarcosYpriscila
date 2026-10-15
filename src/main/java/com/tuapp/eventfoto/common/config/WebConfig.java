@@ -5,6 +5,10 @@ import com.tuapp.eventfoto.event.PublicEventExpiryInterceptor;
 import com.tuapp.eventfoto.event.OwnedEventArgumentResolver;
 import lombok.RequiredArgsConstructor;
 import com.tuapp.eventfoto.demo.DemoEnabledInterceptor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -30,6 +34,19 @@ public class WebConfig implements WebMvcConfigurer {
      * AdminRouteExceptions (con su motivo).
      * /superadmin/** tiene su propia cadena de seguridad y no se toca acá.
      */
+    /**
+     * Redirección del dominio viejo al canónico (ver LegacyHostRedirectFilter). Va justo antes de Spring Security
+     * (-100): redirige sin pedir login, y antes que los interceptores de evento, así no revela si un slug existe.
+     */
+    @Bean
+    public FilterRegistrationBean<LegacyHostRedirectFilter> legacyHostRedirectFilter(
+            @Value("${app.legacy-hosts:}") String[] legacyHosts, AppUrls appUrls) {
+        FilterRegistrationBean<LegacyHostRedirectFilter> registration =
+                new FilterRegistrationBean<>(new LegacyHostRedirectFilter(legacyHosts, appUrls));
+        registration.setOrder(SecurityProperties.DEFAULT_FILTER_ORDER - 1);
+        return registration;
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(eventAccessInterceptor)
