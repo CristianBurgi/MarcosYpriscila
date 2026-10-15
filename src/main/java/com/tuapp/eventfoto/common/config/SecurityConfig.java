@@ -96,7 +96,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas de vistas y recursos estáticos
                 .requestMatchers(
-                    "/", "/e/**", "/favicon.ico",
+                    "/", "/e/**", "/favicon.ico", "/robots.txt",
                     "/album.html", "/screen.html", "/upload.html", "/menu.html", "/messages.html", // redirects 302 a /e/{slug}
                     "/css/**", "/js/**", "/images/**", "/uploads/**"
                 ).permitAll()

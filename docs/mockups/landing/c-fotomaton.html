@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<!-- Propuesta C, "Fotomatón": noche cálida en bordó y champagne, retoma el tema de las páginas de invitados
+     (theme.css). Fraunces para títulos y Outfit para texto. Mockup estático: no es la landing final. -->
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventFoto: las fotos de tu evento, en vivo y sin apps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#1E0A10;
+    --wine:#6B1C2D;
+    --blush:#F0C4C9;
+    --champagne:#E6C594;
+    --text:#FDF6F7;
+    --muted:#D9B8BD;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--night);color:var(--text);font-family:'Outfit',system-ui,sans-serif;font-weight:300;
+    font-size:1.0625rem;line-height:1.6}
+  a{color:inherit}
+  h1,h2,h3,p{margin:0}
+  h1,h2{font-family:'Fraunces',Georgia,serif;font-weight:400;letter-spacing:-.015em;font-variation-settings:"opsz" 144}
+  .wrap{max-width:1120px;margin:0 auto;padding-left:20px;padding-right:20px}
+  :focus-visible{outline:2px solid var(--champagne);outline-offset:4px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:0 28px;border-radius:999px;
+    font:600 1.02rem 'Outfit',sans-serif;text-decoration:none;border:1px solid var(--champagne)}
+  .btn-main{background:var(--champagne);color:var(--night)}
+  .btn-main:hover{background:#F1D7AE}
+  .btn-line{color:var(--champagne)}
+  .btn-line:hover{background:rgba(230,197,148,.1)}
+
+  .nav{display:flex;justify-content:space-between;align-items:center;padding-top:20px;padding-bottom:20px}
+  .logo{font-family:'Fraunces',serif;font-size:1.4rem;text-decoration:none}
+  .logo span{color:var(--champagne)}
+  .nav a.small{font-size:.95rem;color:var(--muted)}
+
+  /* hero: luz cálida de salón detrás de la tira de fotomatón */
+  .hero-bg{background:radial-gradient(90% 70% at 70% 30%,rgba(107,28,45,.9),transparent 70%)}
+  .hero{padding-top:24px;padding-bottom:64px}
+  .hero h1{font-size:clamp(2.5rem,9vw,4.8rem);line-height:1.02;max-width:14ch}
+  .hero .sub{margin-top:20px;max-width:44ch;color:var(--muted);font-size:1.12rem}
+  .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+  .ctas .btn{flex:1 1 190px}
+  .facts{margin-top:20px;color:var(--muted);font-size:.98rem}
+  .facts strong{color:var(--champagne);font-weight:600}
+
+  .strip{margin:44px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 10px 34px;background:var(--text);
+    transform:rotate(-2deg);max-width:420px;position:relative;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+  .strip img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+  .strip img:nth-child(4){display:none}
+  .strip p{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-family:'Fraunces',serif;font-style:italic;
+    color:var(--wine);font-size:.98rem}
+  @media (min-width:980px){
+    .hero{display:grid;grid-template-columns:1.3fr .7fr;gap:48px;align-items:center;padding-top:48px;padding-bottom:110px}
+    .strip{margin-top:0;grid-template-columns:1fr;max-width:230px;transform:rotate(3deg);padding-bottom:56px}
+    .strip p{padding:0 12px;line-height:1.2}
+    .strip img{aspect-ratio:4/3}
+    .strip img:nth-child(4){display:block}
+    .ctas .btn{flex:0 0 auto}
+  }
+
+  .band{padding-top:72px;padding-bottom:72px}
+  .h2{font-size:clamp(2rem,6vw,3.1rem);line-height:1.05;max-width:18ch}
+
+  /* pasos: secuencia real, línea de tiempo */
+  .steps{list-style:none;padding:0;margin:40px 0 0;display:grid;gap:30px;border-left:1px solid var(--champagne);padding-left:24px}
+  .steps li{position:relative}
+  .steps li::before{content:"";position:absolute;left:-30px;top:.5em;width:11px;height:11px;border-radius:50%;background:var(--champagne)}
+  .steps h3{font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem}
+  .steps p{color:var(--muted);margin-top:4px}
+  @media (min-width:980px){
+    .steps{grid-template-columns:repeat(3,1fr);border-left:0;padding-left:0;border-top:1px solid var(--champagne);padding-top:28px;gap:44px}
+    .steps li::before{left:0;top:-34px}
+  }
+
+  /* precio */
+  .price-wrap{background:linear-gradient(180deg,transparent,rgba(107,28,45,.45) 30%,rgba(107,28,45,.45) 70%,transparent)}
+  .price{margin:40px auto 0;max-width:560px;border:1px solid rgba(230,197,148,.55);border-radius:4px;padding:34px 24px;text-align:center;
+    background:rgba(30,10,16,.6)}
+  .amount{font-family:'Fraunces',serif;font-size:clamp(3.4rem,14vw,4.8rem);line-height:1;color:var(--champagne);font-variation-settings:"opsz" 144}
+  .amount small{font-family:'Outfit',sans-serif;font-size:1rem;color:var(--muted)}
+  .per{color:var(--muted);margin-top:8px}
+  .includes{list-style:none;padding:0;margin:26px 0;text-align:left}
+  .includes li{padding:10px 0 10px 24px;border-top:1px solid rgba(230,197,148,.18);position:relative}
+  .includes li::before{content:"";position:absolute;left:2px;top:1.15em;width:8px;height:8px;border-radius:50%;border:1px solid var(--champagne)}
+  .price .btn{width:100%}
+  .fine{font-size:.95rem;color:var(--muted);margin-top:14px}
+  .fine a{color:var(--champagne);font-weight:600}
+
+  /* preguntas */
+  .faq{margin-top:32px;max-width:780px}
+  details{border-top:1px solid rgba(230,197,148,.3)}
+  details:last-child{border-bottom:1px solid rgba(230,197,148,.3)}
+  summary{cursor:pointer;list-style:none;padding:20px 36px 20px 0;font-family:'Fraunces',serif;font-size:1.18rem;position:relative}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"";position:absolute;right:6px;top:50%;width:9px;height:9px;margin-top:-7px;border:solid var(--champagne);
+    border-width:0 1px 1px 0;transform:rotate(45deg)}
+  details[open] summary::after{transform:rotate(-135deg);margin-top:-2px}
+  details p{padding:0 0 22px;color:var(--muted);max-width:62ch}
+  @media (min-width:980px){.faq-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:56px;align-items:start}.faq{margin-top:4px}}
+
+  .foot{padding-top:36px;padding-bottom:56px;color:var(--muted);font-size:.95rem}
+</style>
+</head>
+<body>
+
+<div class="hero-bg">
+<nav class="wrap nav" aria-label="Principal">
+  <a href="#" class="logo">Event<span>Foto</span></a>
+  <a class="small" href="/admin/login">Ya tengo cuenta</a>
+</nav>
+
+<header class="wrap hero">
+  <div>
+    <h1>Las fotos de tu evento, en vivo, sin que nadie descargue nada.</h1>
+    <p class="sub">Tus invitados escanean un QR, sacan la foto con su celular y aparece al instante en la pantalla del salón. Después, el álbum queda online 30 días para que lo descargues.</p>
+    <div class="ctas">
+      <a class="btn btn-main" href="/comprar">Crear mi evento</a>
+      <a class="btn btn-line" href="/demo">Probar la demo</a>
+    </div>
+    <p class="facts"><strong>$50.000</strong> por evento, pago único. Sin límite de invitados. Sin apps.</p>
+  </div>
+  <div class="strip" aria-hidden="true">
+    <img src="../../../src/main/resources/static/img/demo/demo-07.webp" alt="">
+    <img src="../../../src/main/resources/static/img/demo/demo-09.webp" alt="">
+    <img src="../../../src/main/resources/static/img/demo/demo-10.webp" alt="">
+    <img src="../../../src/main/resources/static/img/demo/demo-08.webp" alt="">
+    <p>la noche, contada por tus invitados</p>
+  </div>
+</header>
+</div>
+
+<main>
+<section class="wrap band" aria-labelledby="como">
+  <h2 id="como" class="h2">Tres pasos y ninguna foto se pierde</h2>
+  <ol class="steps">
+    <li><h3>Escanean el QR</h3><p>Va en las tarjetas de mesa o en el cartel que imprimís desde tu panel. Se abre en el navegador del celular, sin instalar nada.</p></li>
+    <li><h3>Suben la foto</h3><p>La sacan en el momento o la eligen de la galería. También pueden dejarte un mensaje para el libro de visitas.</p></li>
+    <li><h3>Aparece en la pantalla</h3><p>Se publica sola, al instante, en la pantalla y en el álbum. Si algo no va, vos o tu moderador la borran y desaparece en el momento.</p></li>
+  </ol>
+</section>
+
+<section class="price-wrap" aria-labelledby="precio">
+  <div class="wrap band">
+    <h2 id="precio" class="h2" style="margin:0 auto;text-align:center">Un solo pago por evento</h2>
+    <div class="price">
+      <p class="amount">$50.000 <small>ARS</small></p>
+      <p class="per">Pago único con Mercado Pago. Sin suscripción.</p>
+      <ul class="includes">
+        <li>Sin límite de invitados</li>
+        <li>Hasta 24 fotos por invitado, o sin límite si lo cambiás en tu panel</li>
+        <li>Pantalla en vivo para proyectar en el salón</li>
+        <li>Link de moderador para borrar fotos o mensajes en el momento</li>
+        <li>Tarjetas con QR y cartel listos para imprimir</li>
+        <li>Libro de visitas en PDF con todos los mensajes</li>
+        <li>Tu color y tu imagen de fondo en las páginas del evento</li>
+        <li>Álbum online hasta 30 días después del evento, con descarga completa</li>
+      </ul>
+      <a class="btn btn-main" href="/comprar">Crear mi evento</a>
+      <p class="fine">Después del pago te llega un mail para activar tu cuenta y armar el evento.</p>
+      <p class="fine">¿Querés verlo antes? <a href="/demo">Probá la demo en vivo</a>: gratis, sin registrarte, dura 30 minutos.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap band faq-grid" aria-labelledby="preguntas">
+  <h2 id="preguntas" class="h2">Preguntas frecuentes</h2>
+  <div class="faq">
+    <details open><summary>¿Los invitados necesitan descargar una app?</summary><p>No. Escanean el QR y suben las fotos desde el navegador del celular.</p></details>
+    <details><summary>¿Cuándo pueden subir fotos?</summary><p>Desde las 00:00 del día anterior al evento hasta las 23:59 del día siguiente.</p></details>
+    <details><summary>¿Cuánto tiempo queda disponible el álbum?</summary><p>Hasta 30 días después de la fecha del evento. Antes de que se borre te avisamos por mail para que descargues todo.</p></details>
+    <details><summary>¿Puedo controlar qué se ve en la pantalla?</summary><p>Las fotos se publican solas, sin esperar aprobación. Vos, o alguien de confianza con el link de moderador, puede borrar cualquier foto o mensaje, y sale de la pantalla y del álbum en el momento.</p></details>
+    <details><summary>¿Qué pasa si alguien sube algo inapropiado?</summary><p>Las fotos no se revisan de forma automática: para eso está el link de moderador. Los mensajes sí pasan por un filtro de palabras ofensivas.</p></details>
+    <details><summary>¿Hay límite de invitados?</summary><p>No. Cada invitado puede subir hasta 24 fotos, y si querés lo pasás a sin límite desde tu panel.</p></details>
+    <details><summary>¿Puedo probarlo antes de pagar?</summary><p>Sí, con la demo en vivo: armás un evento de prueba en segundos y lo usás desde tu celular durante 30 minutos.</p></details>
+    <details><summary>¿Cómo se paga?</summary><p>Con Mercado Pago, un solo pago de $50.000 por evento. Sin suscripción ni cargos recurrentes.</p></details>
+    <details><summary>¿Puedo descargar todas las fotos?</summary><p>Sí, desde tu panel: el álbum completo en un ZIP o fotos sueltas, mientras el álbum esté online.</p></details>
+    <details><summary>¿Qué necesito para la pantalla del salón?</summary><p>Es una página web: la abrís en un smart TV con navegador, una notebook conectada al proyector o una tablet. Solo hace falta internet.</p></details>
+  </div>
+</section>
+</main>
+
+<footer class="wrap foot">
+  <p>EventFoto, hecho en Tucumán, Argentina.</p>
+</footer>
+</body>
+</html>
