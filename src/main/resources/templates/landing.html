@@ -183,7 +183,7 @@
 </header>
 
 <section class="wrap band" aria-labelledby="como">
-  <h2 id="como" class="h2">Tres pasos y ninguna foto se pierde</h2>
+  <h2 id="como" class="h2">Tres pasos y listo</h2>
   <ol class="steps">
     <li><h3>Escanean el QR</h3><p>Va en las tarjetas de mesa o en el cartel que imprimís desde tu panel. Se abre en el navegador del celular, sin instalar nada.</p></li>
     <li><h3>Suben la foto</h3><p>La sacan en el momento o la eligen de la galería. También pueden dejarte un mensaje para el libro de visitas.</p></li>
@@ -197,7 +197,7 @@
     <div>
       <p th:if="${price}" class="amount"><span th:text="'$' + ${price}">$50.000</span> <small>ARS</small></p>
       <p class="per" th:text="${checkoutEnabled} ? 'Pago único con Mercado Pago. Sin suscripción.' : 'Pago único por evento. Sin suscripción.'">Pago único con Mercado Pago. Sin suscripción.</p>
-      <p th:if="${checkoutEnabled}" class="fine" style="margin-top:20px">Después del pago te llega un mail para activar tu cuenta y armar el evento.</p>
+      <p th:if="${checkoutEnabled}" class="fine" style="margin-top:20px">Después del pago te llega un mail, y entrás con el email y la contraseña que elegiste para armar tu evento.</p>
     </div>
     <div>
       <ul class="includes">
