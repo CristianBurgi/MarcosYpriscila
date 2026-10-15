@@ -1,8 +1,10 @@
 package com.tuapp.eventfoto.event;
 
 import com.tuapp.eventfoto.common.config.AppUrls;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,7 +63,10 @@ public class HomeController {
     }
 
     @GetMapping("/")
-    public String home(Model model) {
+    public String home(Model model, HttpServletResponse response) {
+        // La landing no tiene nada de la sesión ni del usuario: no-cache (revalida siempre) en vez del no-store de
+        // Spring Security, que deja la página afuera del back/forward cache.
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache");
         model.addAttribute("baseUrl", baseUrl);
         model.addAttribute("checkoutEnabled", checkoutEnabled);
         model.addAttribute("price", price);

@@ -47,6 +47,17 @@ spring:
       # Un poco más que el archivo: el request lleva además uploaderName, guestToken y el overhead multipart.
       max-request-size: 16MB
 
+  # Estáticos del classpath (/css, /js, /images, /img/demo, /favicon.ico): un día de caché pública. Las URLs no llevan
+  # hash de versión, así que un deploy tarda hasta un día en llegar a quien ya los tenía; pasado ese tiempo el navegador
+  # revalida con Last-Modified (304). Spring Security respeta este Cache-Control y no lo pisa con no-store; las rutas
+  # con credenciales (SecurityConfig.CREDENTIAL_SENSITIVE) no son estáticos y siguen con no-store.
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 1d
+          cache-public: true
+
 app:
   # Única fuente de URLs absolutas (QR, links del panel). En producción se setea en
   # Railway; con STORAGE_MODE=r2 la app no arranca si queda apuntando a localhost.
@@ -140,4 +151,8 @@ server:
     # y el host de la request (verificado con curl en producción). No usamos forward-headers-strategy: confiaría en el
     # header Forwarded, que Railway deja pasar sin tocar.
     use-relative-redirects: true
+  # gzip para HTML, CSS, JS y JSON de más de 2KB (el default de min-response-size). text/event-stream queda afuera.
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,text/javascript,application/json
 

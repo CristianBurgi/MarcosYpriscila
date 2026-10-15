@@ -22,7 +22,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-<link rel="preload" as="image" href="/images/landing/pantalla-1.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/images/landing/pantalla-1.webp" fetchpriority="high"
+      imagesrcset="/images/landing/pantalla-1-640.webp 640w, /images/landing/pantalla-1.webp 960w" imagesizes="(min-width:960px) 520px, calc(100vw - 60px)">
 <style>
   :root{
     --night:#12081F;
@@ -167,11 +168,17 @@
 
   <figure class="screen">
     <div class="screen-in">
-      <img class="shot" src="/images/landing/pantalla-1.webp" width="960" height="600" fetchpriority="high"
+      <img class="shot" src="/images/landing/pantalla-1.webp"
+           srcset="/images/landing/pantalla-1-640.webp 640w, /images/landing/pantalla-1.webp 960w"
+           sizes="(min-width:960px) 520px, calc(100vw - 60px)" width="960" height="600" fetchpriority="high"
            alt="Los novios firman el acta frente a sus invitados">
-      <img class="shot" src="/images/landing/pantalla-2.webp" width="960" height="600" loading="lazy"
+      <img class="shot" src="/images/landing/pantalla-2.webp"
+           srcset="/images/landing/pantalla-2-640.webp 640w, /images/landing/pantalla-2.webp 960w"
+           sizes="(min-width:960px) 520px, calc(100vw - 60px)" width="960" height="600" loading="lazy"
            alt="Invitados sentados alrededor de la mesa durante la fiesta">
-      <img class="shot" src="/images/landing/pantalla-3.webp" width="960" height="600" loading="lazy"
+      <img class="shot" src="/images/landing/pantalla-3.webp"
+           srcset="/images/landing/pantalla-3-640.webp 640w, /images/landing/pantalla-3.webp 960w"
+           sizes="(min-width:960px) 520px, calc(100vw - 60px)" width="960" height="600" loading="lazy"
            alt="Los novios posan con su familia junto a la mesa de la ceremonia">
       <div class="qr" aria-hidden="true"><span></span></div>
       <p class="ticker"><b>Los primos:</b> ¡Que vivan los novios! Los queremos un montón.</p>
