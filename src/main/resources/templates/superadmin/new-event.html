@@ -67,8 +67,9 @@
                 if (data.activationLink) {
                     nodes.push(linkBox('Link de activación (mandalo por WhatsApp, vence en 7 días):', data.activationLink));
                 }
-                show('ok', ...nodes);
+                // Antes de mostrar el aviso: reset() también vaciaría el input del link, que está dentro del form.
                 e.target.reset();
+                show('ok', ...nodes);
             } else {
                 show('err', p(data.message || 'No se pudo crear el evento.'));
             }
