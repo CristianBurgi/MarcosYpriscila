@@ -96,9 +96,13 @@ app:
     # STORAGE_MODE=r2 la app no arranca sin MAIL_PROVIDER=resend, RESEND_API_KEY y MAIL_REPLY_TO).
     provider: ${MAIL_PROVIDER:log}
     from: ${MAIL_FROM:EventFoto <hola@eventfoto.com.ar>}
-    # El dominio no recibe mails: las respuestas van a esta casilla.
+    # Casilla a la que van las respuestas a los mails (reply_to). El dominio también recibe: tiene MX de Cloudflare
+    # Email Routing, que reenvía lo que llega a @eventfoto.com.ar.
     reply-to: ${MAIL_REPLY_TO:}
     resend-api-key: ${RESEND_API_KEY:}
+  withdrawal:
+    # Botón de arrepentimiento (/arrepentimiento): adónde llega el aviso de cada pedido.
+    notify-to: ${WITHDRAWAL_NOTIFY_TO:hola@eventfoto.com.ar}
   support:
     # WhatsApp de contacto para la página de retorno cuando un pago queda en revisión (solo dígitos, con código de país).
     whatsapp: ${SUPPORT_WHATSAPP:}

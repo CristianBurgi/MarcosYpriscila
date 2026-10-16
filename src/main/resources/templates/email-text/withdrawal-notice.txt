@@ -1,0 +1,11 @@
+Nuevo pedido de arrepentimiento
+
+Llegó un pedido desde el botón de arrepentimiento. Para responder, escribile al email del pedido.
+
+Número: [(${number})]
+Recibido: [(${receivedAt})] (hora de Argentina)
+Email: [(${email})]
+Evento: [(${eventName})]
+Mensaje: [(${message} ?: '(sin mensaje)')]
+
+El pedido quedó guardado. El reembolso se gestiona a mano desde Mercado Pago.

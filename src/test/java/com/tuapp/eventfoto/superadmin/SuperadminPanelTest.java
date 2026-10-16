@@ -176,8 +176,9 @@ class SuperadminPanelTest {
         long many = statementsFor(() -> listing("?scope=ALL"));
         System.out.println("LISTADO consultas: 3 eventos -> " + few + ", 60 eventos (2 páginas) -> " + many);
         assertThat(many).isEqualTo(few);
-        // 6 del listado + 2 conteos fijos de la sección "Demo" (Fase 9.7-B): demos activas y fotos actuales.
-        assertThat(few).isLessThanOrEqualTo(8);
+        // 6 del listado + 2 conteos fijos de la sección "Demo" (Fase 9.7-B): demos activas y fotos actuales
+        // + 1 de la tabla "Pedidos de arrepentimiento".
+        assertThat(few).isLessThanOrEqualTo(9);
         assertThat(listing("?scope=ALL")).contains("Siguiente");
     }
 

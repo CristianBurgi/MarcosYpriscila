@@ -51,6 +51,11 @@ public class RateLimiterService {
     // para dos pestañas o un "Volver a consultar".
     private static final int CHECKOUT_RETURN_LIMIT_PER_MINUTE = 40;
 
+    // === BOTÓN DE ARREPENTIMIENTO: cada envío manda dos mails ===
+    private static final int WITHDRAWAL_LIMIT_PER_IP_PER_15_MINUTES = 5;
+    // Recibo al email que escribió la persona: uno por hora, para que el formulario no sirva para llenar una casilla ajena.
+    private static final int WITHDRAWAL_RECEIPT_LIMIT_PER_EMAIL_PER_HOUR = 1;
+
     // === DEMO (fase 9.7-B), por IP: más estricto que un evento real, pero con margen para el CGNAT de las redes
     // móviles (muchos celulares salen por la misma IP). Tope por IP: 20 demos x 5 fotos = 100 fotos por hora.
     private static final int DEMO_UPLOAD_LIMIT_PER_IP_PER_MINUTE = 10;
@@ -89,6 +94,8 @@ public class RateLimiterService {
     private final Cache<String, Deque<Long>> passwordResetRequestByIpBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
     private final Cache<String, Deque<Long>> passwordResetRequestByEmailBuckets = buckets(ONE_HOUR_IN_MS);
     private final Cache<String, Deque<Long>> passwordResetConfirmBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
+    private final Cache<String, Deque<Long>> withdrawalBuckets = buckets(FIFTEEN_MINUTES_IN_MS);
+    private final Cache<String, Deque<Long>> withdrawalReceiptBuckets = buckets(ONE_HOUR_IN_MS);
 
     private final Cache<String, Deque<Long>> demoUploadBuckets = buckets(ONE_MINUTE_IN_MS);
     private final Cache<String, Deque<Long>> demoSessionBuckets = buckets(ONE_HOUR_IN_MS);
@@ -175,6 +182,25 @@ public class RateLimiterService {
                 FIFTEEN_MINUTES_IN_MS, PASSWORD_RESET_LIMIT_MESSAGE);
     }
 
+    /** POST /arrepentimiento (público): 5 envíos por IP cada 15 minutos. */
+    public void checkWithdrawalRateLimit(String clientIp) {
+        checkRateLimit(clientIp, withdrawalBuckets, WITHDRAWAL_LIMIT_PER_IP_PER_15_MINUTES, FIFTEEN_MINUTES_IN_MS,
+                "Demasiados intentos, probá en unos minutos.");
+    }
+
+    /**
+     * Recibo del pedido de arrepentimiento: uno por email por hora. No lanza: quien llama guarda el pedido y avisa a
+     * EventFoto igual, y solo se saltea el recibo (la persona ve la misma confirmación).
+     */
+    public boolean allowWithdrawalReceipt(String normalizedEmail) {
+        try {
+            checkRateLimit(normalizedEmail, withdrawalReceiptBuckets, WITHDRAWAL_RECEIPT_LIMIT_PER_EMAIL_PER_HOUR, ONE_HOUR_IN_MS, "");
+            return true;
+        } catch (RateLimitExceededException e) {
+            return false;
+        }
+    }
+
     /** POST /api/v1/checkout (público): 10 intentos por IP cada 15 minutos. */
     public void checkCheckoutRateLimit(String clientIp) {
         checkRateLimit(clientIp, checkoutBuckets, CHECKOUT_LIMIT_PER_15_MINUTES, FIFTEEN_MINUTES_IN_MS,
@@ -256,6 +282,8 @@ public class RateLimiterService {
         passwordResetRequestByIpBuckets.invalidateAll();
         passwordResetRequestByEmailBuckets.invalidateAll();
         passwordResetConfirmBuckets.invalidateAll();
+        withdrawalBuckets.invalidateAll();
+        withdrawalReceiptBuckets.invalidateAll();
     }
 }
 

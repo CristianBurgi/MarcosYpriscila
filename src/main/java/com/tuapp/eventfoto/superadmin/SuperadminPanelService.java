@@ -13,6 +13,8 @@ import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.superadmin.dto.PanelEventRow;
 import com.tuapp.eventfoto.superadmin.dto.PanelIncidentRow;
 import com.tuapp.eventfoto.superadmin.dto.PanelPurchaseRow;
+import com.tuapp.eventfoto.withdrawal.WithdrawalRequest;
+import com.tuapp.eventfoto.withdrawal.WithdrawalRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
@@ -57,6 +59,7 @@ public class SuperadminPanelService {
     private final OrganizerRepository organizerRepository;
     private final PendingPurchaseRepository purchaseRepository;
     private final PaymentIncidentRepository incidentRepository;
+    private final WithdrawalRequestRepository withdrawalRepository;
     private final ObjectProvider<PurchaseConfirmationService> confirmationService;
     private final ObjectProvider<PurchaseConfirmationMailer> confirmationMailer;
     private final UploadWindow uploadWindow;
@@ -90,6 +93,12 @@ public class SuperadminPanelService {
             return new EventView(row, PanelStatus.of(event, uploadWindow), photos.getOrDefault(row.id(), 0L),
                     messages.getOrDefault(row.id(), 0L), uploadWindow.deletionDate(event), purchased.contains(row.id()));
         }).toList(), page, hasNext);
+    }
+
+    /** Solo lectura: el estado y handled_at no se cambian desde el panel todavía. */
+    @Transactional(readOnly = true)
+    public List<WithdrawalRequest> withdrawalRequests() {
+        return withdrawalRepository.findTop200ByOrderByCreatedAtDesc();
     }
 
     @Transactional(readOnly = true)
