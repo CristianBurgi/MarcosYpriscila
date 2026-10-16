@@ -101,8 +101,10 @@ public class SecurityConfig {
                     "/css/**", "/js/**", "/images/**", "/uploads/**"
                 ).permitAll()
 
-                // Páginas legales (LegalController)
+                // Páginas legales (LegalController) y botón de arrepentimiento (WithdrawalController)
                 .requestMatchers(HttpMethod.GET, "/terminos", "/privacidad").permitAll()
+                .requestMatchers(HttpMethod.GET, "/arrepentimiento").permitAll()
+                .requestMatchers(HttpMethod.POST, "/arrepentimiento").permitAll()
 
                 // Actuator: únicamente GET /actuator/health es público (requerido por Railway)
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()

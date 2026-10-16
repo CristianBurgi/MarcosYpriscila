@@ -63,6 +63,38 @@ a:hover { color: var(--wine); text-decoration-thickness: 2px; }
     .toc { position: sticky; top: 24px; margin-top: 32px; }
 }
 
+/* Formulario del botón de arrepentimiento (/arrepentimiento) */
+.form-page { padding-top: 28px; padding-bottom: 72px; }
+.form-page > * { max-width: 32em; }
+.intro { margin: 0 0 24px; }
+.alert { margin: 0 0 24px; padding: 14px 16px; border: 1px solid #9b1c1c; border-radius: 10px; background: var(--paper); color: #9b1c1c; }
+.alert p, .alert ul { margin: 0; }
+.alert ul { padding-left: 1.25em; margin-top: 6px; }
+.alert a { color: #9b1c1c; }
+.field { margin-bottom: 20px; }
+.field label { display: block; margin-bottom: 6px; font-weight: 600; }
+.optional, .hint { color: var(--muted); font-weight: 400; }
+.hint { margin: 6px 0 0; font-size: .9rem; }
+/* 16px como mínimo: con menos, Safari de iOS hace zoom al enfocar el campo. */
+.field input, .field textarea {
+    width: 100%; padding: 12px 14px; font: 400 1rem/1.5 'Outfit', system-ui, sans-serif; color: var(--wine-deep);
+    background: var(--paper); border: 1px solid #b59a86; border-radius: 10px;
+}
+.field textarea { resize: vertical; min-height: 120px; }
+.field [aria-invalid="true"] { border: 2px solid #9b1c1c; }
+.error { margin: 6px 0 0; color: #9b1c1c; font-size: .95rem; }
+.trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.form-page button {
+    min-height: 48px; padding: 0 28px; border: 0; border-radius: 10px; cursor: pointer;
+    background: var(--wine); color: var(--cream); font: 600 1rem 'Outfit', system-ui, sans-serif;
+}
+.form-page button:hover { background: var(--wine-soft); }
+.receipt dl { margin: 20px 0; padding: 18px 20px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+.receipt dt { color: var(--muted); font-size: .9rem; }
+.receipt dd { margin: 2px 0 14px; font-weight: 600; }
+.receipt dd:last-child { margin-bottom: 0; }
+.receipt .number { font-size: 1.4rem; letter-spacing: .08em; }
+
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
 }

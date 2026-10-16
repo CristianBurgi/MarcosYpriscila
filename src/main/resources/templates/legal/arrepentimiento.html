@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--/* Botón de arrepentimiento en /arrepentimiento (WithdrawalController). Dos estados: el formulario y, con ${receipt},
+     la confirmación. Todo lo que escribió la persona sale con th:text (escapado). */-->
+<html lang="es-AR" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title th:text="${receipt} ? 'Pedido de arrepentimiento recibido | EventFoto' : 'Botón de arrepentimiento | EventFoto'">Botón de arrepentimiento | EventFoto</title>
+<meta name="description" content="Botón de arrepentimiento de EventFoto: revocá tu compra dentro de los 10 días corridos desde la contratación.">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/legal.css?v=2">
+</head>
+<body>
+
+<header class="wrap top">
+  <a class="back" href="/">← Volver al inicio</a>
+  <h1 th:text="${receipt} ? 'Recibimos tu pedido' : 'Botón de arrepentimiento'">Botón de arrepentimiento</h1>
+</header>
+
+<main class="wrap form-page">
+
+  <section th:if="${receipt}" class="receipt" aria-labelledby="receipt-title">
+    <p id="receipt-title">Tu pedido de arrepentimiento quedó registrado.</p>
+    <dl>
+      <dt>Número de pedido</dt>
+      <dd class="number" th:text="${receipt.number()}">A1B2C3D4</dd>
+      <dt>Recibido</dt>
+      <dd th:text="${receipt.receivedAt()} + ' (hora de Argentina)'">16/10/2026 a las 14:35 (hora de Argentina)</dd>
+    </dl>
+    <p>Te mandamos un mail con estos datos y te vamos a responder por ese medio.</p>
+    <p><a href="/">Volver al inicio</a></p>
+  </section>
+
+  <th:block th:unless="${receipt}">
+    <p class="intro">Si contrataste EventFoto, podés revocar la compra dentro de los 10 días corridos desde la contratación. Completá el formulario y te respondemos por email.</p>
+
+    <div th:if="${rateLimited}" class="alert" role="alert" th:text="${rateLimited}">Demasiados intentos, probá en unos minutos.</div>
+    <div th:if="${!errors.isEmpty()}" class="alert" role="alert">
+      <p>Revisá estos datos:</p>
+      <ul><li th:each="e : ${errors}"><a th:href="'#' + ${e.key}" th:text="${e.value}">error</a></li></ul>
+    </div>
+
+    <form method="post" action="/arrepentimiento" novalidate>
+      <div class="field">
+        <label for="email">Email de tu cuenta</label>
+        <input id="email" name="email" type="email" autocomplete="email" maxlength="255" required
+               th:value="${form.email()}"
+               th:attr="aria-invalid=${errors.containsKey('email')}, aria-describedby=${errors.containsKey('email')} ? 'email-error' : null">
+        <p th:if="${errors.containsKey('email')}" id="email-error" class="error" th:text="${errors.get('email')}">error</p>
+      </div>
+      <div class="field">
+        <label for="eventName">Nombre del evento</label>
+        <input id="eventName" name="eventName" type="text" maxlength="100" required
+               th:value="${form.eventName()}"
+               th:attr="aria-invalid=${errors.containsKey('eventName')}, aria-describedby=${errors.containsKey('eventName')} ? 'eventName-error' : null">
+        <p th:if="${errors.containsKey('eventName')}" id="eventName-error" class="error" th:text="${errors.get('eventName')}">error</p>
+      </div>
+      <div class="field">
+        <label for="message">Mensaje <span class="optional">(opcional)</span></label>
+        <textarea id="message" name="message" rows="5" maxlength="1000"
+                  th:text="${form.message()}"
+                  th:attr="aria-invalid=${errors.containsKey('message')}, aria-describedby=${errors.containsKey('message')} ? 'message-error message-hint' : 'message-hint'"></textarea>
+        <p id="message-hint" class="hint">Hasta 1000 caracteres.</p>
+        <p th:if="${errors.containsKey('message')}" id="message-error" class="error" th:text="${errors.get('message')}">error</p>
+      </div>
+      <div class="trap" aria-hidden="true">
+        <label for="sitio_web">No completes este campo</label>
+        <input id="sitio_web" name="sitio_web" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <button type="submit">Enviar pedido</button>
+    </form>
+  </th:block>
+
+</main>
+
+</body>
+</html>

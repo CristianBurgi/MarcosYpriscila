@@ -60,6 +60,7 @@ public class SuperadminViewController {
         model.addAttribute("result", panelService.events(scope, origin, Math.max(page, 0)));
         model.addAttribute("purchases", panelService.pendingPurchases());
         model.addAttribute("incidents", panelService.openIncidents());
+        model.addAttribute("withdrawals", panelService.withdrawalRequests());
         model.addAttribute("demo", demoService.stats());
         return "superadmin/events";
     }

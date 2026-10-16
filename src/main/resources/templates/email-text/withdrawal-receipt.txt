@@ -1,0 +1,10 @@
+Recibimos tu pedido de arrepentimiento
+
+Tu pedido para revocar la compra de EventFoto quedó registrado.
+
+Número de pedido: [(${number})]
+Recibido: [(${receivedAt})] (hora de Argentina)
+
+Te vamos a responder por este mismo medio, a esta dirección de email.
+
+Si no hiciste este pedido, respondé este mail y avisanos.
