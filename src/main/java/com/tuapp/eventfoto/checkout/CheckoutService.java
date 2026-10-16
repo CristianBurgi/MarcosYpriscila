@@ -42,13 +42,18 @@ public class CheckoutService {
     private final CheckoutSettings settings;
 
     /** Cliente nuevo. Devuelve la URL de pago de Mercado Pago. */
-    public String startNewPurchase(String rawEmail, String password, String passwordConfirmation, String rawEventName) {
+    public String startNewPurchase(String rawEmail, String rawEmailConfirmation, String password,
+                                   String passwordConfirmation, String rawEventName) {
         String email = rawEmail == null ? "" : rawEmail.trim().toLowerCase();
         String eventName = rawEventName == null ? "" : rawEventName.trim();
 
         List<String> problems = new ArrayList<>();
         if (email.isEmpty() || email.length() > 255 || !EMAIL.matcher(email).matches()) {
             problems.add("Ingresá un email válido");
+        }
+        // Solo verificación: la repetición no se guarda ni viaja a MP.
+        if (rawEmailConfirmation == null || !email.equals(rawEmailConfirmation.trim().toLowerCase())) {
+            problems.add("Los emails no coinciden");
         }
         PasswordPolicy.violation(password, email).ifPresent(problems::add);
         if (password != null && !password.equals(passwordConfirmation)) {

@@ -22,7 +22,8 @@ import java.util.UUID;
 @ConditionalOnProperty(name = "app.checkout.enabled", havingValue = "true")
 public class CheckoutController {
 
-    public record CheckoutRequestDTO(String email, String password, String passwordConfirmation, String eventName) {
+    public record CheckoutRequestDTO(String email, String emailConfirmation, String password, String passwordConfirmation,
+                                     String eventName) {
     }
 
     public record AdminCheckoutRequestDTO(String eventName) {
@@ -39,7 +40,8 @@ public class CheckoutController {
     public ResponseEntity<CheckoutResponseDTO> checkout(@RequestBody CheckoutRequestDTO request, HttpServletRequest httpRequest) {
         rateLimiterService.checkCheckoutRateLimit(clientIpResolver.resolve(httpRequest));
         String redirectUrl = checkoutService.startNewPurchase(
-                request.email(), request.password(), request.passwordConfirmation(), request.eventName());
+                request.email(), request.emailConfirmation(), request.password(), request.passwordConfirmation(),
+                request.eventName());
         return ResponseEntity.ok(new CheckoutResponseDTO(redirectUrl));
     }
 
