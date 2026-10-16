@@ -44,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SuperadminPageRequestsTest {
 
     private static final Path TEMPLATES = Path.of("src/main/resources/templates/superadmin");
+    private static final Path PANEL_JS = Path.of("src/main/resources/static/js/superadmin.js");
     private static final Pattern FETCH = Pattern.compile("fetch\\(([^,]+),\\s*\\{(.*?)}\\)", Pattern.DOTALL);
     private static final Pattern JSON_HEADER = Pattern.compile("['\"]Content-Type['\"]\\s*:\\s*['\"]application/json['\"]");
 
@@ -71,8 +72,9 @@ class SuperadminPageRequestsTest {
     @DisplayName("Cada fetch de las plantillas del superadmin manda Content-Type: application/json")
     void everyTemplateFetchSendsJson() throws Exception {
         List<String> found = new ArrayList<>();
-        try (Stream<Path> files = Files.list(TEMPLATES)) {
-            for (Path file : files.filter(f -> f.toString().endsWith(".html")).toList()) {
+        try (Stream<Path> templates = Files.list(TEMPLATES)) {
+            List<Path> files = Stream.concat(templates.filter(f -> f.toString().endsWith(".html")), Stream.of(PANEL_JS)).toList();
+            for (Path file : files) {
                 Matcher fetch = FETCH.matcher(Files.readString(file));
                 while (fetch.find()) {
                     String call = file.getFileName() + ": fetch(" + fetch.group(1).trim() + ")";
@@ -82,7 +84,7 @@ class SuperadminPageRequestsTest {
             }
         }
         System.out.println("FETCH del superadmin con JSON: " + found);
-        // login, crear evento sin costo, cerrar sesión (menú) y el diálogo de acciones del listado.
+        // login, crear evento sin costo, cerrar sesión (menú) y el diálogo de acciones (superadmin.js).
         assertThat(found).hasSize(4);
     }
 

@@ -44,8 +44,40 @@ public class SuperadminViewController {
     }
 
     @GetMapping("/events/new")
-    public String newFreeEventPage() {
+    public String newFreeEventPage(Model model) {
+        navCounts(model);
         return "superadmin/new-event";
+    }
+
+    @GetMapping("/pagos")
+    public String paymentsPage(Model model) {
+        var purchases = panelService.pendingPurchases();
+        var incidents = panelService.openIncidents();
+        model.addAttribute("fmt", FMT);
+        model.addAttribute("purchases", purchases);
+        model.addAttribute("incidents", incidents);
+        model.addAttribute("pendingPayments", purchases.size() + incidents.size());
+        return "superadmin/payments";
+    }
+
+    @GetMapping("/arrepentimiento")
+    public String withdrawalsPage(Model model) {
+        navCounts(model);
+        model.addAttribute("fmt", FMT);
+        model.addAttribute("withdrawals", panelService.withdrawalRequests());
+        return "superadmin/withdrawals";
+    }
+
+    @GetMapping("/demo")
+    public String demoPage(Model model) {
+        navCounts(model);
+        model.addAttribute("demo", demoService.stats());
+        return "superadmin/demo";
+    }
+
+    /** El número junto a "Pagos" en el menú: compras pendientes más incidentes sin resolver. */
+    private void navCounts(Model model) {
+        model.addAttribute("pendingPayments", panelService.pendingPurchases().size() + panelService.openIncidents().size());
     }
 
     @GetMapping("/eventos")
@@ -58,10 +90,7 @@ public class SuperadminViewController {
         model.addAttribute("scope", scope);
         model.addAttribute("origin", origin);
         model.addAttribute("result", panelService.events(scope, origin, Math.max(page, 0)));
-        model.addAttribute("purchases", panelService.pendingPurchases());
-        model.addAttribute("incidents", panelService.openIncidents());
-        model.addAttribute("withdrawals", panelService.withdrawalRequests());
-        model.addAttribute("demo", demoService.stats());
+        navCounts(model);
         return "superadmin/events";
     }
 }

@@ -110,7 +110,11 @@ class SuperadminPanelTest {
     }
 
     private String listing(String query) throws Exception {
-        return mockMvc.perform(get("/superadmin/eventos" + query).with(user(SUPERADMIN).roles("SUPERADMIN")))
+        return page("/superadmin/eventos" + query);
+    }
+
+    private String page(String path) throws Exception {
+        return mockMvc.perform(get(path).with(user(SUPERADMIN).roles("SUPERADMIN")))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
     }
 
@@ -176,9 +180,8 @@ class SuperadminPanelTest {
         long many = statementsFor(() -> listing("?scope=ALL"));
         System.out.println("LISTADO consultas: 3 eventos -> " + few + ", 60 eventos (2 páginas) -> " + many);
         assertThat(many).isEqualTo(few);
-        // 6 del listado + 2 conteos fijos de la sección "Demo" (Fase 9.7-B): demos activas y fotos actuales
-        // + 1 de la tabla "Pedidos de arrepentimiento".
-        assertThat(few).isLessThanOrEqualTo(9);
+        // 6 del listado + 2 del número de "Pagos" en el menú (compras pendientes e incidentes).
+        assertThat(few).isLessThanOrEqualTo(8);
         assertThat(listing("?scope=ALL")).contains("Siguiente");
     }
 
@@ -209,7 +212,7 @@ class SuperadminPanelTest {
         PendingPurchase again = purchases.save(PendingPurchase.builder().organizerId(organizer.getId())
                 .eventName("Cumple de Beto").amount(PRICE).mpPaymentId("777").lastPaymentStatus("rejected").build());
 
-        String page = listing("");
+        String page = page("/superadmin/pagos");
         assertThat(page).contains("nueva@test.com", "Casamiento de Ana", "organizadora@test.com", "Cumple de Beto",
                 "777", "rejected", fresh.getId().toString().substring(0, 8), again.getId().toString().substring(0, 8));
         assertThat(page).doesNotContain(hash, "HASHSECRETO", "pref-secreta-1",
@@ -228,7 +231,9 @@ class SuperadminPanelTest {
         PaymentIncident incident = incidents.save(PaymentIncident.builder().id(UUID.randomUUID()).paymentId("123456")
                 .externalReference(reference).reason(PaymentIncident.Reason.AMOUNT_MISMATCH).createdAt(Instant.now()).build());
 
-        assertThat(listing("")).contains("AMOUNT_MISMATCH", "123456", reference.substring(0, 8)).doesNotContain(reference);
+        assertThat(page("/superadmin/pagos")).contains("AMOUNT_MISMATCH", "123456", reference.substring(0, 8)).doesNotContain(reference);
+        // El menú de cualquier página avisa que hay algo en Pagos.
+        assertThat(listing("")).containsPattern("href=\"/superadmin/pagos\"[^>]*>Pagos\\s*<span class=\"count\"[^>]*>1</span>");
 
         try (LogCapture logs = LogCapture.start()) {
             postJson("/api/v1/superadmin/incidents/" + incident.getId() + "/resolve", "{}")

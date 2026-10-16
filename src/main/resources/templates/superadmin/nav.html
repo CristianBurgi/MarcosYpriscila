@@ -1,21 +1,45 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
+<!-- Piezas compartidas del panel: head, riel de navegación y diálogo de confirmación. -->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' — Superadmin EventFoto'">Superadmin EventFoto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/superadmin.css?v=1">
+</head>
 <body>
-<!-- Menú mínimo de las páginas del superadmin. "active" marca la página actual. -->
-<nav th:fragment="nav(active)" class="sa-nav">
-    <style>
-        .sa-nav { width: 100%; max-width: 1400px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; padding: 10px 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; }
-        .sa-nav .brand { font-weight: 700; margin-right: 12px; background: linear-gradient(135deg, #fbbf24, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .sa-nav a, .sa-nav button { color: #94a3b8; text-decoration: none; font-size: 0.92rem; font-weight: 600; padding: 8px 12px; border-radius: 10px; background: none; border: none; cursor: pointer; font-family: inherit; }
-        .sa-nav a:hover, .sa-nav button:hover { color: #f8fafc; background: rgba(255, 255, 255, 0.06); }
-        .sa-nav a.active { color: #f8fafc; background: rgba(192, 132, 252, 0.18); }
-        .sa-nav .spacer { flex: 1; }
-    </style>
-    <span class="brand">Superadmin</span>
-    <a href="/superadmin/eventos" th:classappend="${active == 'eventos'} ? 'active'">Eventos</a>
-    <a href="/superadmin/events/new" th:classappend="${active == 'nuevo'} ? 'active'">Crear evento sin costo</a>
-    <span class="spacer"></span>
+<!-- "active" marca la página actual; "pendingPayments" (compras pendientes + incidentes) lo pone el controlador. -->
+<nav th:fragment="nav(active)" class="rail" aria-label="Panel">
+    <span class="brand">EventFoto</span>
+    <span class="brand-sub">Superadmin</span>
+    <a href="/superadmin/eventos" th:classappend="${active == 'eventos'} ? 'active'"
+       th:attr="aria-current=${active == 'eventos'} ? 'page'">Eventos</a>
+    <a href="/superadmin/pagos" th:classappend="${active == 'pagos'} ? 'active'"
+       th:attr="aria-current=${active == 'pagos'} ? 'page'">Pagos
+        <span class="count" th:if="${pendingPayments != null and pendingPayments > 0}" th:text="${pendingPayments}"
+              th:attr="aria-label=${pendingPayments} + ' pendientes'">0</span></a>
+    <a href="/superadmin/arrepentimiento" th:classappend="${active == 'arrepentimiento'} ? 'active'"
+       th:attr="aria-current=${active == 'arrepentimiento'} ? 'page'">Arrepentimiento</a>
+    <a href="/superadmin/demo" th:classappend="${active == 'demo'} ? 'active'"
+       th:attr="aria-current=${active == 'demo'} ? 'page'">Demo</a>
+    <a href="/superadmin/events/new" class="new" th:classappend="${active == 'nuevo'} ? 'active'"
+       th:attr="aria-current=${active == 'nuevo'} ? 'page'">Crear evento sin costo</a>
+    <span class="push"></span>
     <button type="button" onclick="fetch('/api/v1/superadmin/auth/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'}).finally(() => location.href = '/superadmin/login')">Cerrar sesión</button>
 </nav>
+
+<dialog th:fragment="dialog" id="dlg" aria-labelledby="dlgTitle">
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgText"></p>
+    <input id="dlgInput" aria-labelledby="dlgTitle">
+    <div id="dlgResult" class="notice" role="status"></div>
+    <div class="buttons">
+        <button type="button" class="btn" id="dlgCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="dlgOk">Confirmar</button>
+    </div>
+</dialog>
 </body>
 </html>
