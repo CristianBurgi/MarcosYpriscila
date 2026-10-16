@@ -157,7 +157,7 @@
     <h1>Las fotos de tu evento, en vivo, sin que nadie instale nada.</h1>
     <p class="sub">Tus invitados escanean un QR, sacan la foto con su celular y aparece al instante en la pantalla del salón. Después, el álbum queda online 30 días para que lo descargues.</p>
     <div class="ctas">
-      <a th:if="${checkoutEnabled}" class="btn btn-main" href="/comprar">Crear mi evento</a>
+      <a th:if="${buyUrl}" class="btn btn-main" th:href="${buyUrl}">Contratar evento</a>
       <a th:if="${whatsappUrl}" class="btn btn-main" th:href="${whatsappUrl}">Escribinos por WhatsApp</a>
       <a class="btn btn-soft" href="/demo">Probar la demo</a>
     </div>
@@ -217,8 +217,9 @@
         <li>Tu color y tu imagen de fondo en las páginas del evento</li>
         <li>Álbum online hasta 30 días después del evento, con descarga completa</li>
       </ul>
-      <a th:if="${checkoutEnabled}" class="btn btn-main" href="/comprar">Crear mi evento</a>
+      <a th:if="${buyUrl}" class="btn btn-main" th:href="${buyUrl}">Contratar evento</a>
       <a th:if="${whatsappUrl}" class="btn btn-main" th:href="${whatsappUrl}">Escribinos por WhatsApp</a>
+      <p th:if="${whatsappQueryUrl}" class="fine"><a th:href="${whatsappQueryUrl}">¿Preferís coordinar por WhatsApp?</a></p>
       <p class="fine">¿Querés verlo antes? <a href="/demo">Probá la demo en vivo</a>: gratis, sin registrarte, dura 30 minutos.</p>
     </div>
   </div>
