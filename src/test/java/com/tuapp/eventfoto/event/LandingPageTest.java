@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.ui.ExtendedModelMap;
 
@@ -96,16 +97,16 @@ class LandingPageTest {
         AppUrls urls = new AppUrls("http://localhost:8080", "local");
 
         ExtendedModelMap off = new ExtendedModelMap();
-        new HomeController(urls, false, "50000", "+54 9 381 555-0000").home(off);
+        new HomeController(urls, false, "50000", "+54 9 381 555-0000").home(off, new MockHttpServletResponse());
         assertThat((String) off.get("whatsappUrl")).startsWith("https://wa.me/5493815550000?text=Hola%2C%20quiero%20contratar");
         assertThat(off.get("checkoutEnabled")).isEqualTo(false);
 
         ExtendedModelMap on = new ExtendedModelMap();
-        new HomeController(urls, true, "50000", "5493815550000").home(on);
+        new HomeController(urls, true, "50000", "5493815550000").home(on, new MockHttpServletResponse());
         assertThat(on.get("whatsappUrl")).isNull();
 
         ExtendedModelMap offWithoutWhatsapp = new ExtendedModelMap();
-        new HomeController(urls, false, "50000", "").home(offWithoutWhatsapp);
+        new HomeController(urls, false, "50000", "").home(offWithoutWhatsapp, new MockHttpServletResponse());
         assertThat(offWithoutWhatsapp.get("whatsappUrl")).isNull();
     }
 
