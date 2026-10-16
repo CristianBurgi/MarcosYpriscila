@@ -101,6 +101,9 @@ public class SecurityConfig {
                     "/css/**", "/js/**", "/images/**", "/uploads/**"
                 ).permitAll()
 
+                // Páginas legales (LegalController)
+                .requestMatchers(HttpMethod.GET, "/terminos", "/privacidad").permitAll()
+
                 // Actuator: únicamente GET /actuator/health es público (requerido por Railway)
                 .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
 
