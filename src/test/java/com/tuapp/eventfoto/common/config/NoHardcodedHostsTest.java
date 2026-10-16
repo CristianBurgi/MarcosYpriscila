@@ -25,10 +25,13 @@ class NoHardcodedHostsTest {
     private static final Path MAIN = Path.of("src", "main");
     private static final Set<String> TEXT_EXTENSIONS = Set.of("java", "html", "js", "css", "yml", "yaml", "properties", "json", "xml", "txt");
 
-    /** Los mails @eventfoto.com.ar (superadmin por defecto) no son URLs: el lookbehind los deja pasar. */
+    /**
+     * Los mails @eventfoto.com.ar (superadmin por defecto) no son URLs: el lookbehind los deja pasar. Tampoco la mención
+     * entre paréntesis del texto legal ("EventFoto (eventfoto.com.ar)"), que identifica al responsable y no es un link.
+     */
     private static final List<Pattern> FORBIDDEN = List.of(
             Pattern.compile("up\\.railway\\.app"),
-            Pattern.compile("(?<!@)eventfoto\\.com\\.ar"),
+            Pattern.compile("(?<![@(])eventfoto\\.com\\.ar"),
             Pattern.compile("getRequestURL"),
             Pattern.compile("ServletUriComponentsBuilder"),
             Pattern.compile("X-Forwarded-Host", Pattern.CASE_INSENSITIVE),
