@@ -53,7 +53,8 @@ class CheckoutPagesTest {
     void buyPageIsPublic() throws Exception {
         mockMvc.perform(get("/comprar")).andExpect(status().isOk())
                 .andExpect(content().string(containsString("buyForm")))
-                .andExpect(content().string(containsString("passwordConfirmation")));
+                .andExpect(content().string(containsString("passwordConfirmation")))
+                .andExpect(content().string(containsString("id=\"emailConfirmation\" name=\"emailConfirmation\" type=\"email\" autocomplete=\"off\"")));
     }
 
     @Test

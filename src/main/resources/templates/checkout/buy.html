@@ -30,6 +30,9 @@
         <label for="email">Email</label>
         <input id="email" name="email" type="email" autocomplete="email" required>
 
+        <label for="emailConfirmation">Repetí el email</label>
+        <input id="emailConfirmation" name="emailConfirmation" type="email" autocomplete="off" required>
+
         <label for="password">Contraseña</label>
         <input id="password" name="password" type="password" autocomplete="new-password" required>
         <small>Al menos 8 caracteres. Evitá claves fáciles de adivinar.</small>
@@ -67,6 +70,7 @@
     function validate(data) {
         const problems = [];
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email.trim())) problems.push('Ingresá un email válido');
+        if (data.email.trim().toLowerCase() !== data.emailConfirmation.trim().toLowerCase()) problems.push('Los emails no coinciden');
         if (data.password.length < 8) problems.push('La contraseña tiene que tener al menos 8 caracteres');
         if (data.password !== data.passwordConfirmation) problems.push('Las contraseñas no coinciden');
         if (!data.eventName.trim()) problems.push('Ingresá el nombre del evento');
@@ -78,6 +82,7 @@
         errorBox.style.display = 'none';
         const data = {
             email: form.email.value,
+            emailConfirmation: form.emailConfirmation.value,
             password: form.password.value,
             passwordConfirmation: form.passwordConfirmation.value,
             eventName: form.eventName.value

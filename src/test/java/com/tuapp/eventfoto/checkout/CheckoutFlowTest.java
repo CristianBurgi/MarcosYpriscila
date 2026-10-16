@@ -79,8 +79,8 @@ class CheckoutFlowTest {
     }
 
     private Map<String, Object> validBody() {
-        return new java.util.LinkedHashMap<>(Map.of("email", "nueva@test.com", "password", STRONG_PASSWORD,
-                "passwordConfirmation", STRONG_PASSWORD, "eventName", "Casamiento de Ana"));
+        return new java.util.LinkedHashMap<>(Map.of("email", "nueva@test.com", "emailConfirmation", "nueva@test.com",
+                "password", STRONG_PASSWORD, "passwordConfirmation", STRONG_PASSWORD, "eventName", "Casamiento de Ana"));
     }
 
     private Cookie cookieOf(Organizer organizer) {
@@ -95,6 +95,7 @@ class CheckoutFlowTest {
     void invalidInputNeverReachesMercadoPagoNorTheDatabase() throws Exception {
         Map<String, Object> badEmail = validBody();
         badEmail.put("email", "esto-no-es-un-email");
+        badEmail.put("emailConfirmation", "esto-no-es-un-email");
         postCheckout(badEmail).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("Ingresá un email válido"));
 
         Map<String, Object> mismatch = validBody();
@@ -117,6 +118,36 @@ class CheckoutFlowTest {
 
         verify(gateway, never()).createPreference(any(), any(), any());
         assertThat(purchases.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("Emails distintos (o repetición ausente) -> 400 'Los emails no coinciden', sin mostrar lo escrito, sin MP ni compra")
+    void mismatchedEmailConfirmationIsRejected() throws Exception {
+        Map<String, Object> mismatch = validBody();
+        mismatch.put("emailConfirmation", "nueba@test.com");
+        postCheckout(mismatch).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Los emails no coinciden"));
+
+        Map<String, Object> missing = validBody();
+        missing.remove("emailConfirmation");
+        postCheckout(missing).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Los emails no coinciden"));
+
+        verify(gateway, never()).createPreference(any(), any(), any());
+        assertThat(purchases.count()).isZero();
+    }
+
+    @Test
+    @DisplayName("Emails iguales con otras mayúsculas o espacios al borde -> pasa; se guarda el email normalizado y la repetición no")
+    void emailConfirmationIgnoresCaseAndSurroundingSpaces() throws Exception {
+        Map<String, Object> body = validBody();
+        body.put("email", "nueva@test.com");
+        body.put("emailConfirmation", "  NUEVA@Test.Com ");
+        postCheckout(body).andExpect(status().isOk());
+
+        assertThat(purchases.findAll()).singleElement()
+                .satisfies(p -> assertThat(p.getEmail()).isEqualTo("nueva@test.com"));
+        verify(gateway).createPreference(any(), any(), any());
     }
 
     // ---------- compra nueva ----------
@@ -148,6 +179,7 @@ class CheckoutFlowTest {
 
         Map<String, Object> body = validBody();
         body.put("email", "  YA-Existe@Test.com ");
+        body.put("emailConfirmation", "ya-existe@test.com");
         postCheckout(body).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Ya tenés una cuenta con este email. Iniciá sesión para crear un nuevo evento"));
 
@@ -236,6 +268,26 @@ class CheckoutFlowTest {
     }
 
     @Test
+    @DisplayName("Recompra: solo con el nombre del evento pasa; no pide email ni su repetición, y una repetición distinta en el body se ignora")
+    void repurchaseNeedsNoEmailConfirmation() throws Exception {
+        Organizer me = organizerRepository.save(Organizer.builder().email("recompra@test.com").build());
+
+        mockMvc.perform(post("/api/v1/admin/checkout").cookie(cookieOf(me)).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventName\":\"Sin email\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/admin/checkout").cookie(cookieOf(me)).contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("eventName", "Con basura",
+                                "email", "a@test.com", "emailConfirmation", "b@test.com"))))
+                .andExpect(status().isOk());
+
+        assertThat(purchases.findAll()).hasSize(2)
+                .allSatisfy(p -> {
+                    assertThat(p.getOrganizerId()).isEqualTo(me.getId());
+                    assertThat(p.getEmail()).isNull();
+                });
+    }
+
+    @Test
     @DisplayName("Recompra sin sesión -> 401; con sesión de superadmin -> 403; sin nombre -> 400")
     void repurchaseRequiresAnOrganizerSession() throws Exception {
         mockMvc.perform(post("/api/v1/admin/checkout").contentType(MediaType.APPLICATION_JSON).content("{\"eventName\":\"X\"}"))
@@ -278,11 +330,13 @@ class CheckoutFlowTest {
         try (LogCapture logs = LogCapture.start()) {
             Map<String, Object> body = validBody();
             body.put("email", email);
+            body.put("emailConfirmation", email);
             postCheckout(body).andExpect(status().isOk());
 
             when(gateway.createPreference(any(), any(), any())).thenThrow(new PaymentGatewayException(new RuntimeException("boom")));
             Map<String, Object> failing = validBody();
             failing.put("email", "otro-logs@test.com");
+            failing.put("emailConfirmation", "otro-logs@test.com");
             postCheckout(failing).andExpect(status().isBadGateway());
 
             PendingPurchase purchase = purchases.findAll().get(0);
