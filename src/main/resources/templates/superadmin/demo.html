@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{superadmin/nav :: head('Demo')}"></head>
+<body>
+
+<nav th:replace="~{superadmin/nav :: nav('demo')}"></nav>
+
+<main>
+    <div class="head">
+        <div>
+            <h1>Demo</h1>
+            <p>La demo en vivo de /demo. No son eventos: no aparecen en el listado ni en el ciclo de vida. Cada demo se borra sola a los 30 minutos.</p>
+        </div>
+    </div>
+
+    <section id="demo">
+        <div class="figures">
+            <div><strong th:text="${demo.activeSessions()}">0</strong>demos activas</div>
+            <div><strong th:text="${demo.photos()}">0</strong>fotos actuales</div>
+        </div>
+        <button type="button" class="btn btn-danger" data-action="demo-clear">Vaciar demo</button>
+    </section>
+</main>
+
+<dialog th:replace="~{superadmin/nav :: dialog}"></dialog>
+<script src="/js/superadmin.js?v=1"></script>
+</body>
+</html>

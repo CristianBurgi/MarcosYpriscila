@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{superadmin/nav :: head('Pagos')}"></head>
+<body>
+
+<nav th:replace="~{superadmin/nav :: nav('pagos')}"></nav>
+
+<main>
+    <div class="head">
+        <div>
+            <h1>Pagos</h1>
+            <p>Compras que todavía no crearon nada y pagos que esperan revisión. Nunca hay reembolso automático.</p>
+        </div>
+        <div class="tools">
+            <button type="button" class="btn btn-primary" data-action="confirm-payment">Marcar pago aprobado</button>
+        </div>
+    </div>
+
+    <section id="incidentes">
+        <h2>Incidentes de pago</h2>
+        <p class="lead">Pagos aprobados que no crearon nada y esperan revisión manual.</p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Fecha</th><th>Motivo</th><th>payment_id</th><th>Ref.</th><th><span class="visually-hidden">Acciones</span></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="i : ${incidents}">
+                    <td class="when" th:text="${fmt.at(i.createdAt())}">—</td>
+                    <td><span class="tag tag-warn" th:text="${i.reason()}">motivo</span></td>
+                    <td><code th:text="${i.paymentId()}">id</code></td>
+                    <td><code th:text="${i.reference() ?: '—'}">ref</code></td>
+                    <td class="actions">
+                        <button type="button" class="btn btn-sm" data-action="resolve"
+                                th:data-id="${i.id()}" th:data-payment="${i.paymentId()}">Marcar resuelto</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p th:if="${incidents.isEmpty()}" class="empty">No hay incidentes sin resolver.</p>
+        </div>
+    </section>
+
+    <section id="compras">
+        <h2>Compras pendientes</h2>
+        <p class="lead">Sin procesar y todavía no descartadas por el job. La referencia son los primeros 8 caracteres del external_reference.</p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Creada</th><th>Comprador</th><th class="num">Monto</th><th>Preferencia</th><th>payment_id</th><th>Último estado</th><th>Ref.</th><th><span class="visually-hidden">Acciones</span></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${purchases}">
+                    <td class="when" th:text="${fmt.at(p.createdAt())}">—</td>
+                    <td><span class="name" th:text="${p.eventName()}">evento</span><span class="sub" th:text="${p.email()}">mail</span></td>
+                    <td class="num" th:text="'$ ' + ${#numbers.formatDecimal(p.amount(), 1, 'POINT', 2, 'COMMA')}">0</td>
+                    <td th:text="${p.hasPreference()} ? 'sí' : 'no'">no</td>
+                    <td><code th:text="${p.mpPaymentId() ?: '—'}">—</code></td>
+                    <td th:text="${p.lastPaymentStatus() ?: '—'}">—</td>
+                    <td><code th:text="${p.reference()}">ref</code></td>
+                    <td class="actions">
+                        <button type="button" class="btn btn-sm" data-action="confirm-payment"
+                                th:if="${p.mpPaymentId() != null}" th:data-payment="${p.mpPaymentId()}">Marcar aprobado</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p th:if="${purchases.isEmpty()}" class="empty">No hay compras pendientes.</p>
+        </div>
+    </section>
+</main>
+
+<dialog th:replace="~{superadmin/nav :: dialog}"></dialog>
+<script src="/js/superadmin.js?v=1"></script>
+</body>
+</html>

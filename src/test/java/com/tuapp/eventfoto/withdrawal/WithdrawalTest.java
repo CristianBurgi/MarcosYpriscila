@@ -241,7 +241,7 @@ class WithdrawalTest {
 
         Cookie superadmin = new Cookie(JwtAuthenticationFilter.SUPERADMIN_COOKIE_NAME,
                 jwtTokenProvider.generateSuperadminToken("superadmin@boda.com"));
-        String panel = body(mockMvc.perform(get("/superadmin/eventos").cookie(superadmin)).andExpect(status().isOk()));
+        String panel = body(mockMvc.perform(get("/superadmin/arrepentimiento").cookie(superadmin)).andExpect(status().isOk()));
         Document panelPage = Jsoup.parse(panel);
         assertThat(panel).doesNotContain(SCRIPT);
         assertThat(panelPage.select("#arrepentimiento td").text()).contains("Evento " + SCRIPT, "Mensaje " + SCRIPT, "RECEIVED");

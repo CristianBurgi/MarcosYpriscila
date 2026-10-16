@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{superadmin/nav :: head('Arrepentimiento')}"></head>
+<body>
+
+<nav th:replace="~{superadmin/nav :: nav('arrepentimiento')}"></nav>
+
+<main>
+    <div class="head">
+        <div>
+            <h1>Pedidos de arrepentimiento</h1>
+            <p>Enviados desde /arrepentimiento, los más recientes primero (hasta 200). Solo lectura: el reembolso se hace a mano desde Mercado Pago.</p>
+        </div>
+    </div>
+
+    <section id="arrepentimiento">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Número</th><th>Recibido</th><th>Email</th><th>Evento</th><th>Mensaje</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="w : ${withdrawals}">
+                    <td><code th:text="${w.number}">A1B2C3D4</code></td>
+                    <td class="when" th:text="${fmt.at(w.createdAt)}">—</td>
+                    <td th:text="${w.email}">mail</td>
+                    <td th:text="${w.eventName}">evento</td>
+                    <td style="white-space:pre-wrap;max-width:44ch" th:text="${w.message ?: '—'}">mensaje</td>
+                    <td><span class="tag" th:text="${w.status}">RECEIVED</span></td>
+                </tr>
+                </tbody>
+            </table>
+            <p th:if="${withdrawals.isEmpty()}" class="empty">No hay pedidos de arrepentimiento.</p>
+        </div>
+    </section>
+</main>
+</body>
+</html>
