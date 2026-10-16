@@ -1,5 +1,6 @@
 /* Páginas legales (/terminos, /privacidad): vino y dorado sobre crema, Playfair Display en títulos y Outfit en el
-   cuerpo. El dorado es solo decorativo (sobre crema no llega al contraste AA para texto). */
+   cuerpo. El dorado es solo decorativo (sobre crema no llega al contraste AA para texto).
+   Al cambiarlo, subir el ?v= del link en templates/legal/*.html: los estáticos se cachean un día. */
 :root {
     --wine-deep: #240a0d;
     --wine: #3a0f14;
