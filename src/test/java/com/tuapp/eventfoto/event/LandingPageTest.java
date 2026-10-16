@@ -4,6 +4,7 @@ import com.tuapp.eventfoto.common.config.AppUrls;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.ui.ExtendedModelMap;
+import org.thymeleaf.ITemplateEngine;
+import org.thymeleaf.context.Context;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -31,6 +39,7 @@ class LandingPageTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private AppUrls appUrls;
+    @Autowired private ITemplateEngine templateEngine;
 
     private Document landing() throws Exception {
         return Jsoup.parse(mockMvc.perform(get("/")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
@@ -40,7 +49,8 @@ class LandingPageTest {
     @DisplayName("Checkout prendido: botón a /comprar, precio de app.checkout.price-ars en es-AR, sin WhatsApp")
     void checkoutOnSellsThroughCheckout() throws Exception {
         Document page = landing();
-        assertThat(page.select("a[href=/comprar]")).hasSize(2).allMatch(a -> a.text().equals("Crear mi evento"));
+        assertThat(page.select(".hero .ctas a.btn-main, .price a.btn-main")).hasSize(2)
+                .allMatch(a -> a.attr("href").equals(HomeController.BUY_PATH) && a.text().equals("Contratar evento"));
         assertThat(page.select("a[href^=https://wa.me/]")).isEmpty();
         assertThat(page.select(".amount").text()).startsWith("$50.000");
         assertThat(page.text()).contains("Pago único con Mercado Pago");
@@ -92,7 +102,7 @@ class LandingPageTest {
     }
 
     @Test
-    @DisplayName("Checkout apagado con SUPPORT_WHATSAPP: el botón va a WhatsApp; prendido, WhatsApp no aparece")
+    @DisplayName("Checkout apagado con SUPPORT_WHATSAPP: el botón va a WhatsApp; prendido, WhatsApp solo como consulta")
     void whatsappOnlyWhenCheckoutIsOff() {
         AppUrls urls = new AppUrls("http://localhost:8080", "local");
 
@@ -100,14 +110,43 @@ class LandingPageTest {
         new HomeController(urls, false, "50000", "+54 9 381 555-0000").home(off, new MockHttpServletResponse());
         assertThat((String) off.get("whatsappUrl")).startsWith("https://wa.me/5493815550000?text=Hola%2C%20quiero%20contratar");
         assertThat(off.get("checkoutEnabled")).isEqualTo(false);
+        assertThat(off.get("buyUrl")).isNull();
+        assertThat(off.get("whatsappQueryUrl")).isNull();
 
         ExtendedModelMap on = new ExtendedModelMap();
         new HomeController(urls, true, "50000", "5493815550000").home(on, new MockHttpServletResponse());
         assertThat(on.get("whatsappUrl")).isNull();
+        assertThat(on.get("buyUrl")).isEqualTo(HomeController.BUY_PATH);
+        assertThat((String) on.get("whatsappQueryUrl")).isEqualTo("https://wa.me/5493815550000?text=Hola%2C%20tengo%20una%20consulta%20sobre%20EventFoto.");
 
         ExtendedModelMap offWithoutWhatsapp = new ExtendedModelMap();
         new HomeController(urls, false, "50000", "").home(offWithoutWhatsapp, new MockHttpServletResponse());
         assertThat(offWithoutWhatsapp.get("whatsappUrl")).isNull();
+    }
+
+    @Test
+    @DisplayName("El destino de \"Contratar evento\" está solo en HomeController.BUY_PATH: el template no escribe /comprar")
+    void buyPathDefinedOnce() throws Exception {
+        String template = Files.readString(Path.of("src/main/resources/templates/landing.html"), StandardCharsets.UTF_8);
+        assertThat(template).doesNotContain("/comprar").contains("th:href=\"${buyUrl}\"");
+    }
+
+    @Test
+    @DisplayName("Checkout prendido con SUPPORT_WHATSAPP: el único wa.me es el link de consulta de la tarjeta de precio")
+    void whatsappOnlyAsSecondaryContact() {
+        // Se renderiza con el motor de este contexto: un @TestPropertySource sumaría un contexto y vaciaría la H2 compartida.
+        ExtendedModelMap model = new ExtendedModelMap();
+        new HomeController(appUrls, true, "50000", "5493815550000").home(model, new MockHttpServletResponse());
+        Document page = Jsoup.parse(templateEngine.process("landing", new Context(Locale.forLanguageTag("es-AR"), model)));
+
+        assertThat(page.select(".hero .ctas a.btn-main, .price a.btn-main")).hasSize(2)
+                .allMatch(a -> a.attr("href").equals(HomeController.BUY_PATH) && a.text().equals("Contratar evento"));
+        Elements whatsapp = page.select("a[href^=https://wa.me/]");
+        assertThat(whatsapp).hasSize(1);
+        assertThat(whatsapp.first().text()).isEqualTo("¿Preferís coordinar por WhatsApp?");
+        assertThat(whatsapp.first().attr("href")).contains("tengo%20una%20consulta").doesNotContain("contratar");
+        assertThat(whatsapp.first().closest(".price")).isNotNull();
+        assertThat(whatsapp.first().hasClass("btn")).isFalse();
     }
 
     @Test
