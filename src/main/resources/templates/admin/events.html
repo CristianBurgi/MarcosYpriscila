@@ -6,80 +6,81 @@
     <title>Mis eventos — EventFoto</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        /* Paleta "Etiqueta", la misma de la landing y del panel del evento. */
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e1035 100%);
-            --glass-card: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-purple: #a855f7;
-            --accent-green: #22c55e;
-            --accent-red: #ef4444;
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
+            --smoking: #1C1A1F;
+            --surface: #252329;
+            --line: rgba(244, 242, 238, 0.10);
+            --line-strong: rgba(244, 242, 238, 0.22);
+            --champan: #D9C29A;
+            --text-main: #F4F2EE;
+            --text-sub: #A39FA8;
+            --ok: #9CCBA5;
+            --warn: #E5C77F;
+            --danger: #E9A0A0;
+            --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-        body { background: var(--bg-gradient); min-height: 100vh; color: var(--text-main); padding-bottom: 60px; }
-        .navbar {
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--glass-border); padding: 16px 32px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .navbar-brand {
-            font-size: 1.4rem; font-weight: 700;
-            background: linear-gradient(135deg, #f472b6, #a855f7);
-            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .btn-logout {
-            background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5;
-            padding: 8px 16px; border-radius: 10px; cursor: pointer; font-weight: 600;
-        }
-        .btn-logout:hover { background: rgba(239, 68, 68, 0.4); }
-        .container { max-width: 960px; margin: 32px auto; padding: 0 20px; }
-        h1 { font-size: 1.8rem; margin-bottom: 4px; }
-        .subtitle { color: var(--text-sub); margin-bottom: 24px; }
-        .events-list { display: grid; gap: 14px; }
-        .event-card {
-            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-            background: var(--glass-card); border: 1px solid var(--glass-border); border-radius: 16px;
-            padding: 20px 24px; color: inherit; text-decoration: none; transition: border-color .2s, transform .2s;
-        }
-        .event-card:hover { border-color: rgba(168, 85, 247, 0.6); transform: translateY(-1px); }
-        .event-name { font-size: 1.15rem; font-weight: 600; margin-bottom: 4px; }
-        .event-meta { color: var(--text-sub); font-size: 0.9rem; display: flex; gap: 16px; flex-wrap: wrap; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--smoking); min-height: 100vh; color: var(--text-main); padding-bottom: 60px;
+            font: 400 1rem/1.5 'Atkinson Hyperlegible', system-ui, sans-serif; }
+        button, input { font-family: inherit; }
+        :focus-visible { outline: 3px solid var(--champan); outline-offset: 2px; }
+        .navbar { border-bottom: 1px solid var(--line); padding: 14px 32px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .navbar-brand { font: 800 1.7rem/1 var(--display); }
+        .navbar-brand { display: flex; align-items: center; gap: 10px; }
+        /* El aro de la landing: misma marca en todas las páginas. */
+        .logo-mark { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--champan); display: grid; place-items: center; flex-shrink: 0; }
+        .logo-mark::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--champan); }
+        .btn-logout { background: transparent; border: 1px solid var(--line-strong); color: var(--text-sub);
+            padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.9rem; }
+        .btn-logout:hover { color: var(--text-main); border-color: var(--text-sub); }
+        .container { max-width: 960px; margin: 48px auto; padding: 0 20px; }
+        h1 { font: 800 clamp(2.6rem, 8vw, 3.6rem)/1 var(--display); margin-bottom: 8px; }
+        .subtitle { color: var(--text-sub); margin-bottom: 28px; }
+        /* Lista con filas separadas por línea, sin tarjetas sueltas. */
+        .events-list { display: grid; border-top: 1px solid var(--line-strong); }
+        .event-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            border-bottom: 1px solid var(--line-strong); padding: 22px 4px; color: inherit; text-decoration: none; }
+        .event-card:hover .event-name { color: var(--champan); }
+        .event-card:hover .fa-chevron-right { transform: translateX(3px); }
+        .fa-chevron-right { transition: transform .15s ease; }
+        .event-name { font: 800 1.9rem/1.05 var(--display); margin-bottom: 6px; }
+        .event-meta { color: var(--text-sub); font-size: 0.95rem; display: flex; gap: 18px; flex-wrap: wrap; }
+        .event-meta i { margin-right: 4px; }
         .event-side { display: flex; align-items: center; gap: 14px; }
-        .badge { padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
-        .badge-active { background: rgba(34, 197, 94, 0.18); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
-        .badge-pending { background: rgba(234, 179, 8, 0.18); color: #fde68a; border: 1px solid rgba(234, 179, 8, 0.4); }
-        .badge-closed { background: rgba(239, 68, 68, 0.18); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
-        .badge-expired { background: rgba(148, 163, 184, 0.18); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.4); }
-        .empty {
-            text-align: center; background: var(--glass-card); border: 1px dashed var(--glass-border);
-            border-radius: 16px; padding: 48px 24px; color: var(--text-sub);
-        }
-        .empty i { font-size: 2.2rem; color: var(--accent-purple); margin-bottom: 12px; }
-        .empty h2 { color: var(--text-main); font-size: 1.2rem; margin-bottom: 6px; }
-        .btn-new {
-            background: linear-gradient(135deg, #f472b6, #a855f7); border: 0; color: #fff; padding: 10px 18px;
-            border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
-        }
-        .header-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+        .badge { padding: 3px 12px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; border: 1px solid currentColor; }
+        .badge-active { color: var(--ok); }
+        .badge-pending { color: var(--warn); }
+        .badge-closed { color: var(--danger); }
+        .badge-expired { color: var(--text-sub); }
+        .empty { text-align: center; border: 1px dashed var(--line-strong); border-radius: 10px; padding: 56px 24px; color: var(--text-sub); }
+        .empty i { font-size: 2rem; color: var(--champan); margin-bottom: 14px; }
+        .empty h2 { color: var(--text-main); font: 800 1.9rem/1.1 var(--display); margin-bottom: 6px; }
+        .btn-new { background: var(--champan); border: 0; color: var(--smoking); padding: 11px 20px;
+            border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 0.95rem; }
+        .btn-new:hover { background: #E6D3B0; }
+        .btn-new:disabled { opacity: 0.6; cursor: wait; }
+        .header-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
         .header-row .subtitle { margin-bottom: 0; }
-        dialog { background: #1e293b; color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; width: min(420px, 92vw); }
-        dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
-        dialog h2 { font-size: 1.2rem; margin-bottom: 6px; }
-        dialog p { color: var(--text-sub); margin-bottom: 14px; font-size: 0.9rem; }
-        dialog input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.8); color: var(--text-main); font-size: 1rem; }
-        .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
-        .btn-secondary { background: transparent; border: 1px solid var(--glass-border); color: var(--text-sub); padding: 10px 16px; border-radius: 10px; cursor: pointer; }
-        .dialog-error { color: #fca5a5; font-size: 0.9rem; margin-top: 10px; display: none; }
+        dialog { background: var(--surface); color: var(--text-main); border: 1px solid var(--line-strong); border-radius: 12px; padding: 26px; width: min(420px, 92vw); margin: auto; }
+        dialog::backdrop { background: rgba(14, 13, 16, 0.78); }
+        dialog h2 { font: 800 1.9rem/1 var(--display); margin-bottom: 8px; }
+        dialog p { color: var(--text-sub); margin-bottom: 14px; font-size: 0.95rem; }
+        dialog input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--smoking); color: var(--text-main); font-size: 1rem; }
+        .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+        .btn-secondary { background: transparent; border: 1px solid var(--line-strong); color: var(--text-main); padding: 10px 16px; border-radius: 999px; cursor: pointer; font-weight: 700; }
+        .dialog-error { color: var(--danger); font-size: 0.9rem; margin-top: 10px; display: none; }
+        @media (prefers-reduced-motion: reduce) { .fa-chevron-right { transition: none; } }
+        @media (max-width: 640px) { .navbar { padding: 12px 16px; } .container { margin-top: 32px; padding: 0 16px; } }
     </style>
 </head>
 <body>
 
 <nav class="navbar">
-    <div class="navbar-brand"><i class="fa-solid fa-gem" style="margin-right: 8px;"></i> EventFoto</div>
+    <div class="navbar-brand"><i class="logo-mark" aria-hidden="true"></i> EventFoto</div>
     <button class="btn-logout" id="btnLogout"><i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
 </nav>
 
