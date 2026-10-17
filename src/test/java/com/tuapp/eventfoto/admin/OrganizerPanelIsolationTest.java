@@ -163,6 +163,27 @@ class OrganizerPanelIsolationTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(containsString(photoB.getId().toString()))));
     }
 
+    @Test
+    @DisplayName("Fotos primero: la configuración vive en /ajustes y las dos páginas se enlazan")
+    void settingsLiveOnTheirOwnPage() throws Exception {
+        String slug = eventA.getSlug();
+        String photosPage = mockMvc.perform(get("/admin/eventos/" + slug).cookie(cookieOf(organizerA)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(photosPage).contains("href=\"/admin/eventos/" + slug + "/ajustes\"")
+                .doesNotContain("id=\"kitCard\"", "id=\"moderatorCard\"", "id=\"guestLimitCard\"", "id=\"brandingCard\"");
+
+        String settingsPage = mockMvc.perform(get("/admin/eventos/" + slug + "/ajustes").cookie(cookieOf(organizerA)))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin/settings"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(settingsPage).contains("href=\"/admin/eventos/" + slug + "\"")
+                .contains("id=\"kitCard\"", "id=\"moderatorCard\"", "id=\"guestLimitCard\"", "id=\"brandingCard\"")
+                .doesNotContain("id=\"photosGrid\"");
+
+        mockMvc.perform(get("/admin/eventos/" + eventB.getSlug() + "/ajustes").cookie(cookieOf(organizerA)))
+                .andExpect(status().isNotFound());
+    }
+
     // ---------- Organizador A contra el evento de B ----------
 
     @Test

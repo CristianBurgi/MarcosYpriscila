@@ -1,506 +1,85 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Moderación — EventFoto Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        /* Paleta "Etiqueta", la misma de la landing: smoking, champán y perla. */
-        :root {
-            --smoking: #1C1A1F;
-            --surface: #252329;
-            --line: rgba(244, 242, 238, 0.10);
-            --line-strong: rgba(244, 242, 238, 0.22);
-            --champan: #D9C29A;
-            --text-main: #F4F2EE;
-            --text-body: #C8C3CC;
-            --text-sub: #A39FA8;
-            --ok: #9CCBA5;
-            --danger: #E9A0A0;
-            --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            background: var(--smoking);
-            min-height: 100vh;
-            color: var(--text-main);
-            font: 400 1rem/1.5 'Atkinson Hyperlegible', system-ui, sans-serif;
-            padding-bottom: 60px;
-        }
-
-        button, input, select, textarea { font-family: inherit; }
-        :focus-visible { outline: 3px solid var(--champan); outline-offset: 2px; }
-
-        .navbar {
-            background: var(--smoking);
-            border-bottom: 1px solid var(--line);
-            padding: 14px 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .navbar-brand { font: 800 1.7rem/1 var(--display); color: var(--text-main); }
-        .navbar-brand { display: flex; align-items: center; gap: 10px; }
-        /* El aro de la landing: misma marca en todas las páginas. */
-        .logo-mark { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--champan); display: grid; place-items: center; flex-shrink: 0; }
-        .logo-mark::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--champan); }
-
-        .navbar-user { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
-        .navbar-user > span { color: var(--text-body); }
-
-        .btn-logout {
-            background: transparent;
-            border: 1px solid var(--line-strong);
-            color: var(--text-sub);
-            padding: 6px 14px;
-            border-radius: 999px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
-        .btn-logout:hover { color: var(--text-main); border-color: var(--text-sub); }
-
-        .container { max-width: 1200px; margin: 36px auto; padding: 0 20px; }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .metric-card {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 22px 24px;
-        }
-
-        .metric-card .title { font-size: 0.95rem; font-weight: 700; color: var(--text-sub); margin-bottom: 10px; }
-        .metric-card .title i { color: var(--champan); }
-        .metric-card .value { font: 800 2.8rem/1 var(--display); color: var(--text-main); }
-        .metric-card.status-active .value { color: var(--ok); }
-        .metric-card.status-closed .value { color: var(--danger); }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-
-        .section-title { font: 800 2.2rem/1 var(--display); }
-
-        .actions-group { display: flex; flex-wrap: wrap; gap: 10px; }
-
-        .btn {
-            padding: 10px 18px;
-            border-radius: 999px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            cursor: pointer;
-            border: 1px solid transparent;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-main);
-            background: transparent;
-        }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* Acción principal: champán lleno. Secundarias: contorno. */
-        .btn-primary-action, .btn-download-zip { background: var(--champan); color: var(--smoking); }
-        .btn-primary-action:hover, .btn-download-zip:hover { background: #E6D3B0; }
-
-        .btn-toggle-event, .btn-download-selected, .btn-download {
-            border-color: var(--line-strong);
-            color: var(--text-main);
-        }
-        .btn-toggle-event:hover, .btn-download-selected:hover, .btn-download:hover { border-color: var(--champan); }
-
-        .btn-download { padding: 8px 14px; border-radius: 999px; font-weight: 700; cursor: pointer; text-align: center; background: transparent; }
-
-        .photos-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-
-        .photo-card {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .photo-img-wrapper {
-            position: relative;
-            width: 100%;
-            height: 260px;
-            background: #141317;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .photo-img-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-        .photo-info {
-            padding: 16px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .uploader-name { font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 8px; }
-
-        .btn-danger {
-            background: transparent;
-            border: 1px solid rgba(233, 160, 160, 0.45);
-            color: var(--danger);
-            padding: 10px;
-            border-radius: 999px;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-        }
-        .btn-danger:hover { background: rgba(233, 160, 160, 0.12); }
-
-        .empty-state {
-            text-align: center;
-            padding: 56px 20px;
-            border: 1px dashed var(--line-strong);
-            border-radius: 10px;
-            color: var(--text-sub);
-        }
-        .empty-state h3 { font: 800 1.8rem/1.1 var(--display); color: var(--text-main); margin-bottom: 8px; }
-
-        /* Modal de confirmación */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(14, 13, 16, 0.78);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        .modal-card {
-            background: var(--surface);
-            border: 1px solid var(--line-strong);
-            border-radius: 12px;
-            padding: 28px;
-            max-width: 440px;
-            width: 90%;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-            color: var(--text-main);
-        }
-
-        .modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-        .modal-icon { font-size: 1.4rem; color: var(--danger); }
-        .modal-header h3 { font: 800 1.9rem/1 var(--display); color: var(--text-main); }
-        .modal-body p { color: var(--text-body); font-size: 1rem; margin-bottom: 8px; }
-        .modal-warning { display: block; font-size: 0.9rem; color: var(--danger); margin-bottom: 24px; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-
-        .btn-cancel { border-color: var(--line-strong); color: var(--text-body); }
-        .btn-cancel:hover { color: var(--text-main); border-color: var(--text-sub); }
-
-        .btn-danger-confirm { background: var(--danger); color: var(--smoking); }
-        .btn-danger-confirm:hover { background: #F1B9B9; }
-
-        /* Pestañas: subrayado champán en la activa. */
-        .tabs-header {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px 24px;
-            margin: 40px 0 28px;
-            border-bottom: 1px solid var(--line);
-        }
-
-        .tab-btn {
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -1px;
-            color: var(--text-sub);
-            font-size: 1.05rem;
-            font-weight: 700;
-            padding: 12px 2px;
-            cursor: pointer;
-        }
-        .tab-btn:hover { color: var(--text-main); }
-        .tab-btn.active { color: var(--text-main); border-bottom-color: var(--champan); }
-
-        /* Checklist previa (9.8) */
-        .checklist { list-style: none; margin: 10px 0 6px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-        .checklist label { display: flex; gap: 10px; align-items: flex-start; color: var(--text-body); line-height: 1.45; cursor: pointer; }
-        .checklist input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--champan); }
-        .checklist input:checked + span { color: var(--text-sub); text-decoration: line-through; }
-        .checklist-link { display: inline-block; margin: 4px 0 0 28px; font-size: 0.9rem; color: var(--champan); text-underline-offset: 3px; }
-        .checklist-quote { margin: 8px 0 0 28px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-            border-left: 2px solid var(--champan); padding: 6px 12px; color: var(--text-main); font-style: italic; }
-
-        input[type="radio"] { accent-color: var(--champan); }
-        a { color: var(--champan); }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { animation: none !important; transition: none !important; }
-        }
-        @media (max-width: 640px) {
-            /* En celular la barra ocupa varias líneas: fija taparía media pantalla. */
-            .navbar { padding: 12px 16px; position: static; }
-            .navbar-brand { font-size: 1.5rem; }
-            .container { margin-top: 24px; padding: 0 16px; }
-            .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-            .metrics-grid .metric-card { padding: 14px 12px; }
-            .metrics-grid .title { font-size: 0.8rem; margin-bottom: 6px; }
-            .metrics-grid .value { font-size: 1.9rem; }
-            .section-title { font-size: 1.9rem; }
-        }
-
-        /* .btn lleva display: inline-flex, que le ganaba al atributo hidden (tarjeta Personalización). */
-        [hidden] { display: none !important; }
-    </style>
-</head>
+<head th:replace="~{admin/event-parts :: head('Fotos y mensajes')}"></head>
 <body>
 
-<nav class="navbar">
-    <div class="navbar-brand"><i class="logo-mark" aria-hidden="true"></i> Panel de Moderación</div>
-    <div class="navbar-user">
-        <a href="/admin/eventos" class="btn btn-toggle-event" style="padding: 6px 14px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-list"></i> Mis eventos
-        </a>
-        <span th:text="${event.name}">Nombre del evento</span>
-        <a th:href="@{'/e/' + ${slug} + '/pantalla'}" target="_blank" class="btn btn-toggle-event" style="padding: 6px 14px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-desktop"></i> Pantalla Salón
-        </a>
-        <button class="btn btn-toggle-event" id="btnOpenQrModal" onclick="openQrModal()" style="padding: 6px 14px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-qrcode"></i> Código QR Mesas
-        </button>
-        <button class="btn-logout" id="btnLogout" style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
-        </button>
-    </div>
-</nav>
+<nav th:replace="~{admin/event-parts :: navbar}"></nav>
 
-<div class="container">
+<main class="container">
 
-    <!-- Tarjetas de Métricas del Evento -->
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <div class="title">Fotos Totales</div>
-            <div class="value" id="metricTotalCount" th:text="${totalPhotos}">0</div>
+    <!-- Cabecera: el evento, si está recibiendo fotos y las herramientas de la noche -->
+    <header class="event-head">
+        <h1 class="event-name" th:text="${event.name}">Nombre del evento</h1>
+        <div class="event-state">
+            <span class="state" id="eventStatusText" th:classappend="${event.active} ? '' : 'closed'"
+                  th:text="${event.active} ? 'Subida abierta' : 'Subida cerrada'">Subida abierta</span>
+            <button type="button" class="btn btn-sm" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar subidas' : 'Reabrir subidas'">Cerrar subidas</button>
         </div>
-        <div class="metric-card">
-            <div class="title">Mensajes Totales</div>
-            <div class="value" th:text="${totalMessages}">0</div>
-        </div>
-        <div class="metric-card" th:classappend="${event.active} ? 'status-active' : 'status-closed'">
-            <div class="title">Estado del Evento</div>
-            <div class="value" id="eventStatusText" th:text="${event.active} ? 'Abierto' : 'Cerrado'">Abierto</div>
-        </div>
-    </div>
-
-    <!-- Reglas del ciclo de vida (Fase 9.6), en hora de Argentina -->
-    <div class="metric-card" id="lifecycleCard" style="margin-bottom: 24px;">
-        <p style="color: #C8C3CC; line-height: 1.6;">
-            <i class="fa-regular fa-calendar" style="margin-right: 6px;"></i>
-            <span th:text="|Tus invitados pueden subir fotos del ${uploadFrom} 00:00 al ${uploadUntil} 23:59.|">Tus invitados pueden subir fotos del ...</span><br>
-            <i class="fa-regular fa-trash-can" style="margin-right: 6px;"></i>
+        <!-- Reglas del ciclo de vida (Fase 9.6), en hora de Argentina -->
+        <p class="event-rules" id="lifecycleCard">
+            <span th:text="|Tus invitados pueden subir fotos del ${uploadFrom} 00:00 al ${uploadUntil} 23:59.|">Tus invitados pueden subir fotos del ...</span>
             <span th:text="|Tu álbum se borra el ${deletionDay}.|">Tu álbum se borra el ...</span>
         </p>
-    </div>
 
-    <!-- Checklist previa (Fase 9.8): desde el wizard hasta que cierra la subida; en un evento vencido no se muestra. -->
-    <div class="metric-card" id="checklistCard" th:if="${checklist != null}" style="margin-bottom: 24px;">
-        <div class="title"><i class="fa-solid fa-list-check" style="margin-right: 6px;"></i> Antes de la fiesta</div>
-        <ul class="checklist">
-            <li><label><input type="checkbox" data-item="pantalla" th:checked="${#lists.contains(checklist, 'pantalla')}">
-                <span>Coordiná con el salón que la pantalla quede prendida toda la fiesta, también durante el baile. Es lo que hace que la gente suba fotos.</span></label></li>
-            <li><label><input type="checkbox" data-item="tarjetas" th:checked="${#lists.contains(checklist, 'tarjetas')}">
-                <span>Imprimí las tarjetas y poné una en cada mesa.</span></label>
-                <a href="#kitCard" class="checklist-link">Ir a la descarga</a></li>
-            <li><label><input type="checkbox" data-item="moderador" th:checked="${#lists.contains(checklist, 'moderador')}">
-                <span>Pasale el link de moderador a alguien de confianza.</span></label>
-                <a href="#moderatorCard" class="checklist-link">Ir al link de moderador</a></li>
-            <li><label><input type="checkbox" data-item="dj" th:checked="${#lists.contains(checklist, 'dj')}">
-                <span>Pedile al DJ o al animador que invite a subir fotos en algún momento de la noche.</span></label>
-                <div class="checklist-quote">
-                    <span id="djText">¡Saquen fotos y súbanlas escaneando el QR de su mesa! Aparecen en la pantalla al instante.</span>
-                    <button type="button" class="btn btn-toggle-event" id="btnCopyDjText"><i class="fa-solid fa-copy"></i> Copiar</button>
-                </div></li>
-            <li><label><input type="checkbox" data-item="prueba" th:checked="${#lists.contains(checklist, 'prueba')}">
-                <span>Probá la pantalla antes del evento en la TV o el proyector del salón.</span></label>
-                <a th:href="@{'/e/' + ${slug} + '/pantalla'}" target="_blank" class="checklist-link">Abrir la pantalla</a></li>
-        </ul>
-        <div id="checklistStatus" style="color: #A39FA8; font-size: 0.88rem; min-height: 1.2em;"></div>
-    </div>
-
-    <!-- Kit para imprimir (Fase 9.8) -->
-    <div class="metric-card" id="kitCard" style="margin-bottom: 24px;">
-        <div class="title"><i class="fa-solid fa-print" style="margin-right: 6px;"></i> Para imprimir</div>
-        <p style="color: #C8C3CC; line-height: 1.5; margin-bottom: 14px;">
-            Con el QR a la vista, tus invitados se acuerdan de subir fotos toda la noche. Las tarjetas vienen de a 4 por hoja A4: imprimí y cortá por las líneas.
-        </p>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <a class="btn btn-primary-action" id="btnDownloadCards" style="text-decoration: none;"
-               th:href="@{'/api/v1/admin/events/' + ${slug} + '/tarjetas.pdf'}" download="tarjetas-para-las-mesas.pdf">
-                <i class="fa-solid fa-download"></i> Descargar tarjetas para las mesas</a>
-            <a class="btn btn-toggle-event" id="btnDownloadPoster" style="text-decoration: none;"
-               th:href="@{'/api/v1/admin/events/' + ${slug} + '/cartel.pdf'}" download="cartel-para-la-entrada.pdf">
-                <i class="fa-solid fa-download"></i> Descargar cartel para la entrada</a>
-        </div>
-    </div>
-
-    <!-- Tarjeta Moderador: beneficio, no configuración técnica -->
-    <div class="metric-card" id="moderatorCard" style="margin-bottom: 24px;">
-        <div class="title"><i class="fa-solid fa-user-shield" style="margin-right: 6px;"></i> Moderador</div>
-        <p style="color: #C8C3CC; line-height: 1.5; margin-bottom: 8px;">
-            ¿No querés estar pendiente del celular en tu fiesta? Pasale este link a alguien de confianza (el DJ, un amigo) y va a poder borrar al instante cualquier foto o mensaje que no quieras ver en la pantalla. No necesita cuenta ni contraseña.
-        </p>
-        <p style="color: #E9A0A0; font-size: 0.9rem; margin-bottom: 14px;">Borrar es definitivo: la foto o el mensaje no se pueden recuperar.</p>
-        <div id="moderatorLinkText" th:text="${moderatorLink}" style="font-size: 0.85rem; color: #D9C29A; word-break: break-all; background: rgba(217, 194, 154, 0.1); padding: 8px 12px; border-radius: 8px; margin-bottom: 14px;">(APP_BASE_URL)/moderar/...</div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" class="btn btn-toggle-event" id="btnCopyModeratorLink"><i class="fa-solid fa-copy"></i> Copiar link</button>
-            <a class="btn btn-toggle-event" id="btnShareModeratorLink" target="_blank" rel="noopener noreferrer" style="text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> Compartir por WhatsApp</a>
-            <button type="button" class="btn btn-toggle-event" id="btnRegenerateModeratorLink"><i class="fa-solid fa-rotate"></i> Generar un link nuevo</button>
-        </div>
-        <div id="moderatorLinkStatus" style="color: #A39FA8; font-size: 0.88rem; margin-top: 10px; min-height: 1.2em;"></div>
-    </div>
-
-    <!-- Tarjeta: cuántas fotos puede subir cada invitado -->
-    <div class="metric-card" id="guestLimitCard" style="margin-bottom: 24px;">
-        <div class="title"><i class="fa-solid fa-images" style="margin-right: 6px;"></i> Cuántas fotos puede subir cada invitado</div>
-        <label style="display: block; color: #E4E1E6; margin-bottom: 4px; cursor: pointer;">
-            <input type="radio" name="guestPhotoLimit" id="guestLimitLimited" value="limited" th:checked="${!guestPhotoLimit.unlimited}">
-            <strong th:text="'Hasta ' + ${guestPhotoLimitOption} + ' fotos por invitado'">Hasta 24 fotos por invitado</strong>
-        </label>
-        <p style="color: #A39FA8; font-size: 0.9rem; margin: 0 0 12px 22px;" th:text="'Cada persona puede subir hasta ' + ${guestPhotoLimitOption} + ' fotos. Es lo recomendado: evita que alguien llene el álbum.'">Cada persona puede subir hasta 24 fotos. Es lo recomendado: evita que alguien llene el álbum.</p>
-        <label style="display: block; color: #E4E1E6; margin-bottom: 4px; cursor: pointer;">
-            <input type="radio" name="guestPhotoLimit" id="guestLimitUnlimited" value="unlimited" th:checked="${guestPhotoLimit.unlimited}">
-            <strong>Sin límite</strong>
-        </label>
-        <p style="color: #A39FA8; font-size: 0.9rem; margin: 0 0 12px 22px;">Cada persona puede subir todas las fotos que quiera.</p>
-        <p style="color: #A39FA8; font-size: 0.85rem; margin-bottom: 6px;">Podés cambiarlo cuando quieras, incluso durante el evento. Si pasás de "sin límite" a un límite, quienes ya subieron más fotos no podrán subir más, pero sus fotos se mantienen.</p>
-        <div id="guestLimitStatus" role="status" style="color: #A39FA8; font-size: 0.88rem; min-height: 1.2em;"></div>
-    </div>
-
-    <!-- Tarjeta: personalización (lo mismo que el wizard, editable después) -->
-    <div class="metric-card" id="brandingCard" style="margin-bottom: 24px;">
-        <div class="title"><i class="fa-solid fa-palette" style="margin-right: 6px;"></i> Personalización</div>
-        <p style="color: #A39FA8; font-size: 0.9rem; margin-bottom: 14px;">Así se ven las páginas de tus invitados. <a th:href="${guestMenuUrl}" target="_blank" rel="noopener" style="color: #D9C29A;">Ver el menú de invitados</a></p>
-
-        <label for="brandingDate" style="display: block; color: #E4E1E6; font-weight: 600; margin-bottom: 6px;">Fecha del evento</label>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 4px;">
-            <input type="date" id="brandingDate" th:value="${settings.eventDate()}" th:min="${minDate}" th:max="${maxDate}"
-                   th:disabled="${!settings.dateEditable()}"
-                   style="background: rgba(20, 19, 23, 0.6); color: #F4F2EE; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 10px; font-family: inherit; color-scheme: dark;">
-            <button type="button" class="btn btn-toggle-event" id="btnSaveDate" th:disabled="${!settings.dateEditable()}"><i class="fa-solid fa-check"></i> Guardar fecha</button>
-        </div>
-        <p style="color: #A39FA8; font-size: 0.85rem; margin-bottom: 16px;"
-           th:text="${settings.dateEditable()} ? 'Se puede cambiar hasta que se habilita la subida de fotos (00:00 del día anterior al evento).' : 'La fecha ya no se puede cambiar: la subida de fotos ya está habilitada.'">Se puede cambiar hasta que se habilita la subida de fotos.</p>
-
-        <label for="brandingColor" style="display: block; color: #E4E1E6; font-weight: 600; margin-bottom: 6px;">Color del evento</label>
-        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px;">
-            <input type="color" id="brandingColor" th:value="${settings.backgroundColor() != null ? settings.backgroundColor() : '#c89b3c'}"
-                   style="width: 46px; height: 40px; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; background: transparent; padding: 2px; cursor: pointer;">
-            <span id="brandingColorHex" style="font-family: monospace; color: #C8C3CC; text-transform: uppercase;"
-                  th:text="${settings.backgroundColor() != null ? settings.backgroundColor() : 'Colores de la app'}">#c89b3c</span>
-            <button type="button" class="btn btn-toggle-event" id="btnResetColor" th:hidden="${settings.backgroundColor() == null}"><i class="fa-solid fa-rotate-left"></i> Restablecer colores</button>
+        <div class="event-bar">
+            <nav th:replace="~{admin/event-parts :: pageNav('fotos')}"></nav>
+            <div class="event-tools">
+                <a th:href="@{'/e/' + ${slug} + '/pantalla'}" target="_blank" class="btn btn-sm"><i class="fa-solid fa-desktop" aria-hidden="true"></i> Pantalla del salón</a>
+                <button type="button" class="btn btn-sm" id="btnOpenQrModal" onclick="openQrModal()"><i class="fa-solid fa-qrcode" aria-hidden="true"></i> Código QR</button>
+            </div>
         </div>
 
-        <span style="display: block; color: #E4E1E6; font-weight: 600; margin-bottom: 6px;">Imagen de fondo</span>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-            <img id="brandingImageThumb" alt="Imagen de fondo" th:src="${settings.backgroundImageUrl()}" th:hidden="${settings.backgroundImageUrl() == null}"
-                 style="width: 52px; height: 52px; object-fit: cover; border-radius: 8px;">
-            <label class="btn btn-toggle-event" style="cursor: pointer;"><i class="fa-solid fa-upload"></i> <span id="brandingImageLabel" th:text="${settings.backgroundImageUrl() != null} ? 'Cambiar imagen' : 'Subir imagen'">Subir imagen</span>
-                <input type="file" id="brandingImageFile" accept="image/*" style="display: none;">
-            </label>
-            <button type="button" class="btn btn-toggle-event" id="btnRemoveImage" th:hidden="${settings.backgroundImageUrl() == null}"><i class="fa-solid fa-trash"></i> Quitar</button>
-        </div>
-        <div id="brandingStatus" role="status" style="color: #A39FA8; font-size: 0.88rem; min-height: 1.2em; margin-top: 10px;"></div>
-    </div>
+        <!-- Checklist previa (9.8): vive en Ajustes; acá solo se avisa si falta algo. -->
+        <a class="prep-notice" id="checklistNotice" th:if="${checklist != null and checklist.size() < checklistTotal}"
+           th:href="@{'/admin/eventos/' + ${slug} + '/ajustes#checklistCard'}">
+            <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+            <span th:text="|Te quedan ${checklistTotal - checklist.size()} de ${checklistTotal} cosas por preparar antes de la fiesta.|">Te quedan 3 de 5 cosas por preparar antes de la fiesta.</span>
+            <strong>Ver la lista</strong>
+        </a>
+    </header>
 
-    <!-- Navegación por Pestañas -->
+    <!-- Navegación por pestañas -->
     <div class="tabs-header">
-        <button class="tab-btn active" id="tabBtnPhotos" onclick="switchTab('photos')">
-            <i class="fa-solid fa-images" style="margin-right: 6px;"></i> Fotos (<span id="tabPhotosBadge" th:text="${totalPhotos}">0</span>)
+        <button type="button" class="tab-btn active" id="tabBtnPhotos" aria-pressed="true" onclick="switchTab('photos')">
+            Fotos <span class="tab-count" id="tabPhotosBadge" th:text="${totalPhotos}">0</span>
         </button>
-        <button class="tab-btn" id="tabBtnMessages" onclick="switchTab('messages')">
-            <i class="fa-solid fa-book-open-reader" style="margin-right: 6px;"></i> Libro de Visitas (<span id="tabMessagesBadge" th:text="${messages != null ? messages.size() : 0}">0</span>)
+        <button type="button" class="tab-btn" id="tabBtnMessages" aria-pressed="false" onclick="switchTab('messages')">
+            Libro de visitas <span class="tab-count" id="tabMessagesBadge" th:text="${totalMessages}">0</span>
         </button>
-        <button class="tab-btn" id="tabBtnComments" onclick="switchTab('comments')">
-            <i class="fa-solid fa-comments" style="margin-right: 6px;"></i> Comentarios en Fotos (<span id="tabCommentsBadge" th:text="${photoComments != null ? photoComments.size() : 0}">0</span>)
+        <button type="button" class="tab-btn" id="tabBtnComments" aria-pressed="false" onclick="switchTab('comments')">
+            Comentarios <span class="tab-count" id="tabCommentsBadge" th:text="${photoComments != null ? photoComments.size() : 0}">0</span>
         </button>
     </div>
 
     <!-- Pestaña 1: Fotos del álbum (se publican solas; el borrado es el único control) -->
-    <div id="tabContentPhotos">
+    <section id="tabContentPhotos" aria-labelledby="tabBtnPhotos">
         <div class="section-header">
-            <h2 class="section-title">Fotografías del Álbum</h2>
+            <p class="section-hint">Las fotos aparecen acá apenas las suben. Marcá las que quieras para bajarlas juntas.</p>
             <div class="actions-group">
-                <button class="btn btn-toggle-event" id="btnToggleEvent" th:text="${event.active} ? 'Cerrar Subidas' : 'Reabrir Subidas'">
-                    Cerrar Subidas
-                </button>
-                <button class="btn btn-download-selected" id="btnDownloadSelectedZip">
-                    <i class="fa-solid fa-download"></i> Descargar Seleccionadas (ZIP)
-                </button>
-                <button class="btn btn-download-zip" id="btnDownloadFullZip">
-                    <i class="fa-solid fa-box-archive"></i> Descargar Álbum Completo (ZIP)
-                </button>
+                <button type="button" class="btn" id="btnDownloadSelectedZip"><i class="fa-solid fa-download" aria-hidden="true"></i> Descargar las marcadas</button>
+                <button type="button" class="btn btn-primary" id="btnDownloadFullZip"><i class="fa-solid fa-box-archive" aria-hidden="true"></i> Descargar todo el álbum (ZIP)</button>
             </div>
         </div>
 
         <!-- La grilla existe siempre (aunque esté vacía) para que PHOTO_PUBLISHED pueda insertar tarjetas en vivo. -->
         <div id="photosGrid" class="photos-grid">
             <div class="photo-card" th:each="photo : ${photos}" th:id="'photo-card-' + ${photo.id}">
-                <div class="photo-img-wrapper" style="position: relative;">
-                    <label style="position: absolute; top: 10px; left: 10px; z-index: 10; cursor: pointer; background: rgba(20, 19, 23, 0.85); border-radius: 8px; padding: 6px 10px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" class="photo-select-checkbox" th:value="${photo.id}"> Seleccionar
+                <div class="photo-img-wrapper">
+                    <img th:src="${photo.url}" th:alt="'Foto de ' + ${photo.uploaderName}" alt="Foto" loading="lazy">
+                    <label class="photo-select">
+                        <input type="checkbox" class="photo-select-checkbox" th:value="${photo.id}" th:attr="aria-label='Seleccionar la foto de ' + ${photo.uploaderName}"> <span>Seleccionar</span>
                     </label>
-                    <img th:src="${photo.url}" alt="Fotografía del álbum" loading="lazy">
                 </div>
                 <div class="photo-info">
-                    <div>
-                        <div class="uploader-name" th:text="${photo.uploaderName}">Invitado</div>
-                        <div th:if="${photo.comments != null and !photo.comments.isEmpty()}" style="margin-top: 8px; background: rgba(20, 19, 23, 0.6); padding: 8px 10px; border-radius: 8px;">
-                            <div th:each="comment : ${photo.comments}" th:id="'comment-item-' + ${comment.id}" style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #C8C3CC; margin-bottom: 4px;">
-                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
-                                    <strong th:text="${comment.authorName} + ':'">Invitado:</strong>
-                                    <span th:text="'&quot;' + ${comment.text} + '&quot;'">"Mensaje"</span>
-                                </div>
-                                <button type="button" class="action-delete-comment" th:data-id="${comment.id}" style="background: transparent; border: none; color: #E9A0A0; cursor: pointer; font-size: 0.85rem; padding: 2px 4px;" title="Eliminar comentario" aria-label="Eliminar comentario"><i class="fa-solid fa-trash-can"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="margin-top: 12px;">
-                        <button class="btn-danger action-delete-photo" th:data-id="${photo.id}" style="width: 100%;">
-                            <i class="fa-solid fa-trash-can"></i> Eliminar Definitivamente
-                        </button>
-                    </div>
+                    <span class="uploader-name" th:text="${photo.uploaderName}">Invitado</span>
+                    <button type="button" class="btn-icon action-delete-photo" th:data-id="${photo.id}" th:attr="aria-label='Eliminar la foto de ' + ${photo.uploaderName}" title="Eliminar la foto"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
                 </div>
+                <ul class="photo-comments" th:if="${photo.comments != null and !photo.comments.isEmpty()}">
+                    <li th:each="comment : ${photo.comments}" th:id="'comment-item-' + ${comment.id}">
+                        <span><strong th:text="${comment.authorName} + ':'">Invitado:</strong> <span th:text="'&quot;' + ${comment.text} + '&quot;'">"Mensaje"</span></span>
+                        <button type="button" class="btn-icon action-delete-comment" th:data-id="${comment.id}" title="Eliminar comentario" aria-label="Eliminar comentario"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+                    </li>
+                </ul>
             </div>
         </div>
 
@@ -508,156 +87,127 @@
             <h3>Todavía no hay fotos</h3>
             <p>Las fotos que suban los invitados aparecen acá al instante.</p>
         </div>
-    </div>
+    </section>
 
-    <!-- Pestaña 3: Mensajes del Libro de Visitas -->
-    <div id="tabContentMessages" style="display: none;">
+    <!-- Pestaña 2: Mensajes del libro de visitas -->
+    <section id="tabContentMessages" aria-labelledby="tabBtnMessages" style="display: none;">
         <div class="section-header">
-            <h2 class="section-title">Mensajes del Libro de Visitas</h2>
+            <p class="section-hint">Las dedicatorias que dejaron tus invitados.</p>
             <div class="actions-group">
                 <!-- PDF de recuerdo para los anfitriones (solo admin). También va dentro del ZIP del álbum completo. -->
-                <a class="btn btn-primary-action" id="btnDownloadGuestbook" style="text-decoration: none;"
+                <a class="btn btn-primary" id="btnDownloadGuestbook"
                    th:href="@{'/api/v1/admin/events/' + ${slug} + '/libro-de-visitas.pdf'}" download="libro-de-visitas.pdf">
-                    <i class="fa-solid fa-book"></i> Descargar libro de visitas
-                </a>
+                    <i class="fa-solid fa-book" aria-hidden="true"></i> Descargar libro de visitas</a>
             </div>
         </div>
 
-        <div id="messagesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;" th:if="${messages != null and !messages.isEmpty()}">
-            <div class="photo-card" th:each="msg : ${messages}" th:id="'msg-card-' + ${msg.id}" style="padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+        <!-- Existe siempre para que MESSAGE_CREATED pueda insertar mensajes en vivo. -->
+        <div id="messagesGrid" class="notes-grid">
+            <div class="note-card" th:each="msg : ${messages}" th:id="'msg-card-' + ${msg.id}">
                 <div>
-                    <div class="uploader-name" style="overflow-wrap: anywhere;" th:text="${msg.authorName}">Invitado</div>
-                    <div style="font-size: 0.95rem; color: #C8C3CC; font-style: italic; margin-top: 8px; line-height: 1.4; overflow-wrap: anywhere;" th:text="'&quot;' + ${msg.text} + '&quot;'">"Mensaje del invitado"</div>
+                    <div class="uploader-name" th:text="${msg.authorName}">Invitado</div>
+                    <p class="note-text" th:text="'&quot;' + ${msg.text} + '&quot;'">"Mensaje del invitado"</p>
                 </div>
-                <div style="margin-top: 16px;">
-                    <button class="btn-danger action-delete-message" th:data-id="${msg.id}" style="width: 100%;">
-                        <i class="fa-solid fa-trash-can"></i> Eliminar Mensaje
-                    </button>
-                </div>
+                <button type="button" class="btn-icon action-delete-message" th:data-id="${msg.id}" th:attr="aria-label='Eliminar el mensaje de ' + ${msg.authorName}" title="Eliminar mensaje"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
         </div>
 
         <div id="messagesEmptyState" class="empty-state" th:style="${messages == null or messages.isEmpty()} ? 'display:block;' : 'display:none;'">
-            <h3>No hay mensajes aún</h3>
-            <p>Aún no se enviaron dedicatorias al libro de visitas.</p>
+            <h3>Todavía no hay mensajes</h3>
+            <p>Las dedicatorias del libro de visitas aparecen acá.</p>
         </div>
-    </div>
+    </section>
 
-    <!-- Pestaña 4: Comentarios en Fotografías -->
-    <div id="tabContentComments" style="display: none;">
-        <div class="section-header">
-            <h2 class="section-title">Comentarios en Fotografías</h2>
-        </div>
-
-        <div id="commentsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;" th:if="${photoComments != null and !photoComments.isEmpty()}">
-            <div class="photo-card" th:each="cmt : ${photoComments}" th:id="'comment-card-' + ${cmt.id}" style="padding: 16px; display: flex; flex-direction: row; gap: 16px; align-items: center; justify-content: space-between;">
-                <div style="display: flex; gap: 12px; align-items: center; overflow: hidden;">
-                    <img th:if="${cmt.photoUrl != null}" th:src="${cmt.photoUrl}" alt="Foto comentada" style="width: 54px; height: 54px; object-fit: cover; border-radius: 10px; flex-shrink: 0;">
-                    <div style="overflow: hidden;">
-                        <div class="uploader-name" style="font-size: 0.95rem; color: #D9C29A;" th:text="${cmt.authorName}">Invitado</div>
-                        <div style="font-size: 0.9rem; color: #C8C3CC; font-style: italic; margin-top: 4px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" th:text="'&quot;' + ${cmt.text} + '&quot;'">"Genial foto"</div>
+    <!-- Pestaña 3: Comentarios en fotos -->
+    <section id="tabContentComments" aria-labelledby="tabBtnComments" style="display: none;">
+        <div id="commentsGrid" class="notes-grid">
+            <div class="note-card" th:each="cmt : ${photoComments}" th:id="'comment-card-' + ${cmt.id}">
+                <div class="note-body">
+                    <img class="note-thumb" th:if="${cmt.photoUrl != null}" th:src="${cmt.photoUrl}" alt="Foto comentada">
+                    <div style="min-width: 0;">
+                        <div class="uploader-name" th:text="${cmt.authorName}">Invitado</div>
+                        <p class="note-text one-line" th:text="'&quot;' + ${cmt.text} + '&quot;'">"Genial foto"</p>
                     </div>
                 </div>
-                <button class="btn-danger action-delete-comment" th:data-id="${cmt.id}" style="flex-shrink: 0; padding: 8px 12px;" title="Eliminar Comentario" aria-label="Eliminar comentario">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
+                <button type="button" class="btn-icon action-delete-comment" th:data-id="${cmt.id}" title="Eliminar comentario" aria-label="Eliminar comentario"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
         </div>
 
         <div id="commentsEmptyState" class="empty-state" th:style="${photoComments == null or photoComments.isEmpty()} ? 'display:block;' : 'display:none;'">
-            <h3>No hay comentarios aún</h3>
-            <p>Aún no se realizaron comentarios en ninguna fotografía.</p>
+            <h3>Todavía no hay comentarios</h3>
+            <p>Los comentarios que dejen en las fotos aparecen acá.</p>
+        </div>
+    </section>
+</main>
+
+<!-- Confirmación: borrar foto -->
+<div id="deleteConfirmModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="deletePhotoTitle">
+    <div class="modal-card">
+        <div class="modal-header"><h3 id="deletePhotoTitle">Eliminar la foto</h3></div>
+        <div class="modal-body">
+            <p>¿Seguro que querés borrar esta foto?</p>
+            <span class="modal-warning">Se borra del álbum y de la pantalla, y no se puede recuperar.</span>
+        </div>
+        <div class="modal-actions">
+            <button type="button" id="btnCancelDelete" class="btn">Cancelar</button>
+            <button type="button" id="btnConfirmDelete" class="btn btn-danger-confirm">Sí, eliminar</button>
         </div>
     </div>
-
-    <!-- Modal de Confirmación de Borrado de Foto -->
-    <div id="deleteConfirmModal" class="modal-overlay" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-icon"><i class="fa-solid fa-trash-can"></i></div>
-                <h3>Eliminar Fotografía</h3>
-            </div>
-            <div class="modal-body">
-                <p>¿Seguro que querés borrar esta foto?</p>
-                <span class="modal-warning">Esta acción es irreversible y eliminará la foto de Cloudflare R2 y de la base de datos.</span>
-            </div>
-            <div class="modal-actions">
-                <button id="btnCancelDelete" class="btn btn-cancel">Cancelar</button>
-                <button id="btnConfirmDelete" class="btn btn-danger-confirm">Sí, Eliminar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Confirmación de Borrado de Mensaje -->
-    <div id="deleteMsgConfirmModal" class="modal-overlay" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-icon"><i class="fa-solid fa-trash-can"></i></div>
-                <h3>Eliminar Mensaje</h3>
-            </div>
-            <div class="modal-body">
-                <p>¿Seguro que querés borrar este mensaje del libro de visitas?</p>
-                <span class="modal-warning">Esta acción es irreversible y eliminará el mensaje de la pantalla en vivo.</span>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-cancel" onclick="closeDeleteMsgModal()">Cancelar</button>
-                <button class="btn btn-danger-confirm" onclick="executeDeleteMessage()">Sí, Eliminar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Confirmación de Borrado de Comentario -->
-    <div id="deleteCommentConfirmModal" class="modal-overlay" style="display: none;">
-        <div class="modal-card">
-            <div class="modal-header">
-                <div class="modal-icon"><i class="fa-solid fa-trash-can"></i></div>
-                <h3>Eliminar Comentario</h3>
-            </div>
-            <div class="modal-body">
-                <p>¿Seguro que querés borrar este comentario de la foto?</p>
-                <span class="modal-warning">Se eliminará el comentario de la foto en el álbum y la pantalla.</span>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-cancel" onclick="closeDeleteCommentModal()">Cancelar</button>
-                <button class="btn btn-danger-confirm" onclick="executeDeleteComment()">Sí, Eliminar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Código QR para Mesas -->
-    <div id="qrModal" class="modal-overlay" style="display: none;">
-        <div class="modal-card" style="max-width: 480px; text-align: center;">
-            <div class="modal-header" style="justify-content: space-between;">
-                <h3>Código QR para los invitados</h3>
-                <button type="button" onclick="closeQrModal()" aria-label="Cerrar" style="background: transparent; border: none; color: #F4F2EE; font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="modal-body" style="text-align: center; padding: 10px 0;">
-                <p style="color: #C8C3CC; font-size: 0.92rem; margin-bottom: 16px; line-height: 1.4;">
-                    Los invitados escanean este QR con la cámara de su celular para acceder al menú y compartir fotos en vivo:
-                </p>
-                <div style="background: #ffffff; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-bottom: 16px;">
-                    <img th:src="@{'/api/v1/events/' + ${slug} + '/qr?size=350'}" alt="Código QR del evento" style="width: 240px; height: 240px; display: block; margin: 0 auto;">
-                </div>
-                <div style="font-size: 0.85rem; color: #D9C29A; word-break: break-all; margin-bottom: 20px; background: rgba(217, 194, 154, 0.1); padding: 8px 12px; border-radius: 8px;">
-                    <span th:text="${guestMenuUrl}">(APP_BASE_URL)/e/{slug}</span>
-                </div>
-                <!-- Este PNG tiene una quiet zone de 1 módulo: para imprimir van las tarjetas (9.8). -->
-                <p style="color: #A39FA8; font-size: 0.82rem; margin-bottom: 12px;">
-                    Para imprimir, usá las <a href="#kitCard" onclick="closeQrModal()" style="color: #D9C29A;">tarjetas para las mesas</a>.
-                </p>
-            </div>
-            <div class="modal-actions" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
-                <button type="button" class="btn btn-cancel" onclick="closeQrModal()">Cerrar</button>
-                <a th:href="@{'/api/v1/events/' + ${slug} + '/qr?size=800&download=true'}" class="btn btn-primary-action" style="text-decoration: none; padding: 10px 16px;">
-                    <i class="fa-solid fa-download"></i> Descargar PNG (Alta Res)
-                </a>
-            </div>
-        </div>
-    </div>
-
 </div>
 
-<script src="/js/image-compress.js"></script>
+<!-- Confirmación: borrar mensaje -->
+<div id="deleteMsgConfirmModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="deleteMsgTitle">
+    <div class="modal-card">
+        <div class="modal-header"><h3 id="deleteMsgTitle">Eliminar el mensaje</h3></div>
+        <div class="modal-body">
+            <p>¿Seguro que querés borrar este mensaje del libro de visitas?</p>
+            <span class="modal-warning">Se borra también de la pantalla, y no se puede recuperar.</span>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn" onclick="closeDeleteMsgModal()">Cancelar</button>
+            <button type="button" class="btn btn-danger-confirm" onclick="executeDeleteMessage()">Sí, eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmación: borrar comentario -->
+<div id="deleteCommentConfirmModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="deleteCommentTitle">
+    <div class="modal-card">
+        <div class="modal-header"><h3 id="deleteCommentTitle">Eliminar el comentario</h3></div>
+        <div class="modal-body">
+            <p>¿Seguro que querés borrar este comentario de la foto?</p>
+            <span class="modal-warning">Se borra de la foto en el álbum y en la pantalla.</span>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn" onclick="closeDeleteCommentModal()">Cancelar</button>
+            <button type="button" class="btn btn-danger-confirm" onclick="executeDeleteComment()">Sí, eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Código QR para los invitados -->
+<div id="qrModal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+    <div class="modal-card" style="text-align: center;">
+        <div class="modal-header">
+            <h3 id="qrTitle">Código QR para los invitados</h3>
+            <button type="button" class="btn-icon" onclick="closeQrModal()" aria-label="Cerrar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <p style="color: var(--text-body); text-align: left;">Lo escanean con la cámara del celular y entran al menú para subir fotos.</p>
+        <div class="qr-frame">
+            <img th:src="@{'/api/v1/events/' + ${slug} + '/qr?size=350'}" alt="Código QR del evento">
+        </div>
+        <div class="link-box" th:text="${guestMenuUrl}">(APP_BASE_URL)/e/{slug}</div>
+        <!-- Este PNG tiene una quiet zone de 1 módulo: para imprimir van las tarjetas (9.8). -->
+        <p style="color: var(--text-sub); font-size: 0.9rem; margin-bottom: 16px;">
+            Para imprimir, usá las <a th:href="@{'/admin/eventos/' + ${slug} + '/ajustes#kitCard'}">tarjetas para las mesas</a>.
+        </p>
+        <div class="modal-actions" style="justify-content: center;">
+            <button type="button" class="btn" onclick="closeQrModal()">Cerrar</button>
+            <a th:href="@{'/api/v1/events/' + ${slug} + '/qr?size=800&download=true'}" class="btn btn-primary">
+                <i class="fa-solid fa-download" aria-hidden="true"></i> Descargar PNG</a>
+        </div>
+    </div>
+</div>
 <script th:inline="javascript">
     const slug = /*[[${slug}]]*/ 'evento-demo-k7m2xq9p';
     let targetPhotoIdToDelete = null;
@@ -684,11 +234,6 @@
             btnToggleEvent.addEventListener('click', toggleEventStatus);
         }
 
-        const btnLogout = document.getElementById('btnLogout');
-        if (btnLogout) {
-            btnLogout.addEventListener('click', logout);
-        }
-
         const btnCancelDelete = document.getElementById('btnCancelDelete');
         if (btnCancelDelete) {
             btnCancelDelete.addEventListener('click', closeDeleteModal);
@@ -699,21 +244,19 @@
             btnConfirmDelete.addEventListener('click', executeDeletePhoto);
         }
 
-        // Delegación de eventos para botones de tarjetas e ítems individuales
+        // Delegación de eventos para botones de tarjetas e ítems individuales (closest: el clic puede caer en el ícono)
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('action-download-single')) {
-                const photoId = e.target.getAttribute('data-id');
-                if (photoId) downloadSinglePhoto(photoId);
-            } else if (e.target.classList.contains('action-delete-photo')) {
-                const photoId = e.target.getAttribute('data-id');
-                if (photoId) openDeleteModal(photoId);
-            } else if (e.target.classList.contains('action-delete-message')) {
-                const msgId = e.target.getAttribute('data-id');
-                if (msgId) openDeleteMsgModal(msgId);
-            } else if (e.target.classList.contains('action-delete-comment')) {
-                const commentId = e.target.getAttribute('data-id');
-                if (commentId) openDeleteCommentModal(commentId);
-            }
+            const button = e.target.closest('[data-id]');
+            if (!button) return;
+            const id = button.getAttribute('data-id');
+            if (button.classList.contains('action-delete-photo')) openDeleteModal(id);
+            else if (button.classList.contains('action-delete-message')) openDeleteMsgModal(id);
+            else if (button.classList.contains('action-delete-comment')) openDeleteCommentModal(id);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            closeQrModal(); closeDeleteModal(); closeDeleteMsgModal(); closeDeleteCommentModal();
         });
 
         // Iniciar recepción de notificaciones SSE en tiempo real
@@ -830,185 +373,6 @@
         }
     }
 
-    // ---- Tarjeta: límite de fotos por invitado ----
-    (function setupGuestLimitCard() {
-        const radios = document.querySelectorAll('input[name="guestPhotoLimit"]');
-        const status = document.getElementById('guestLimitStatus');
-        if (!radios.length) return;
-
-        radios.forEach((radio) => radio.addEventListener('change', async () => {
-            const previous = radio.value === 'unlimited' ? 'guestLimitLimited' : 'guestLimitUnlimited';
-            status.style.color = '#A39FA8';
-            status.textContent = 'Guardando…';
-            radios.forEach((r) => r.disabled = true);
-            try {
-                const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/guest-photo-limit`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ unlimited: radio.value === 'unlimited' })
-                });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const saved = await res.json(); // { unlimited, maxPhotosPerGuest }
-                document.getElementById('guestLimitUnlimited').checked = saved.unlimited;
-                document.getElementById('guestLimitLimited').checked = !saved.unlimited;
-                status.style.color = '#9CCBA5';
-                status.textContent = 'Listo, guardamos tu cambio.';
-            } catch (e) {
-                console.error(e);
-                document.getElementById(previous).checked = true; // vuelve a lo que había
-                status.style.color = '#E9A0A0';
-                status.textContent = 'No pudimos guardar el cambio. Probá de nuevo.';
-            } finally {
-                radios.forEach((r) => r.disabled = false);
-            }
-        }));
-    })();
-
-    // ---- Tarjeta: personalización (mismos endpoints que el wizard) ----
-    (function setupBrandingCard() {
-        const status = document.getElementById('brandingStatus');
-        if (!status) return;
-        const api = `/api/v1/admin/events/${encodeURIComponent(slug)}`;
-
-        function show(text, kind) {
-            status.style.color = kind === 'ok' ? '#9CCBA5' : kind === 'error' ? '#E9A0A0' : '#A39FA8';
-            status.textContent = text;
-        }
-        async function call(method, path, body) {
-            const options = { method };
-            if (body instanceof FormData) options.body = body;
-            else if (body !== undefined) { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify(body); }
-            const res = await fetch(api + path, options);
-            const data = await res.json().catch(() => ({}));
-            if (res.status === 413) throw new Error('La imagen supera los 15 MB.');
-            if (!res.ok) throw new Error(data.message || 'No pudimos guardar el cambio. Probá de nuevo.');
-            return data;
-        }
-        function renderImage(url) {
-            const thumb = document.getElementById('brandingImageThumb');
-            thumb.hidden = !url;
-            if (url) thumb.src = url;
-            document.getElementById('btnRemoveImage').hidden = !url;
-            document.getElementById('brandingImageLabel').textContent = url ? 'Cambiar imagen' : 'Subir imagen';
-        }
-
-        document.getElementById('btnSaveDate').addEventListener('click', async () => {
-            show('Guardando…');
-            try {
-                await call('PUT', '/date', { date: document.getElementById('brandingDate').value });
-                show('Listo, guardamos la fecha.', 'ok');
-            } catch (e) { show(e.message, 'error'); }
-        });
-
-        const colorInput = document.getElementById('brandingColor');
-        colorInput.addEventListener('change', async () => {
-            show('Guardando…');
-            try {
-                const saved = await call('PUT', '/branding/color', { color: colorInput.value });
-                document.getElementById('brandingColorHex').textContent = saved.backgroundColor;
-                document.getElementById('btnResetColor').hidden = false;
-                show('Listo, guardamos el color.', 'ok');
-            } catch (e) { show(e.message, 'error'); }
-        });
-
-        // Vuelve a la paleta por defecto de la app (color null).
-        document.getElementById('btnResetColor').addEventListener('click', async () => {
-            show('Guardando…');
-            try {
-                await call('PUT', '/branding/color', { color: null });
-                document.getElementById('brandingColorHex').textContent = 'Colores de la app';
-                document.getElementById('btnResetColor').hidden = true;
-                show('Listo, volvimos a los colores de la app.', 'ok');
-            } catch (e) { show(e.message, 'error'); }
-        });
-
-        document.getElementById('brandingImageFile').addEventListener('change', async (e) => {
-            const picked = e.target.files && e.target.files[0];
-            e.target.value = '';
-            if (!picked) return;
-            show('Subiendo imagen…');
-            try {
-                // A memoria primero (arreglo de Android); después reducida y re-codificada (sin EXIF) en el navegador.
-                const file = await compressImageIfNeeded(await copyFileToMemory(picked), { maxDim: 1920, minBytes: 0 });
-                const form = new FormData();
-                form.append('file', file, file.name);
-                const saved = await call('POST', '/branding/image', form);
-                renderImage(saved.backgroundImageUrl);
-                show('Listo, guardamos la imagen.', 'ok');
-            } catch (err) { show(err.message || 'No pudimos leer la imagen. Probá con otra.', 'error'); }
-        });
-
-        document.getElementById('btnRemoveImage').addEventListener('click', async () => {
-            try {
-                await call('DELETE', '/branding/image');
-                renderImage(null);
-                show('Listo, quitamos la imagen.', 'ok');
-            } catch (e) { show(e.message, 'error'); }
-        });
-    })();
-
-    // ---- Checklist previa (9.8) ----
-    (function setupChecklist() {
-        const card = document.getElementById('checklistCard');
-        if (!card) return;
-        const status = document.getElementById('checklistStatus');
-        card.querySelectorAll('input[data-item]').forEach(box => box.addEventListener('change', async () => {
-            const url = `/api/v1/admin/events/${encodeURIComponent(slug)}/checklist/${box.dataset.item}`;
-            try {
-                const res = await fetch(url, { method: box.checked ? 'PUT' : 'DELETE' });
-                if (!res.ok) throw new Error(res.status);
-                status.textContent = '';
-            } catch (e) {
-                box.checked = !box.checked; // no quedó guardado: la casilla vuelve a como estaba
-                status.textContent = 'No se pudo guardar. Reintentá.';
-            }
-        }));
-        document.getElementById('btnCopyDjText').addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(document.getElementById('djText').textContent.trim());
-                status.textContent = 'Texto copiado.';
-            } catch (e) {
-                status.textContent = 'No se pudo copiar automáticamente: seleccioná el texto y copialo a mano.';
-            }
-        });
-    })();
-
-    // ---- Tarjeta Moderador ----
-    (function setupModeratorCard() {
-        const linkEl = document.getElementById('moderatorLinkText');
-        const status = document.getElementById('moderatorLinkStatus');
-        if (!linkEl) return;
-
-        function refreshShare() {
-            const text = 'Link para moderar las fotos y mensajes del evento: ' + linkEl.textContent.trim();
-            document.getElementById('btnShareModeratorLink').href = 'https://wa.me/?text=' + encodeURIComponent(text);
-        }
-        refreshShare();
-
-        document.getElementById('btnCopyModeratorLink').addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(linkEl.textContent.trim());
-                status.textContent = 'Link copiado.';
-            } catch (e) {
-                status.textContent = 'No se pudo copiar automáticamente: seleccioná el link y copialo a mano.';
-            }
-        });
-
-        document.getElementById('btnRegenerateModeratorLink').addEventListener('click', async () => {
-            if (!confirm('El link anterior va a dejar de funcionar. ¿Generar un link nuevo?')) return;
-            try {
-                const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/moderator-link/regenerate`, { method: 'POST' });
-                if (!res.ok) { status.textContent = 'No se pudo generar el link nuevo. Reintentá.'; return; }
-                const body = await res.json();
-                linkEl.textContent = body.link;
-                refreshShare();
-                status.textContent = 'Listo: el link anterior ya no funciona. Compartí el nuevo.';
-            } catch (e) {
-                status.textContent = 'Error de comunicación con el servidor.';
-            }
-        });
-    })();
-
     function setupSSE() {
         if (!slug) return;
         const eventSource = new EventSource(`/api/v1/events/${encodeURIComponent(slug)}/stream`);
@@ -1083,24 +447,15 @@
         if (!messagesGrid) return;
 
         const card = document.createElement('div');
-        card.className = 'photo-card';
+        card.className = 'note-card';
         card.id = `msg-card-${msg.id}`;
-        card.style.padding = '20px';
-        card.style.display = 'flex';
-        card.style.flexDirection = 'column';
-        card.style.justifyContent = 'space-between';
         card.style.animation = 'fadeIn 0.5s ease-out';
-
         card.innerHTML = `
             <div>
                 <div class="uploader-name">${escapeHtml(msg.authorName || 'Invitado')}</div>
-                <div style="font-size: 0.95rem; color: #C8C3CC; font-style: italic; margin-top: 8px; line-height: 1.4; overflow-wrap: anywhere;">"${escapeHtml(msg.text)}"</div>
+                <p class="note-text">"${escapeHtml(msg.text)}"</p>
             </div>
-            <div style="margin-top: 16px;">
-                <button class="btn-danger action-delete-message" data-id="${msg.id}" style="width: 100%;">
-                    <i class="fa-solid fa-trash-can"></i> Eliminar Mensaje
-                </button>
-            </div>
+            <button type="button" class="btn-icon action-delete-message" data-id="${escapeHtml(msg.id)}" aria-label="Eliminar el mensaje de ${escapeHtml(msg.authorName || 'Invitado')}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
         `;
 
         messagesGrid.insertBefore(card, messagesGrid.firstChild);
@@ -1162,9 +517,13 @@
         if (messagesTab) messagesTab.style.display = tabName === 'messages' ? 'block' : 'none';
         if (commentsTab) commentsTab.style.display = tabName === 'comments' ? 'block' : 'none';
 
-        if (btnPhotos) btnPhotos.classList.toggle('active', tabName === 'photos');
-        if (btnMessages) btnMessages.classList.toggle('active', tabName === 'messages');
-        if (btnComments) btnComments.classList.toggle('active', tabName === 'comments');
+        const tabButtons = { photos: btnPhotos, messages: btnMessages, comments: btnComments };
+        Object.keys(tabButtons).forEach((name) => {
+            const btn = tabButtons[name];
+            if (!btn) return;
+            btn.classList.toggle('active', tabName === name);
+            btn.setAttribute('aria-pressed', tabName === name);
+        });
     }
 
     function addPhotoCard(photo) {
@@ -1183,28 +542,17 @@
         card.id = `photo-card-${photo.id}`;
         card.style.animation = 'fadeIn 0.5s ease-out';
 
-        const captionText = (photo.comments && photo.comments.length > 0 && photo.comments[0].text)
-            ? photo.comments[0].text
-            : '';
-        const captionHtml = captionText
-            ? `<div style="font-size: 0.9rem; color: #C8C3CC; font-style: italic; margin-top: 8px;">"${escapeHtml(captionText)}"</div>`
-            : '';
-
+        const name = escapeHtml(photo.uploaderName || 'Invitado');
         card.innerHTML = `
-            <div class="photo-img-wrapper" style="position: relative;">
-                <label style="position: absolute; top: 10px; left: 10px; z-index: 10; cursor: pointer; background: rgba(20, 19, 23, 0.85); border-radius: 8px; padding: 6px 10px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                    <input type="checkbox" class="photo-select-checkbox" value="${escapeHtml(photo.id)}"> Seleccionar
+            <div class="photo-img-wrapper">
+                <img src="${escapeHtml(photo.url)}" alt="Foto de ${name}">
+                <label class="photo-select">
+                    <input type="checkbox" class="photo-select-checkbox" value="${escapeHtml(photo.id)}" aria-label="Seleccionar la foto de ${name}"> <span>Seleccionar</span>
                 </label>
-                <img src="${escapeHtml(photo.url)}" alt="Foto por ${escapeHtml(photo.uploaderName)}">
             </div>
             <div class="photo-info">
-                <div>
-                    <div class="uploader-name">${escapeHtml(photo.uploaderName || 'Invitado')}</div>
-                    ${captionHtml}
-                </div>
-                <div style="margin-top: 12px;">
-                    <button class="btn-danger action-delete-photo" data-id="${escapeHtml(photo.id)}" style="width: 100%;"><i class="fa-solid fa-trash-can"></i> Eliminar Definitivamente</button>
-                </div>
+                <span class="uploader-name">${name}</span>
+                <button type="button" class="btn-icon action-delete-photo" data-id="${escapeHtml(photo.id)}" aria-label="Eliminar la foto de ${name}"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
             </div>
         `;
 
@@ -1262,10 +610,6 @@
         window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/download-zip`;
     }
 
-    function downloadSinglePhoto(photoId) {
-        window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/${encodeURIComponent(photoId)}/download`;
-    }
-
     function downloadSelectedPhotos(photoIds) {
         if (!photoIds || photoIds.length === 0) {
             alert('Por favor selecciona al menos una fotografía para descargar.');
@@ -1275,10 +619,6 @@
         window.location.href = `/api/v1/admin/events/${encodeURIComponent(slug)}/photos/download-zip?photoIds=${encodeURIComponent(idsParam)}`;
     }
 
-    async function logout() {
-        await fetch('/api/v1/admin/auth/logout', { method: 'POST' });
-        window.location.href = '/admin/login';
-    }
 </script>
 </body>
 </html>

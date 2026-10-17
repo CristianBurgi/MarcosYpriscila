@@ -312,13 +312,13 @@ class GuestPhotoLimitTest {
         Event limited = TestEvents.limited(eventRepository, organizer, "evento-dash-limite-k7m2xq9p", 24);
         Event unlimited = TestEvents.unlimited(eventRepository, organizer, "evento-dash-ilimitado-x4h8wt2n");
 
-        String htmlLimited = mockMvc.perform(get("/admin/eventos/" + limited.getSlug()).cookie(cookieOf(organizer)))
+        String htmlLimited = mockMvc.perform(get("/admin/eventos/" + limited.getSlug() + "/ajustes").cookie(cookieOf(organizer)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(htmlLimited).containsPattern("id=\"guestLimitLimited\"[^>]*checked");
         assertThat(htmlLimited).doesNotContainPattern("id=\"guestLimitUnlimited\"[^>]*checked");
         assertThat(htmlLimited).contains("Hasta 24 fotos por invitado");
 
-        String htmlUnlimited = mockMvc.perform(get("/admin/eventos/" + unlimited.getSlug()).cookie(cookieOf(organizer)))
+        String htmlUnlimited = mockMvc.perform(get("/admin/eventos/" + unlimited.getSlug() + "/ajustes").cookie(cookieOf(organizer)))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertThat(htmlUnlimited).containsPattern("id=\"guestLimitUnlimited\"[^>]*checked");
         assertThat(htmlUnlimited).doesNotContainPattern("id=\"guestLimitLimited\"[^>]*checked");

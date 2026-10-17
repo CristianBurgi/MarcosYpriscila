@@ -68,31 +68,41 @@ public class AdminViewController {
         return "admin/events";
     }
 
+    /** El panel durante el evento: fotos, libro de visitas y comentarios. La configuración vive en /ajustes. */
     @GetMapping("/eventos/{slug}")
     public String dashboard(@OwnedEvent Event ownedEvent, Model model) {
         String slug = ownedEvent.getSlug();
-        EventResponseDTO event = EventResponseDTO.fromEntity(ownedEvent, uploadWindow);
-        long totalPhotos = photoService.countTotalPhotos(slug);
-        long totalMessages = messageService.countTotalMessages(slug);
-
         List<PhotoResponseDTO> photos = photoService.getPhotos(slug, PageRequest.of(0, 100)).getContent();
         List<MessageResponseDTO> messages = messageService.getMessages(slug, PageRequest.of(0, 100)).getContent();
         List<CommentResponseDTO> photoComments = commentService.getEventComments(slug);
 
-        model.addAttribute("event", event);
-        model.addAttribute("slug", slug);
-        model.addAttribute("totalPhotos", totalPhotos);
-        model.addAttribute("totalMessages", totalMessages);
+        addEventBasics(ownedEvent, model);
+        model.addAttribute("totalPhotos", photoService.countTotalPhotos(slug));
+        model.addAttribute("totalMessages", messageService.countTotalMessages(slug));
         model.addAttribute("photos", photos);
-        model.addAttribute("guestMenuUrl", appUrls.guestMenuUrl(slug));
+        model.addAttribute("messages", messages);
+        model.addAttribute("photoComments", photoComments);
+        return "admin/dashboard";
+    }
+
+    /** Todo lo que se configura: checklist, kit para imprimir, moderador, límite de fotos y personalización. */
+    @GetMapping("/eventos/{slug}/ajustes")
+    public String eventSettings(@OwnedEvent Event ownedEvent, Model model) {
+        addEventBasics(ownedEvent, model);
         // Estado inicial del selector de límite de fotos por invitado: el que tiene el evento hoy.
         Integer guestLimit = ownedEvent.getMaxPhotosPerGuest();
         model.addAttribute("guestPhotoLimit", new GuestPhotoLimitDTO(guestLimit == null, guestLimit));
         model.addAttribute("guestPhotoLimitOption", guestLimit != null ? guestLimit : guestQuotaService.getDefaultMaxPhotosPerGuest());
         model.addAttribute("moderatorLink", appUrls.moderatorUrl(ownedEvent.getModeratorToken()));
-        model.addAttribute("messages", messages);
-        model.addAttribute("photoComments", photoComments);
         addSettings(ownedEvent, model);
+        return "admin/settings";
+    }
+
+    /** Lo que muestran las dos páginas del evento: cabecera, reglas del ciclo de vida y checklist. */
+    private void addEventBasics(Event ownedEvent, Model model) {
+        model.addAttribute("event", EventResponseDTO.fromEntity(ownedEvent, uploadWindow));
+        model.addAttribute("slug", ownedEvent.getSlug());
+        model.addAttribute("guestMenuUrl", appUrls.guestMenuUrl(ownedEvent.getSlug()));
         // Reglas del ciclo de vida para el organizador (hora de Argentina). El panel exige wizard completo: hay fecha.
         LocalDate eventDate = ownedEvent.getEventDate();
         model.addAttribute("uploadFrom", UploadWindow.day(eventDate.minusDays(1)));
@@ -101,13 +111,12 @@ public class AdminViewController {
         // Checklist previa (9.8): hasta el cierre de la subida; null = no se muestra. Un evento vencido ni llega acá
         // (EventAccessInterceptor muestra "no disponible").
         model.addAttribute("checklist", uploadWindow.hasNotClosed(eventDate) ? ChecklistItem.marked(ownedEvent.getChecklist()) : null);
-
-        return "admin/dashboard";
+        model.addAttribute("checklistTotal", ChecklistItem.values().length);
     }
 
     /**
      * Wizard de onboarding (Fase 9.5). Mientras no esté completo, EventAccessInterceptor manda acá toda vista
-     * del panel de este evento. Completo, el wizard ya no tiene nada que hacer: se edita desde "Personalización".
+     * del panel de este evento. Completo, el wizard ya no tiene nada que hacer: se edita desde Ajustes.
      */
     @GetMapping("/eventos/{slug}/wizard")
     public String wizard(@OwnedEvent Event ownedEvent, Model model) {

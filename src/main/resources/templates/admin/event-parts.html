@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<!-- Piezas compartidas por las dos páginas de un evento: "Fotos y mensajes" (dashboard) y "Ajustes" (settings). -->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} + ' — ' + ${event.name}">Panel — Evento</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/admin-panel.css?v=1">
+</head>
+<body>
+
+<nav class="navbar" th:fragment="navbar">
+    <a class="navbar-brand" href="/admin/eventos"><i class="logo-mark" aria-hidden="true"></i> EventFoto</a>
+    <div class="navbar-user">
+        <a href="/admin/eventos" class="btn btn-sm btn-quiet"><i class="fa-solid fa-list" aria-hidden="true"></i> Mis eventos</a>
+        <button type="button" class="btn btn-sm btn-quiet" id="btnLogout"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Cerrar sesión</button>
+    </div>
+    <script>
+        document.getElementById('btnLogout').addEventListener('click', async () => {
+            await fetch('/api/v1/admin/auth/logout', { method: 'POST' });
+            window.location.href = '/admin/login';
+        });
+    </script>
+</nav>
+
+<!-- Interruptor entre las dos páginas del evento. current: 'fotos' | 'ajustes'. -->
+<nav class="page-nav" aria-label="Páginas del evento" th:fragment="pageNav(current)">
+    <a th:href="@{'/admin/eventos/' + ${slug}}" th:attr="aria-current=${current == 'fotos'} ? 'page' : null">
+        <i class="fa-solid fa-images" aria-hidden="true"></i> Fotos y mensajes</a>
+    <a th:href="@{'/admin/eventos/' + ${slug} + '/ajustes'}" th:attr="aria-current=${current == 'ajustes'} ? 'page' : null">
+        <i class="fa-solid fa-sliders" aria-hidden="true"></i> Ajustes</a>
+</nav>
+
+</body>
+</html>

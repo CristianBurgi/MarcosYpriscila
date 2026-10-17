@@ -91,6 +91,9 @@ class NoLazyLoadingOutsideTransactionTest {
                 .andExpect(model().attribute("photoComments", hasSize(1)))
                 .andExpect(content().string(containsString("Linda foto")));
 
+        mockMvc.perform(get("/admin/eventos/" + event.getSlug() + "/ajustes").cookie(cookie))
+                .andExpect(status().isOk());
+
         mockMvc.perform(get("/admin/eventos").cookie(cookie))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Evento Lazy")));

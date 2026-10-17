@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head th:replace="~{admin/event-parts :: head('Ajustes')}"></head>
+<body>
+
+<nav th:replace="~{admin/event-parts :: navbar}"></nav>
+
+<main class="container">
+
+    <header class="event-head">
+        <h1 class="event-name" th:text="${event.name}">Nombre del evento</h1>
+        <p class="event-rules">
+            <span th:text="|Tus invitados pueden subir fotos del ${uploadFrom} 00:00 al ${uploadUntil} 23:59.|">Tus invitados pueden subir fotos del ...</span>
+            <span th:text="|Tu álbum se borra el ${deletionDay}.|">Tu álbum se borra el ...</span>
+        </p>
+        <div class="event-bar">
+            <nav th:replace="~{admin/event-parts :: pageNav('ajustes')}"></nav>
+        </div>
+    </header>
+
+    <div class="settings-layout">
+        <nav class="settings-index" aria-label="Secciones de ajustes">
+            <ul>
+                <li th:if="${checklist != null}"><a href="#checklistCard">Antes de la fiesta</a></li>
+                <li><a href="#kitCard">Para imprimir</a></li>
+                <li><a href="#moderatorCard">Moderador</a></li>
+                <li><a href="#guestLimitCard">Fotos por invitado</a></li>
+                <li><a href="#brandingCard">Personalización</a></li>
+            </ul>
+        </nav>
+
+        <div>
+            <!-- Checklist previa (Fase 9.8): desde el wizard hasta que cierra la subida; en un evento vencido no se muestra. -->
+            <section class="settings-section" id="checklistCard" th:if="${checklist != null}" aria-labelledby="checklistTitle">
+                <h2 id="checklistTitle">Antes de la fiesta</h2>
+                <p>Lo que conviene dejar resuelto. Tildá cada cosa cuando esté lista.</p>
+                <ul class="checklist">
+                    <li><label><input type="checkbox" data-item="pantalla" th:checked="${#lists.contains(checklist, 'pantalla')}">
+                        <span>Coordiná con el salón que la pantalla quede prendida toda la fiesta, también durante el baile. Es lo que hace que la gente suba fotos.</span></label></li>
+                    <li><label><input type="checkbox" data-item="tarjetas" th:checked="${#lists.contains(checklist, 'tarjetas')}">
+                        <span>Imprimí las tarjetas y poné una en cada mesa.</span></label>
+                        <a href="#kitCard" class="checklist-link">Ir a la descarga</a></li>
+                    <li><label><input type="checkbox" data-item="moderador" th:checked="${#lists.contains(checklist, 'moderador')}">
+                        <span>Pasale el link de moderador a alguien de confianza.</span></label>
+                        <a href="#moderatorCard" class="checklist-link">Ir al link de moderador</a></li>
+                    <li><label><input type="checkbox" data-item="dj" th:checked="${#lists.contains(checklist, 'dj')}">
+                        <span>Pedile al DJ o al animador que invite a subir fotos en algún momento de la noche.</span></label>
+                        <div class="checklist-quote">
+                            <span id="djText">¡Saquen fotos y súbanlas escaneando el QR de su mesa! Aparecen en la pantalla al instante.</span>
+                            <button type="button" class="btn btn-sm" id="btnCopyDjText"><i class="fa-solid fa-copy" aria-hidden="true"></i> Copiar</button>
+                        </div></li>
+                    <li><label><input type="checkbox" data-item="prueba" th:checked="${#lists.contains(checklist, 'prueba')}">
+                        <span>Probá la pantalla antes del evento en la TV o el proyector del salón.</span></label>
+                        <a th:href="@{'/e/' + ${slug} + '/pantalla'}" target="_blank" class="checklist-link">Abrir la pantalla</a></li>
+                </ul>
+                <div id="checklistStatus" class="status" role="status"></div>
+            </section>
+
+            <!-- Kit para imprimir (Fase 9.8) -->
+            <section class="settings-section" id="kitCard" aria-labelledby="kitTitle">
+                <h2 id="kitTitle">Para imprimir</h2>
+                <p>Con el QR a la vista, tus invitados se acuerdan de subir fotos toda la noche. Las tarjetas vienen de a 4 por hoja A4: imprimí y cortá por las líneas.</p>
+                <div class="row">
+                    <a class="btn btn-primary" id="btnDownloadCards"
+                       th:href="@{'/api/v1/admin/events/' + ${slug} + '/tarjetas.pdf'}" download="tarjetas-para-las-mesas.pdf">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i> Descargar tarjetas para las mesas</a>
+                    <a class="btn" id="btnDownloadPoster"
+                       th:href="@{'/api/v1/admin/events/' + ${slug} + '/cartel.pdf'}" download="cartel-para-la-entrada.pdf">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i> Descargar cartel para la entrada</a>
+                    <a class="btn" th:href="@{'/api/v1/events/' + ${slug} + '/qr?size=800&download=true'}">
+                        <i class="fa-solid fa-qrcode" aria-hidden="true"></i> Descargar solo el QR (PNG)</a>
+                </div>
+            </section>
+
+            <!-- Moderador: beneficio, no configuración técnica -->
+            <section class="settings-section" id="moderatorCard" aria-labelledby="moderatorTitle">
+                <h2 id="moderatorTitle">Moderador</h2>
+                <p>¿No querés estar pendiente del celular en tu fiesta? Pasale este link a alguien de confianza (el DJ, un amigo) y va a poder borrar al instante cualquier foto o mensaje que no quieras ver en la pantalla. No necesita cuenta ni contraseña.</p>
+                <p class="warn">Borrar es definitivo: la foto o el mensaje no se pueden recuperar.</p>
+                <div id="moderatorLinkText" class="link-box" th:text="${moderatorLink}">(APP_BASE_URL)/moderar/...</div>
+                <div class="row">
+                    <button type="button" class="btn" id="btnCopyModeratorLink"><i class="fa-solid fa-copy" aria-hidden="true"></i> Copiar link</button>
+                    <a class="btn" id="btnShareModeratorLink" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp" aria-hidden="true"></i> Compartir por WhatsApp</a>
+                    <button type="button" class="btn btn-quiet" id="btnRegenerateModeratorLink"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Generar un link nuevo</button>
+                </div>
+                <div id="moderatorLinkStatus" class="status" role="status"></div>
+            </section>
+
+            <!-- Cuántas fotos puede subir cada invitado -->
+            <section class="settings-section" id="guestLimitCard" aria-labelledby="guestLimitTitle">
+                <h2 id="guestLimitTitle">Fotos por invitado</h2>
+                <label class="choice">
+                    <input type="radio" name="guestPhotoLimit" id="guestLimitLimited" value="limited" th:checked="${!guestPhotoLimit.unlimited}">
+                    <strong th:text="'Hasta ' + ${guestPhotoLimitOption} + ' fotos por invitado'">Hasta 24 fotos por invitado</strong>
+                    <span th:text="'Cada persona puede subir hasta ' + ${guestPhotoLimitOption} + ' fotos. Es lo recomendado: evita que alguien llene el álbum.'">Cada persona puede subir hasta 24 fotos. Es lo recomendado: evita que alguien llene el álbum.</span>
+                </label>
+                <label class="choice">
+                    <input type="radio" name="guestPhotoLimit" id="guestLimitUnlimited" value="unlimited" th:checked="${guestPhotoLimit.unlimited}">
+                    <strong>Sin límite</strong>
+                    <span>Cada persona puede subir todas las fotos que quiera.</span>
+                </label>
+                <p class="note">Podés cambiarlo cuando quieras, incluso durante el evento. Si pasás de "sin límite" a un límite, quienes ya subieron más fotos no podrán subir más, pero sus fotos se mantienen.</p>
+                <div id="guestLimitStatus" class="status" role="status"></div>
+            </section>
+
+            <!-- Personalización (lo mismo que el wizard, editable después) -->
+            <section class="settings-section" id="brandingCard" aria-labelledby="brandingTitle">
+                <h2 id="brandingTitle">Personalización</h2>
+                <p>Así se ven las páginas de tus invitados. <a th:href="${guestMenuUrl}" target="_blank" rel="noopener">Ver el menú de invitados</a></p>
+
+                <div class="field">
+                    <label class="field-label" for="brandingDate">Fecha del evento</label>
+                    <div class="row">
+                        <input type="date" id="brandingDate" class="input" th:value="${settings.eventDate()}" th:min="${minDate}" th:max="${maxDate}"
+                               th:disabled="${!settings.dateEditable()}">
+                        <button type="button" class="btn" id="btnSaveDate" th:disabled="${!settings.dateEditable()}"><i class="fa-solid fa-check" aria-hidden="true"></i> Guardar fecha</button>
+                    </div>
+                    <p class="note" style="margin-top: 6px;"
+                       th:text="${settings.dateEditable()} ? 'Se puede cambiar hasta que se habilita la subida de fotos (00:00 del día anterior al evento).' : 'La fecha ya no se puede cambiar: la subida de fotos ya está habilitada.'">Se puede cambiar hasta que se habilita la subida de fotos.</p>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="brandingColor">Color del evento</label>
+                    <div class="row">
+                        <input type="color" id="brandingColor" class="color-input" th:value="${settings.backgroundColor() != null ? settings.backgroundColor() : '#c89b3c'}">
+                        <span id="brandingColorHex" class="color-hex"
+                              th:text="${settings.backgroundColor() != null ? settings.backgroundColor() : 'Colores de la app'}">#c89b3c</span>
+                        <button type="button" class="btn btn-quiet" id="btnResetColor" th:hidden="${settings.backgroundColor() == null}"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Restablecer colores</button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Imagen de fondo</span>
+                    <div class="row">
+                        <img id="brandingImageThumb" class="thumb" alt="Imagen de fondo" th:src="${settings.backgroundImageUrl()}" th:hidden="${settings.backgroundImageUrl() == null}">
+                        <label class="btn" style="cursor: pointer;"><i class="fa-solid fa-upload" aria-hidden="true"></i> <span id="brandingImageLabel" th:text="${settings.backgroundImageUrl() != null} ? 'Cambiar imagen' : 'Subir imagen'">Subir imagen</span>
+                            <input type="file" id="brandingImageFile" accept="image/*" class="visually-hidden">
+                        </label>
+                        <button type="button" class="btn btn-quiet" id="btnRemoveImage" th:hidden="${settings.backgroundImageUrl() == null}"><i class="fa-solid fa-trash" aria-hidden="true"></i> Quitar</button>
+                    </div>
+                </div>
+                <div id="brandingStatus" class="status" role="status"></div>
+            </section>
+        </div>
+    </div>
+</main>
+
+<script src="/js/image-compress.js"></script>
+<script th:inline="javascript">
+    const slug = /*[[${slug}]]*/ 'evento-demo-k7m2xq9p';
+
+    // ---- límite de fotos por invitado ----
+    (function setupGuestLimitCard() {
+        const radios = document.querySelectorAll('input[name="guestPhotoLimit"]');
+        const status = document.getElementById('guestLimitStatus');
+        if (!radios.length) return;
+
+        radios.forEach((radio) => radio.addEventListener('change', async () => {
+            const previous = radio.value === 'unlimited' ? 'guestLimitLimited' : 'guestLimitUnlimited';
+            status.style.color = '#A39FA8';
+            status.textContent = 'Guardando…';
+            radios.forEach((r) => r.disabled = true);
+            try {
+                const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/guest-photo-limit`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unlimited: radio.value === 'unlimited' })
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const saved = await res.json(); // { unlimited, maxPhotosPerGuest }
+                document.getElementById('guestLimitUnlimited').checked = saved.unlimited;
+                document.getElementById('guestLimitLimited').checked = !saved.unlimited;
+                status.style.color = '#9CCBA5';
+                status.textContent = 'Listo, guardamos tu cambio.';
+            } catch (e) {
+                console.error(e);
+                document.getElementById(previous).checked = true; // vuelve a lo que había
+                status.style.color = '#E9A0A0';
+                status.textContent = 'No pudimos guardar el cambio. Probá de nuevo.';
+            } finally {
+                radios.forEach((r) => r.disabled = false);
+            }
+        }));
+    })();
+
+    // ---- personalización (mismos endpoints que el wizard) ----
+    (function setupBrandingCard() {
+        const status = document.getElementById('brandingStatus');
+        if (!status) return;
+        const api = `/api/v1/admin/events/${encodeURIComponent(slug)}`;
+
+        function show(text, kind) {
+            status.style.color = kind === 'ok' ? '#9CCBA5' : kind === 'error' ? '#E9A0A0' : '#A39FA8';
+            status.textContent = text;
+        }
+        async function call(method, path, body) {
+            const options = { method };
+            if (body instanceof FormData) options.body = body;
+            else if (body !== undefined) { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify(body); }
+            const res = await fetch(api + path, options);
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 413) throw new Error('La imagen supera los 15 MB.');
+            if (!res.ok) throw new Error(data.message || 'No pudimos guardar el cambio. Probá de nuevo.');
+            return data;
+        }
+        function renderImage(url) {
+            const thumb = document.getElementById('brandingImageThumb');
+            thumb.hidden = !url;
+            if (url) thumb.src = url;
+            document.getElementById('btnRemoveImage').hidden = !url;
+            document.getElementById('brandingImageLabel').textContent = url ? 'Cambiar imagen' : 'Subir imagen';
+        }
+
+        document.getElementById('btnSaveDate').addEventListener('click', async () => {
+            show('Guardando…');
+            try {
+                await call('PUT', '/date', { date: document.getElementById('brandingDate').value });
+                show('Listo, guardamos la fecha.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+
+        const colorInput = document.getElementById('brandingColor');
+        colorInput.addEventListener('change', async () => {
+            show('Guardando…');
+            try {
+                const saved = await call('PUT', '/branding/color', { color: colorInput.value });
+                document.getElementById('brandingColorHex').textContent = saved.backgroundColor;
+                document.getElementById('btnResetColor').hidden = false;
+                show('Listo, guardamos el color.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+
+        // Vuelve a la paleta por defecto de la app (color null).
+        document.getElementById('btnResetColor').addEventListener('click', async () => {
+            show('Guardando…');
+            try {
+                await call('PUT', '/branding/color', { color: null });
+                document.getElementById('brandingColorHex').textContent = 'Colores de la app';
+                document.getElementById('btnResetColor').hidden = true;
+                show('Listo, volvimos a los colores de la app.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+
+        document.getElementById('brandingImageFile').addEventListener('change', async (e) => {
+            const picked = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!picked) return;
+            show('Subiendo imagen…');
+            try {
+                // A memoria primero (arreglo de Android); después reducida y re-codificada (sin EXIF) en el navegador.
+                const file = await compressImageIfNeeded(await copyFileToMemory(picked), { maxDim: 1920, minBytes: 0 });
+                const form = new FormData();
+                form.append('file', file, file.name);
+                const saved = await call('POST', '/branding/image', form);
+                renderImage(saved.backgroundImageUrl);
+                show('Listo, guardamos la imagen.', 'ok');
+            } catch (err) { show(err.message || 'No pudimos leer la imagen. Probá con otra.', 'error'); }
+        });
+
+        document.getElementById('btnRemoveImage').addEventListener('click', async () => {
+            try {
+                await call('DELETE', '/branding/image');
+                renderImage(null);
+                show('Listo, quitamos la imagen.', 'ok');
+            } catch (e) { show(e.message, 'error'); }
+        });
+    })();
+
+    // ---- Checklist previa (9.8) ----
+    (function setupChecklist() {
+        const card = document.getElementById('checklistCard');
+        if (!card) return;
+        const status = document.getElementById('checklistStatus');
+        card.querySelectorAll('input[data-item]').forEach(box => box.addEventListener('change', async () => {
+            const url = `/api/v1/admin/events/${encodeURIComponent(slug)}/checklist/${box.dataset.item}`;
+            try {
+                const res = await fetch(url, { method: box.checked ? 'PUT' : 'DELETE' });
+                if (!res.ok) throw new Error(res.status);
+                status.textContent = '';
+            } catch (e) {
+                box.checked = !box.checked; // no quedó guardado: la casilla vuelve a como estaba
+                status.textContent = 'No se pudo guardar. Reintentá.';
+            }
+        }));
+        document.getElementById('btnCopyDjText').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(document.getElementById('djText').textContent.trim());
+                status.textContent = 'Texto copiado.';
+            } catch (e) {
+                status.textContent = 'No se pudo copiar automáticamente: seleccioná el texto y copialo a mano.';
+            }
+        });
+    })();
+
+    // ---- Moderador ----
+    (function setupModeratorCard() {
+        const linkEl = document.getElementById('moderatorLinkText');
+        const status = document.getElementById('moderatorLinkStatus');
+        if (!linkEl) return;
+
+        function refreshShare() {
+            const text = 'Link para moderar las fotos y mensajes del evento: ' + linkEl.textContent.trim();
+            document.getElementById('btnShareModeratorLink').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+        }
+        refreshShare();
+
+        document.getElementById('btnCopyModeratorLink').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(linkEl.textContent.trim());
+                status.textContent = 'Link copiado.';
+            } catch (e) {
+                status.textContent = 'No se pudo copiar automáticamente: seleccioná el link y copialo a mano.';
+            }
+        });
+
+        document.getElementById('btnRegenerateModeratorLink').addEventListener('click', async () => {
+            if (!confirm('El link anterior va a dejar de funcionar. ¿Generar un link nuevo?')) return;
+            try {
+                const res = await fetch(`/api/v1/admin/events/${encodeURIComponent(slug)}/moderator-link/regenerate`, { method: 'POST' });
+                if (!res.ok) { status.textContent = 'No se pudo generar el link nuevo. Reintentá.'; return; }
+                const body = await res.json();
+                linkEl.textContent = body.link;
+                refreshShare();
+                status.textContent = 'Listo: el link anterior ya no funciona. Compartí el nuevo.';
+            } catch (e) {
+                status.textContent = 'Error de comunicación con el servidor.';
+            }
+        });
+    })();
+</script>
+</body>
+</html>

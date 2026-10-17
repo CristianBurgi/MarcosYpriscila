@@ -102,11 +102,11 @@ class ChecklistTest {
         assertThat(storedChecklist(eventA)).isEqualTo((short) (ChecklistItem.PANTALLA.mask | ChecklistItem.DJ.mask));
         assertThat(storedChecklist(eventB)).as("el evento B no se toca").isZero();
 
-        mockMvc.perform(get("/admin/eventos/" + eventA.getSlug()).cookie(organizerA))
+        mockMvc.perform(get("/admin/eventos/" + eventA.getSlug() + "/ajustes").cookie(organizerA))
                 .andExpect(content().string(containsString("data-item=\"pantalla\" checked")))
                 .andExpect(content().string(containsString("data-item=\"dj\" checked")))
                 .andExpect(content().string(containsString("data-item=\"tarjetas\">")));
-        String panelB = mockMvc.perform(get("/admin/eventos/" + eventB.getSlug()).cookie(organizerB))
+        String panelB = mockMvc.perform(get("/admin/eventos/" + eventB.getSlug() + "/ajustes").cookie(organizerB))
                 .andReturn().getResponse().getContentAsString();
         assertThat(panelB).contains("id=\"checklistCard\"").doesNotContainPattern("data-item=\"\\w+\" checked");
 
@@ -146,16 +146,24 @@ class ChecklistTest {
     @DisplayName("Con el reloj fijo: se ve hasta el último instante antes del cierre de la subida, y después se oculta")
     void visibleUntilUploadWindowCloses() throws Exception {
         String panel = "/admin/eventos/" + eventA.getSlug();
+        String settings = panel + "/ajustes";
         // Cierre: 00:00 de dos días después del evento (16/11), hora de Argentina.
         clock.setArgentina(LocalDateTime.parse("2026-11-15T23:59:59"));
-        mockMvc.perform(get(panel).cookie(organizerA))
+        mockMvc.perform(get(settings).cookie(organizerA))
                 .andExpect(status().isOk()).andExpect(content().string(containsString("id=\"checklistCard\"")))
                 .andExpect(content().string(containsString("id=\"kitCard\"")));
+        // En la página de fotos solo queda el aviso de lo que falta, con link a Ajustes.
+        mockMvc.perform(get(panel).cookie(organizerA))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("id=\"checklistNotice\"")))
+                .andExpect(content().string(containsString("Te quedan 5 de 5 cosas por preparar")))
+                .andExpect(content().string(not(containsString("id=\"checklistCard\""))));
 
         clock.setArgentina(LocalDateTime.parse("2026-11-16T00:00"));
-        mockMvc.perform(get(panel).cookie(organizerA))
+        mockMvc.perform(get(settings).cookie(organizerA))
                 .andExpect(status().isOk()).andExpect(content().string(not(containsString("id=\"checklistCard\""))))
                 .andExpect(content().string(containsString("id=\"kitCard\"")));
+        mockMvc.perform(get(panel).cookie(organizerA))
+                .andExpect(status().isOk()).andExpect(content().string(not(containsString("checklistNotice"))));
     }
 
     @Test
@@ -165,6 +173,9 @@ class ChecklistTest {
         String html = mockMvc.perform(get("/admin/eventos/" + eventA.getSlug()).cookie(organizerA))
                 .andReturn().getResponse().getContentAsString();
         assertThat(html).doesNotContain("checklistCard");
+        String settingsHtml = mockMvc.perform(get("/admin/eventos/" + eventA.getSlug() + "/ajustes").cookie(organizerA))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(settingsHtml).doesNotContain("checklistCard");
         mockMvc.perform(put(checklist(eventA, "pantalla")).cookie(organizerA)).andExpect(status().isGone());
     }
 }

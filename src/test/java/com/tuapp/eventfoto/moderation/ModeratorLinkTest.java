@@ -274,12 +274,12 @@ class ModeratorLinkTest extends ModeratorTestBase {
                 .andExpect(status().isNotFound());
         assertThat(tokenOf(eventA)).isEqualTo(tokenA);
 
-        String foreignDashboard = mockMvc.perform(get("/admin/eventos/" + eventA.getSlug()).cookie(cookieOf(organizerB)))
+        String foreignDashboard = mockMvc.perform(get("/admin/eventos/" + eventA.getSlug() + "/ajustes").cookie(cookieOf(organizerB)))
                 .andExpect(status().isNotFound()).andReturn().getResponse().getContentAsString();
         assertThat(foreignDashboard).doesNotContain(tokenA);
 
-        // El dueño sí lo ve en su panel, armado desde APP_BASE_URL, y esa página no se cachea.
-        MvcResult own = mockMvc.perform(get("/admin/eventos/" + eventA.getSlug()).cookie(cookieOf(organizerA)))
+        // El dueño sí lo ve en Ajustes, armado desde APP_BASE_URL, y esa página no se cachea.
+        MvcResult own = mockMvc.perform(get("/admin/eventos/" + eventA.getSlug() + "/ajustes").cookie(cookieOf(organizerA)))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
                 .andReturn();
