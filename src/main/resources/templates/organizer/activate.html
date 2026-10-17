@@ -10,40 +10,61 @@
     <title>Activar tu cuenta — EventFoto</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@800&display=swap" rel="stylesheet">
     <style>
+        /* Paleta "Etiqueta", la misma de la landing y del panel del organizador. */
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.12);
-            --accent-purple: #c084fc;
-            --accent-pink: #f472b6;
-            --text-primary: #f8fafc;
-            --text-muted: #94a3b8;
+            --smoking: #1C1A1F;
+            --surface: #252329;
+            --line: rgba(244, 242, 238, 0.10);
+            --line-strong: rgba(244, 242, 238, 0.22);
+            --champan: #D9C29A;
+            --text-main: #F4F2EE;
+            --text-sub: #A39FA8;
+            --ok: #9CCBA5;
+            --danger: #E9A0A0;
+            --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
-        body { background: var(--bg-gradient); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; color: var(--text-primary); }
-        .card { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 24px; padding: 40px; width: 100%; max-width: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-        .header { text-align: center; margin-bottom: 28px; }
-        h1 { font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, #f472b6, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
-        .header p { color: var(--text-muted); font-size: 0.9rem; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--smoking); min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 32px 16px; color: var(--text-main); font: 400 1rem/1.5 'Atkinson Hyperlegible', system-ui, sans-serif; }
+        button, input { font-family: inherit; }
+        :focus-visible { outline: 3px solid var(--champan); outline-offset: 2px; }
+        .card, .login-card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px;
+            padding: 36px 32px; width: 100%; max-width: 420px; }
+        .header, .login-header { display: flex; flex-direction: column; margin-bottom: 26px; }
+        /* La marca: el aro de la landing. En el login es el "EventFoto" del encabezado, que sube arriba del título. */
+        .brand, .login-header p { display: flex; align-items: center; gap: 10px; font: 800 1.5rem/1 var(--display); color: var(--text-main); margin-bottom: 22px; }
+        .login-header p { order: -1; }
+        .login-header p::before, .logo-mark { content: ""; width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--champan); flex-shrink: 0;
+            background: radial-gradient(circle, var(--champan) 0 3px, transparent 3.5px); }
+        h1 { font: 800 clamp(2.2rem, 9vw, 2.8rem)/1 var(--display); margin-bottom: 10px; }
+        .header p:not(.brand) { color: var(--text-sub); }
         .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
-        .form-control { width: 100%; padding: 14px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 1rem; outline: none; }
-        .form-control:focus { border-color: var(--accent-purple); box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.25); }
-        .btn-submit { width: 100%; padding: 14px; margin-top: 10px; background: linear-gradient(135deg, #ec4899, #8b5cf6); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .form-group label { display: block; font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+        .form-control { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line-strong);
+            background: var(--smoking); color: var(--text-main); font-size: 1rem; }
+        .form-control::placeholder { color: var(--text-sub); opacity: 1; }
+        .form-control:hover { border-color: var(--text-sub); }
+        .btn-submit { width: 100%; padding: 13px 20px; margin-top: 8px; background: var(--champan); border: 0; color: var(--smoking);
+            border-radius: 999px; cursor: pointer; font-weight: 700; font-size: 1rem; }
+        .btn-submit:hover { background: #E6D3B0; }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
-        .alert { display: none; padding: 12px 16px; border-radius: 12px; font-size: 0.9rem; margin-bottom: 20px; text-align: center; }
-        .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
-        .alert-success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; }
+        .alert, .alert-error { display: none; padding: 12px 14px; border: 1px solid currentColor; border-radius: 8px; font-size: 0.95rem; margin-bottom: 20px; }
+        .alert-error { color: var(--danger); }
+        .alert-success { color: var(--ok); }
         .success-view { display: none; text-align: center; }
-        .success-view a { display: inline-block; margin-top: 16px; color: var(--accent-purple); font-weight: 600; text-decoration: none; }
+        .success-view a { display: inline-block; margin-top: 12px; color: var(--champan); font-weight: 700; }
+        a { color: var(--champan); }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+        @media (max-width: 480px) { .card, .login-card { padding: 28px 20px; } }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div class="header">
+        <p class="brand"><i class="logo-mark" aria-hidden="true"></i> EventFoto</p>
         <h1>Activá tu cuenta</h1>
         <p>Elegí tu contraseña para poder loguearte</p>
     </div>

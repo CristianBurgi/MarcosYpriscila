@@ -6,15 +6,15 @@
     <title>Probá la demo — EventFoto</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@800&family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <script src="/js/event-palette.js"></script>
     <script src="/js/image-compress.js"></script>
     <!-- Fase 9.7-B: el mismo diseño que el wizard real; estilos, marca, pasos, paso 2 y vista previa salen de sus fragmentos. -->
     <style th:replace="~{admin/wizard :: styles}"></style>
     <style>
-        .demo-banner { margin: 0 0 18px; padding: 12px 14px; border-radius: 10px; background: var(--gold-soft); color: var(--ink); font-size: .95rem; }
-        .demo-rules { margin-top: 16px; padding: 12px 14px; border-left: 3px solid var(--gold); background: #fff; color: var(--ink-muted); font-size: .92rem; line-height: 1.45; }
-        .demo-note { margin-top: 22px; font-size: .8rem; color: var(--ink-muted); }
+        .demo-banner { margin: 0 0 18px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--champan); color: var(--text-main); font-size: .95rem; }
+        .demo-rules { margin-top: 16px; padding: 12px 14px; border-left: 3px solid var(--champan); background: var(--smoking); color: var(--text-sub); font-size: .92rem; line-height: 1.45; }
+        .demo-note { margin-top: 22px; font-size: .85rem; color: var(--text-sub); }
     </style>
 </head>
 <body>
@@ -37,7 +37,7 @@
             <section th:replace="~{admin/wizard :: step2}"></section>
             <section id="step3" hidden>
                 <span class="eyebrow">Paso 3 de 3</span>
-                <h2 style="font-size:1.5rem;margin-top:14px;">¡Todo listo!</h2>
+                <h2 style="margin-top:14px;">¡Todo listo!</h2>
                 <p class="lead" style="margin-top:16px;">Así van a ver tu evento los invitados. Entrá al menú, subí fotos, dejá un mensaje y mirá cómo aparece todo en la pantalla.</p>
                 <div style="margin-top:22px;">
                     <div class="summary-row"><span id="summaryDate"></span></div>
