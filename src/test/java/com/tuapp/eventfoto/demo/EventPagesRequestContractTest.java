@@ -2,12 +2,16 @@ package com.tuapp.eventfoto.demo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tuapp.eventfoto.comment.CommentRepository;
 import com.tuapp.eventfoto.event.Event;
 import com.tuapp.eventfoto.event.EventOrigin;
 import com.tuapp.eventfoto.event.EventRepository;
 import com.tuapp.eventfoto.event.UploadWindow;
+import com.tuapp.eventfoto.message.MessageRepository;
 import com.tuapp.eventfoto.organizer.Organizer;
 import com.tuapp.eventfoto.organizer.OrganizerRepository;
+import com.tuapp.eventfoto.photo.GuestQuotaRepository;
+import com.tuapp.eventfoto.photo.PhotoRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,6 +60,10 @@ class EventPagesRequestContractTest {
     @Autowired private EventRepository eventRepository;
     @Autowired private OrganizerRepository organizerRepository;
     @Autowired private DemoSessionRepository demoSessions;
+    @Autowired private CommentRepository commentRepository;
+    @Autowired private PhotoRepository photoRepository;
+    @Autowired private MessageRepository messageRepository;
+    @Autowired private GuestQuotaRepository guestQuotaRepository;
 
     @BeforeEach
     void setUp() {
@@ -68,6 +76,12 @@ class EventPagesRequestContractTest {
     @AfterEach
     void cleanUp() {
         demoSessions.deleteAll();
+        // La H2 es compartida entre clases de test: si otra dejó filas hijas de un evento, borrar el evento falla por la FK.
+        // Primero las hijas (comentarios cuelgan de fotos), así este test no depende de quién corrió antes.
+        commentRepository.deleteAll();
+        photoRepository.deleteAll();
+        messageRepository.deleteAll();
+        guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
         organizerRepository.deleteAll();
     }

@@ -11,6 +11,7 @@ import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.storage.ImageContent;
 import com.tuapp.eventfoto.storage.StorageService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,11 +74,7 @@ class UploadStreamingTest {
     @BeforeEach
     void setUp() {
         rateLimiterService.resetRateLimits();
-        claimRepository.deleteAll();
-        photoRepository.deleteAll();
-        guestQuotaRepository.deleteAll();
-        eventRepository.deleteAll();
-        organizerRepository.deleteAll();
+        cleanUp();
 
         Organizer organizer = organizerRepository.save(Organizer.builder().email("stream@test.com").build());
         event = eventRepository.save(Event.builder()
@@ -90,6 +87,16 @@ class UploadStreamingTest {
                 .build());
 
         when(storageService.generatePublicUrl(anyString())).thenAnswer(inv -> "https://fake-r2/" + inv.getArgument(0));
+    }
+
+    /** La H2 es compartida entre clases de test: sin esto quedan fotos, cupos y reclamaciones que rompen a otros. */
+    @AfterEach
+    void cleanUp() {
+        claimRepository.deleteAll();
+        photoRepository.deleteAll();
+        guestQuotaRepository.deleteAll();
+        eventRepository.deleteAll();
+        organizerRepository.deleteAll();
     }
 
     @Test
