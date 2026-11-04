@@ -11,6 +11,7 @@ import com.tuapp.eventfoto.organizer.OrganizerRepository;
 import com.tuapp.eventfoto.photo.dto.ConfirmUploadRequestDTO;
 import com.tuapp.eventfoto.storage.FileSignatureValidator;
 import com.tuapp.eventfoto.storage.StorageService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -100,13 +101,19 @@ class HeicConfirmDecisionIntegrationTest {
         return h;
     }
 
-    @BeforeEach
-    void setUp() throws Exception {
-        rateLimiterService.resetRateLimits();
+    /** La H2 es compartida entre clases de test: sin esto quedan evento, cupo y foto que rompen a otros tests. */
+    @AfterEach
+    void cleanUp() {
         photoRepository.deleteAll();
         guestQuotaRepository.deleteAll();
         eventRepository.deleteAll();
         organizerRepository.deleteAll();
+    }
+
+    @BeforeEach
+    void setUp() throws Exception {
+        rateLimiterService.resetRateLimits();
+        cleanUp();
         bucket.clear();
 
         Organizer organizer = organizerRepository.save(Organizer.builder().email("heic@test.com").build());
