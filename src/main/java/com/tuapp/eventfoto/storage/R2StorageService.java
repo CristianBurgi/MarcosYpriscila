@@ -5,6 +5,7 @@ import com.tuapp.eventfoto.common.exception.StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamSource;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -27,12 +28,15 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.OptionalLong;
@@ -149,14 +153,8 @@ public class R2StorageService implements StorageService {
         validateContentType(contentType);
 
         if (isLocalDevMode()) {
-            // Mismo lugar del que lo sirve WebConfig (/uploads/**) y del que lo borra deleteFile().
-            Path baseDir = Paths.get("uploads").toAbsolutePath().normalize();
-            Path target = baseDir.resolve(key).normalize();
-            if (!target.startsWith(baseDir)) {
-                throw new StorageException("Clave de storage inválida: " + key);
-            }
+            Path target = localTarget(key);
             try {
-                Files.createDirectories(target.getParent());
                 Files.write(target, bytes);
             } catch (IOException e) {
                 throw new StorageException("Error al guardar el archivo localmente", e);
@@ -186,6 +184,89 @@ public class R2StorageService implements StorageService {
     @Override
     public byte[] convertHeicToJpeg(byte[] heicBytes) {
         return heicConverter.convertToJpeg(heicBytes);
+    }
+
+    @Override
+    public Path convertHeicToJpeg(InputStream heic) throws IOException {
+        return heicConverter.convertToJpegFile(heic);
+    }
+
+    @Override
+    public void uploadFile(String key, Path file, String contentType) {
+        validateContentType(contentType);
+        if (isLocalDevMode()) {
+            try {
+                Files.copy(file, localTarget(key), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new StorageException("Error al guardar el archivo localmente", e);
+            }
+            return;
+        }
+        putObject(key, contentType, RequestBody.fromFile(file));
+    }
+
+    @Override
+    public void uploadStream(String key, InputStreamSource source, long size, String contentType) {
+        validateContentType(contentType);
+        if (isLocalDevMode()) {
+            try (InputStream in = source.getInputStream()) {
+                Files.copy(in, localTarget(key), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new StorageException("Error al guardar el archivo localmente", e);
+            }
+            return;
+        }
+        // Un stream nuevo por intento (el SDK reintenta pidiendo otro); se cierran todos al final por si el SDK no lo hace.
+        List<InputStream> opened = new ArrayList<>();
+        try {
+            putObject(key, contentType, RequestBody.fromContentProvider(() -> {
+                try {
+                    InputStream in = source.getInputStream();
+                    opened.add(in);
+                    return in;
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }, size, contentType));
+        } finally {
+            for (InputStream in : opened) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    log.debug("No se pudo cerrar un stream de subida: {}", e.getMessage());
+                }
+            }
+        }
+    }
+
+    private void putObject(String key, String contentType, RequestBody body) {
+        try {
+            s3Client.putObject(PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(contentType)
+                    .contentLength(body.optionalContentLength().orElseThrow())
+                    .build(), body);
+            log.info("Archivo subido por stream a Cloudflare R2 con la clave '{}'", key);
+        } catch (Exception e) {
+            log.error("Error al subir el archivo a Cloudflare R2: {}", e.getMessage(), e);
+            throw new StorageException("Error al subir el archivo procesado a Cloudflare R2", e);
+        }
+    }
+
+    /** Mismo lugar del que lo sirve WebConfig (/uploads/**) y del que lo borra deleteFile(). */
+    private Path localTarget(String key) {
+        Path baseDir = Paths.get("uploads").toAbsolutePath().normalize();
+        Path target = baseDir.resolve(key).normalize();
+        if (!target.startsWith(baseDir)) {
+            throw new StorageException("Clave de storage inválida: " + key);
+        }
+        try {
+            Files.createDirectories(target.getParent());
+        } catch (IOException e) {
+            throw new StorageException("Error al guardar el archivo localmente", e);
+        }
+        return target;
     }
 
     @Override

@@ -38,9 +38,13 @@ import com.tuapp.eventfoto.common.exception.StorageException;
 import com.tuapp.eventfoto.common.exception.UploadClaimFailedException;
 import com.tuapp.eventfoto.common.exception.UploadInProgressException;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.SequenceInputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -272,28 +276,32 @@ public class PhotoServiceImpl implements PhotoService {
 
         String key = StorageKeys.newKey(event.getId(), extension);
 
-        // Todo el trabajo pesado (leer bytes, validar firma, convertir HEIC, subir a R2)
-        // ocurre FUERA de transacción. Recién después se abre la transacción corta para
-        // incrementar el cupo y persistir la foto.
-        byte[] bytes;
-        try {
-            bytes = file.getBytes();
+        // Todo el trabajo pesado (validar firma, convertir HEIC, subir a R2) ocurre FUERA de transacción, y sin cargar
+        // la foto entera en memoria. Recién después se abre la transacción corta para incrementar el cupo y persistir.
+        // Contenido real (magic bytes) y HEIC/HEIF -> JPEG sobre los BYTES, antes de subir a storage:
+        // el Content-Type multipart declarado por el cliente puede mentir.
+        String context = "uploadDirect originalFilename='" + originalFilename + "' contentTypeDeclarado='" + contentType + "'";
+        boolean heic;
+        try (InputStream in = file.getInputStream()) {
+            heic = imageContent.checkSignature(in.readNBytes(ImageContent.HEADER_BYTES), context);
         } catch (IOException e) {
             log.error("Error al procesar los bytes de la imagen subida directamente: {}", e.getMessage(), e);
             throw new StorageException("Error al procesar la imagen en el servidor", e);
         }
 
-        // Contenido real (magic bytes) y HEIC/HEIF -> JPEG sobre los BYTES, antes de subir a storage:
-        // el Content-Type multipart declarado por el cliente puede mentir.
-        ImageContent.Normalized image = imageContent.validateAndConvert(bytes,
-                "uploadDirect originalFilename='" + originalFilename + "' contentTypeDeclarado='" + contentType + "'");
-        bytes = image.bytes();
-        if (image.convertedFromHeic()) {
-            contentType = "image/jpeg";
+        if (heic) {
             key = StorageKeys.newKey(event.getId(), ".jpg");
+            Path jpeg;
+            try (InputStream in = file.getInputStream()) {
+                jpeg = imageContent.convertHeic(in, context);
+            } catch (IOException e) {
+                log.error("Error al procesar los bytes de la imagen subida directamente: {}", e.getMessage(), e);
+                throw new StorageException("Error al procesar la imagen en el servidor", e);
+            }
+            uploadConvertedJpeg(key, jpeg);
+        } else {
+            storageService.uploadStream(key, file, file.getSize(), contentType);
         }
-
-        storageService.uploadBytes(key, bytes, contentType);
 
         String publicUrl = storageService.generatePublicUrl(key);
 
@@ -536,17 +544,21 @@ public class PhotoServiceImpl implements PhotoService {
      *         o la nueva key .jpg si se convirtió (el objeto HEIC original se borra).
      */
     private String validateAndConvertIfNeeded(String key) {
-        byte[] fullBytes;
-        try (InputStream is = storageService.streamObject(key)) {
-            fullBytes = is.readAllBytes();
+        String context = "confirmUpload key='" + key + "'";
+        // Fuera del try: si R2 no abre el stream, el objeto se conserva (falla pasajera, el reintento lo procesa).
+        InputStream is = storageService.streamObject(key);
+        Path jpeg;
+        try (is) {
+            // Solo el encabezado: para un JPEG/PNG/WEBP no se lee nada más (antes, readAllBytes cargaba hasta 15 MB).
+            byte[] header = is.readNBytes(ImageContent.HEADER_BYTES);
+            if (!imageContent.checkSignature(header, context)) {
+                return key;
+            }
+            // HEIC: el mismo stream sigue hacia el archivo temporal de heif-convert, con el encabezado ya leído adelante.
+            jpeg = imageContent.convertHeic(new SequenceInputStream(new ByteArrayInputStream(header), is), context);
         } catch (IOException e) {
             log.error("Error al leer los bytes del objeto '{}' para validar su firma: {}", key, e.getMessage());
             throw new StorageException("No se pudo leer el archivo subido para validar su contenido", e);
-        }
-
-        ImageContent.Normalized image;
-        try {
-            image = imageContent.validateAndConvert(fullBytes, "confirmUpload key='" + key + "'");
         } catch (InvalidFileContentException | StorageException e) {
             // Firma inválida o HEIC que no se pudo convertir: el objeto no queda en storage.
             try {
@@ -556,20 +568,29 @@ public class PhotoServiceImpl implements PhotoService {
             }
             throw e;
         }
-        if (!image.convertedFromHeic()) {
-            return key;
-        }
-        byte[] jpegBytes = image.bytes();
 
         String jpegKey = siblingJpegKey(key);
-        storageService.uploadBytes(jpegKey, jpegBytes, "image/jpeg");
+        uploadConvertedJpeg(jpegKey, jpeg);
         try {
             storageService.deleteFile(key);
         } catch (Exception e) {
             log.warn("No se pudo eliminar el HEIC original '{}' tras convertirlo a JPEG: {}", key, e.getMessage());
         }
-        log.info("Conversión HEIC->JPEG exitosa: '{}' -> '{}' ({} bytes -> {} bytes)", key, jpegKey, fullBytes.length, jpegBytes.length);
+        log.info("Conversión HEIC->JPEG exitosa: '{}' -> '{}'", key, jpegKey);
         return jpegKey;
+    }
+
+    /** Sube el JPEG temporal de una conversión HEIC y lo borra del disco, haya subido o no. */
+    private void uploadConvertedJpeg(String key, Path jpeg) {
+        try {
+            storageService.uploadFile(key, jpeg, "image/jpeg");
+        } finally {
+            try {
+                Files.deleteIfExists(jpeg);
+            } catch (IOException e) {
+                log.warn("No se pudo eliminar el JPEG temporal '{}': {}", jpeg, e.getMessage());
+            }
+        }
     }
 
     /**

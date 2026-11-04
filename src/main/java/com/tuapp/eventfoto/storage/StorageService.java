@@ -1,6 +1,10 @@
 package com.tuapp.eventfoto.storage;
 
+import org.springframework.core.io.InputStreamSource;
+
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.OptionalLong;
 import java.util.UUID;
 
@@ -45,12 +49,31 @@ public interface StorageService {
     void uploadBytes(String key, byte[] bytes, String contentType, String cacheControl);
 
     /**
+     * Sube un archivo del disco sin cargarlo en memoria (el JPEG que deja una conversión HEIC).
+     */
+    void uploadFile(String key, Path file, String contentType);
+
+    /**
+     * Sube por stream, sin cargar el contenido en memoria. {@code source} se abre de nuevo en cada intento del SDK (un
+     * MultipartFile se puede reabrir), así que un PUT reintentado no queda con un stream ya consumido.
+     */
+    void uploadStream(String key, InputStreamSource source, long size, String contentType);
+
+    /**
      * Convierte una imagen HEIC en bytes a formato JPEG en bytes mediante heif-convert.
      *
      * @param heicBytes Imagen original HEIC en bytes
      * @return Imagen convertida en formato JPEG
      */
     byte[] convertHeicToJpeg(byte[] heicBytes);
+
+    /**
+     * Igual, por stream: la foto va directo a un archivo temporal y no pasa entera por el heap.
+     *
+     * @return el JPEG en un archivo temporal; quien llama lo borra
+     * @throws IOException si falla la lectura de {@code heic}
+     */
+    Path convertHeicToJpeg(InputStream heic) throws IOException;
 
     /**
      * Tamaño en bytes del objeto, SIN leerlo (HeadObject en R2, tamaño del archivo en modo local).

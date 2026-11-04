@@ -20,6 +20,10 @@ import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -53,6 +57,11 @@ class ConfirmUploadIdempotencyTest {
     // Firma HEIC real: caja ISOBMFF "ftyp" en bytes 4-7 + brand "heic" en bytes 8-11.
     private static final byte[] HEIC_HEADER = {0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'h', 'e', 'i', 'c'};
     private static final byte[] CONVERTED_JPEG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3};
+
+    /** La conversión entrega el JPEG en un archivo temporal (PhotoServiceImpl lo borra después de subirlo). */
+    private static Path tempJpeg(byte[] bytes) throws IOException {
+        return Files.write(Files.createTempFile("test-jpeg", ".jpg"), bytes);
+    }
 
     @Autowired
     private PhotoService photoService;
@@ -112,10 +121,10 @@ class ConfirmUploadIdempotencyTest {
 
     @Test
     @DisplayName("Reintento secuencial (HEIC): la segunda llamada NO intenta releer el objeto original ya borrado, y devuelve la foto con la key .jpg convertida")
-    void sequentialRetryWithHeicConversionDoesNotDuplicate() {
+    void sequentialRetryWithHeicConversionDoesNotDuplicate() throws IOException {
         String heicKey = key(".heic");
         when(storageService.streamObject(heicKey)).thenAnswer(inv -> new ByteArrayInputStream(HEIC_HEADER));
-        when(storageService.convertHeicToJpeg(any())).thenReturn(CONVERTED_JPEG);
+        when(storageService.convertHeicToJpeg(any(InputStream.class))).thenAnswer(inv -> tempJpeg(CONVERTED_JPEG));
         ConfirmUploadRequestDTO request = new ConfirmUploadRequestDTO(heicKey, "Invitado", null, "guest-token-retry-heic");
 
         PhotoResponseDTO first = photoService.confirmUpload("evento-demo-k7m2xq9p", request);
@@ -132,7 +141,7 @@ class ConfirmUploadIdempotencyTest {
         assertThat(guestQuotaRepository.findByEventIdAndGuestToken(event.getId(), "guest-token-retry-heic").orElseThrow().getPhotosUploaded())
                 .isEqualTo(1);
         verify(storageService, times(1)).streamObject(heicKey);
-        verify(storageService, times(1)).convertHeicToJpeg(any());
+        verify(storageService, times(1)).convertHeicToJpeg(any(InputStream.class));
     }
 
     @Test

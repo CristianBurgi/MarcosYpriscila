@@ -30,6 +30,7 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -108,7 +109,7 @@ class UploadKeyFormatTest {
                 .andExpect(jsonPath("$.storageKey").value(org.hamcrest.Matchers.endsWith(".png")));
 
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
-        verify(storageService).uploadBytes(key.capture(), any(), anyString());
+        verify(storageService).uploadStream(key.capture(), any(), anyLong(), anyString());
         assertThat(StorageKeys.belongsToEvent(event.getId(), key.getValue())).isTrue();
     }
 
@@ -117,7 +118,7 @@ class UploadKeyFormatTest {
     void uploadDirectRejectsForbiddenExtension() throws Exception {
         direct("shell.php", "image/jpeg").andExpect(status().isBadRequest());
         direct("foto.gif", "image/gif").andExpect(status().isBadRequest());
-        verify(storageService, never()).uploadBytes(anyString(), any(), anyString());
+        verify(storageService, never()).uploadStream(anyString(), any(), anyLong(), anyString());
     }
 
     @Test
@@ -137,7 +138,7 @@ class UploadKeyFormatTest {
         direct("shell.exe", "image/jpeg").andExpect(status().isBadRequest());
         direct("foto.jpg", "image/png").andExpect(status().isBadRequest());   // el nombre dice JPEG y el tipo PNG
         direct("foto.png", "image/webp").andExpect(status().isBadRequest());
-        verify(storageService, never()).uploadBytes(anyString(), any(), anyString());
+        verify(storageService, never()).uploadStream(anyString(), any(), anyLong(), anyString());
     }
 
     @Test

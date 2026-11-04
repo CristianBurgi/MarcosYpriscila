@@ -25,7 +25,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
@@ -72,7 +75,7 @@ class HeicConfirmDecisionIntegrationTest {
 
     @MockBean private StorageService storageService;
 
-    /** "Bucket" en memoria: lo que sube uploadBytes() y lo que devuelve streamObject(). */
+    /** "Bucket" en memoria: lo que sube uploadFile() y lo que devuelve streamObject(). */
     private final Map<String, byte[]> bucket = new ConcurrentHashMap<>();
 
     // Header JFIF idéntico al que registran los logs de producción del Grupo C:
@@ -98,7 +101,7 @@ class HeicConfirmDecisionIntegrationTest {
     }
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         rateLimiterService.resetRateLimits();
         photoRepository.deleteAll();
         guestQuotaRepository.deleteAll();
@@ -127,15 +130,16 @@ class HeicConfirmDecisionIntegrationTest {
                     return new ByteArrayInputStream(b);
                 });
         doAnswer(inv -> {
-            bucket.put(inv.getArgument(0, String.class), ((byte[]) inv.getArgument(1)).clone());
+            bucket.put(inv.getArgument(0, String.class), Files.readAllBytes(inv.getArgument(1, Path.class)));
             return null;
-        }).when(storageService).uploadBytes(anyString(), any(), anyString());
+        }).when(storageService).uploadFile(anyString(), any(), anyString());
         doAnswer(inv -> {
             bucket.remove(inv.getArgument(0, String.class));
             return null;
         }).when(storageService).deleteFile(anyString());
         // Conversión fake: devuelve un JPEG mínimo válido. El Test 1 verifica que NO se invoque.
-        when(storageService.convertHeicToJpeg(any())).thenReturn(REAL_JPEG_BYTES);
+        when(storageService.convertHeicToJpeg(any(InputStream.class)))
+                .thenAnswer(inv -> Files.write(Files.createTempFile("test-jpeg", ".jpg"), REAL_JPEG_BYTES));
     }
 
     @ParameterizedTest(name = "key con extensión {0}")
@@ -160,8 +164,8 @@ class HeicConfirmDecisionIntegrationTest {
                 .andExpect(jsonPath("$.uploaderName", is("emi")))
                 .andExpect(jsonPath("$.storageKey", is(key))); // key intacta => no hubo conversión
 
-        verify(storageService, never()).convertHeicToJpeg(any());
-        verify(storageService, never()).uploadBytes(anyString(), any(), anyString());
+        verify(storageService, never()).convertHeicToJpeg(any(InputStream.class));
+        verify(storageService, never()).uploadFile(anyString(), any(), anyString());
         assertThat(bucket).containsOnlyKeys(key);
         assertThat(bucket.get(key)).isEqualTo(REAL_JPEG_BYTES); // bytes sin tocar
         assertThat(photoRepository.findAll())
@@ -189,7 +193,7 @@ class HeicConfirmDecisionIntegrationTest {
                 .andExpect(jsonPath("$.storageKey", not(is(heicKey))))
                 .andReturn().getResponse().getContentAsString();
 
-        verify(storageService, times(1)).convertHeicToJpeg(any());
+        verify(storageService, times(1)).convertHeicToJpeg(any(InputStream.class));
 
         String finalKey = objectMapper.readTree(body).get("storageKey").asText();
         assertThat(bucket).doesNotContainKey(heicKey);          // el HEIC original se borró
