@@ -13,6 +13,9 @@ spring:
       # de a 10 cada ~9s, llegando la ultima oleada a esperar 30+ segundos.
       # Subimos el techo a 20 para dar mas margen de concurrencia real de boda.
       maximum-pool-size: 20
+      # Sin esto el mínimo vale lo mismo que el máximo y las 20 conexiones quedan abiertas siempre (idle-timeout no
+      # actúa): cada una es un proceso de Postgres. Con 2 en reposo, el pool crece hasta 20 en una ráfaga de subidas.
+      minimum-idle: 2
       # No hace falta bajarlo agresivamente: con los timeouts explicitos del
       # S3Client (ver S3Config.java), una conexion ya no queda retenida ~9s
       # esperando a R2 -- el peor caso ahora es de pocos segundos.

@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
@@ -43,6 +44,15 @@ public class SseBroadcaster {
      */
     public SseEmitter subscribe(UUID eventId) {
         return register(eventId, new SseEmitter(SSE_TIMEOUT_MS));
+    }
+
+    /**
+     * Igual, y {@code onClose} corre cuando el emitter termina, expira o falla (después de sacarlo de la lista del
+     * evento). SseEmitter guarda UN solo callback por tipo: quien necesite enterarse del cierre tiene que pasar por
+     * acá y no llamar a emitter.onCompletion/onTimeout/onError, que pisarían la limpieza de este broadcaster.
+     */
+    public SseEmitter subscribe(UUID eventId, Consumer<SseEmitter> onClose) {
+        return register(eventId, new SseEmitter(SSE_TIMEOUT_MS), onClose);
     }
 
     /** Suscribe la pantalla de UNA demo: solo recibe lo que se publica en su propio canal. */
@@ -81,6 +91,10 @@ public class SseBroadcaster {
      * poder testear el manejo de desconexiones con emitters simulados.
      */
     SseEmitter register(Object eventId, SseEmitter emitter) {
+        return register(eventId, emitter, closed -> { });
+    }
+
+    SseEmitter register(Object eventId, SseEmitter emitter, Consumer<SseEmitter> onClose) {
         // Alta ATÓMICA: agregar el emitter y (si hace falta) crear la lista ocurren dentro de un solo
         // compute() sobre la clave del evento. Antes era computeIfAbsent + add, y la limpieza hacía
         // remove + isEmpty + remove(eventId) por separado: un cliente que se suscribía en esa
@@ -97,6 +111,7 @@ public class SseBroadcaster {
         // Limpieza automática al finalizar, expirar o fallar la conexión
         Runnable cleanup = () -> {
             removeEmitter(eventId, emitter);
+            onClose.accept(emitter);
             log.debug("Conexión SSE cerrada/removida para evento ID: {}. Suscriptores restantes: {}", eventId, getActiveSubscribersCount(eventId));
         };
 
@@ -181,7 +196,7 @@ public class SseBroadcaster {
         log.info("Emitiendo evento SSE '{}' a {} clientes para evento ID: {}", eventName, emitters.size(), eventId);
 
         for (SseEmitter emitter : emitters) {
-            safeSend(emitters, emitter, SseEmitter.event().name(eventName).data(data));
+            safeSend(eventId, emitter, SseEmitter.event().name(eventName).data(data));
         }
     }
 
@@ -197,7 +212,7 @@ public class SseBroadcaster {
 
         eventEmitters.forEach((eventId, emitters) -> {
             for (SseEmitter emitter : emitters) {
-                safeSend(emitters, emitter, SseEmitter.event().comment("ping"));
+                safeSend(eventId, emitter, SseEmitter.event().comment("ping"));
             }
         });
     }
@@ -212,16 +227,16 @@ public class SseBroadcaster {
      * este catch (ya existía) sino del async error dispatch que Spring dispara al fallar
      * la escritura -- eso se silencia en GlobalExceptionHandler#handleClientDisconnected.
      */
-    private void safeSend(List<SseEmitter> emitters, SseEmitter emitter, SseEmitter.SseEventBuilder event) {
+    private void safeSend(Object eventId, SseEmitter emitter, SseEmitter.SseEventBuilder event) {
         try {
             emitter.send(event);
         } catch (IOException e) {
             log.debug("Cliente SSE desconectado, removiendo emisor: {}", e.getMessage());
-            emitters.remove(emitter);
+            removeEmitter(eventId, emitter); // y la lista del evento si queda vacía
         } catch (Exception e) {
             // Ej.: IllegalStateException si el emitter ya estaba completado.
             log.warn("Fallo inesperado al emitir SSE a un cliente, removiendo emisor: {}", e.toString());
-            emitters.remove(emitter);
+            removeEmitter(eventId, emitter); // y la lista del evento si queda vacía
         }
     }
 

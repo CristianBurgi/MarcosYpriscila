@@ -20,20 +20,24 @@ public class ModeratorStreamRegistry {
 
     private final Map<UUID, Set<SseEmitter>> streamsByEvent = new ConcurrentHashMap<>();
 
+    /**
+     * Anota el stream. NO registra callbacks en el emitter (SseEmitter guarda uno solo por tipo y pisaría la limpieza
+     * de SseBroadcaster): el cierre llega por {@link #untrack}, que se pasa a {@code SseBroadcaster.subscribe(id, hook)}.
+     */
     public SseEmitter track(UUID eventId, SseEmitter emitter) {
         streamsByEvent.compute(eventId, (id, current) -> {
             Set<SseEmitter> set = current != null ? current : ConcurrentHashMap.newKeySet();
             set.add(emitter);
             return set;
         });
-        Runnable untrack = () -> streamsByEvent.computeIfPresent(eventId, (id, set) -> {
+        return emitter;
+    }
+
+    public void untrack(UUID eventId, SseEmitter emitter) {
+        streamsByEvent.computeIfPresent(eventId, (id, set) -> {
             set.remove(emitter);
             return set.isEmpty() ? null : set;
         });
-        emitter.onCompletion(untrack);
-        emitter.onTimeout(untrack);
-        emitter.onError(e -> untrack.run());
-        return emitter;
     }
 
     /** Cierra todos los streams del moderador del evento. Devuelve cuántos cerró. */
