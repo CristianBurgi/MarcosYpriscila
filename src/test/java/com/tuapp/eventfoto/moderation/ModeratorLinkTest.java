@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.mock.web.MockAsyncContext;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.HashSet;
@@ -228,6 +229,20 @@ class ModeratorLinkTest extends ModeratorTestBase {
         assertThat(streamRegistry.openStreams(eventA.getId())).isEqualTo(1);
         streamRegistry.closeAll(eventA.getId());
         newStream.getAsyncResult(2000);
+    }
+
+    @Test
+    @DisplayName("Al cerrarse un stream de moderador se ejecutan las DOS limpiezas: la del broadcaster y la del registro")
+    void closingAModeratorStreamRunsBothCleanups() throws Exception {
+        MvcResult stream = mockMvc.perform(get(api(tokenOf(eventA), "/stream"))).andExpect(request().asyncStarted()).andReturn();
+        assertThat(streamRegistry.openStreams(eventA.getId())).isEqualTo(1);
+        assertThat(sseBroadcaster.getActiveSubscribersCount(eventA.getId())).isEqualTo(1);
+
+        // El contenedor termina la conexión (cliente que se va, timeout): corren los callbacks del emitter.
+        ((MockAsyncContext) stream.getRequest().getAsyncContext()).complete();
+
+        assertThat(sseBroadcaster.getActiveSubscribersCount(eventA.getId())).as("limpieza del broadcaster").isZero();
+        assertThat(streamRegistry.openStreams(eventA.getId())).as("limpieza del registro").isZero();
     }
 
     // ---------- lo que NO puede ----------

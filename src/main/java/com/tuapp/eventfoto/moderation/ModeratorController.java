@@ -61,6 +61,7 @@ public class ModeratorController {
     /** Mismo flujo de eventos que el stream público, pero por token (así el moderador nunca conoce el slug). */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@ModeratedEvent Event event) {
-        return streamRegistry.track(event.getId(), sseBroadcaster.subscribe(event.getId()));
+        UUID eventId = event.getId();
+        return streamRegistry.track(eventId, sseBroadcaster.subscribe(eventId, closed -> streamRegistry.untrack(eventId, closed)));
     }
 }

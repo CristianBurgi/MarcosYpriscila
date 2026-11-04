@@ -59,6 +59,32 @@ class SseBroadcasterTest {
     }
 
     @Test
+    @DisplayName("Si el único emitter del evento falla al emitir, el evento sale del mapa (no queda una lista vacía)")
+    void failedLastEmitterLeavesNoEmptyListInTheMap() throws IOException {
+        var solo = new SseBroadcaster();
+        UUID soloEvent = UUID.randomUUID();
+        SseEmitter onlyOne = mock(SseEmitter.class);
+        solo.register(soloEvent, onlyOne);
+        doThrow(new IOException("Broken pipe")).when(onlyOne).send(any(SseEmitter.SseEventBuilder.class));
+
+        solo.broadcastPhotoDeleted(soloEvent, UUID.randomUUID());
+        assertThat(channels(solo)).doesNotContainKey(soloEvent);
+
+        // Lo mismo por el heartbeat.
+        UUID otherEvent = UUID.randomUUID();
+        SseEmitter other = mock(SseEmitter.class);
+        solo.register(otherEvent, other);
+        doThrow(new IOException("Broken pipe")).when(other).send(any(SseEmitter.SseEventBuilder.class));
+        solo.sendHeartbeat();
+        assertThat(channels(solo)).doesNotContainKey(otherEvent);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.Map<Object, java.util.List<SseEmitter>> channels(SseBroadcaster b) {
+        return (java.util.Map<Object, java.util.List<SseEmitter>>) org.springframework.test.util.ReflectionTestUtils.getField(b, "eventEmitters");
+    }
+
+    @Test
     @DisplayName("sendHeartbeat(): el emitter que tira IOException se remueve, los demás reciben el ping y la excepción no se relanza")
     void heartbeatRemovesBrokenEmitterAndKeepsSendingToTheRest() throws IOException {
         assertDoesNotThrow(() -> broadcaster.sendHeartbeat());
