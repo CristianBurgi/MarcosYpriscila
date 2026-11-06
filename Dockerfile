@@ -40,4 +40,6 @@ EXPOSE 8080
 
 # Comando de ejecución de Spring Boot
 # El heap toma hasta el 75% de la memoria del contenedor, no el 25% por defecto ni más que el límite.
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+# Metaspace: la app usa ~130 MB medidos, así que un tope de 128m la deja en Full GC seguidos y termina en OOM. Este flag
+# gana sobre JAVA_TOOL_OPTIONS. ExitOnOutOfMemoryError: ante un OOM el proceso sale (código 3) y Railway lo reinicia.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:MaxMetaspaceSize=512m", "-XX:+ExitOnOutOfMemoryError", "-jar", "app.jar"]
