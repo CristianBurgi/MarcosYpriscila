@@ -65,6 +65,9 @@ app:
   # Hosts viejos (separados por coma) cuyas páginas redirigen con 302 a base-url (LegacyHostRedirectFilter).
   # Vacío = no redirige nada (interruptor de apagado). El valor real va solo en la variable de Railway.
   legacy-hosts: ${APP_LEGACY_HOSTS:}
+  # Secreto compartido con Cloudflare (Transform Rule que agrega X-Origin-Auth). Vacío = nunca se confía en
+  # CF-Connecting-IP (ClientIpResolver). El valor real va solo en la variable de Railway.
+  cf-origin-secret: ${CF_ORIGIN_SECRET:}
   upload:
     # Tope de tamaño por archivo (15 MB). Lo aplica /confirm (HeadObject sobre lo que el cliente subió directo a R2,
     # antes de leer un solo byte) y /upload-direct; spring.servlet.multipart.max-file-size usa este mismo valor.
