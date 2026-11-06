@@ -16,7 +16,51 @@ import static org.mockito.Mockito.when;
  */
 class ClientIpResolverTest {
 
-    private final ClientIpResolver resolver = new ClientIpResolver();
+    private static final String SECRET = "secreto-de-prueba";
+
+    private final ClientIpResolver resolver = new ClientIpResolver("");
+    private final ClientIpResolver cfResolver = new ClientIpResolver(SECRET);
+
+    private static HttpServletRequest cfRequest(String remoteAddr, String originAuth, String cfIp) {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRemoteAddr()).thenReturn(remoteAddr);
+        when(request.getHeader("X-Real-IP")).thenReturn("172.70.1.1"); // edge de Cloudflare según Railway
+        when(request.getHeader("X-Origin-Auth")).thenReturn(originAuth);
+        when(request.getHeader("CF-Connecting-IP")).thenReturn(cfIp);
+        return request;
+    }
+
+    @Test
+    @DisplayName("CF: secreto correcto + CF-Connecting-IP válida -> se usa CF-Connecting-IP")
+    void correctSecretUsesCfIp() {
+        assertThat(cfResolver.resolve(cfRequest("100.64.0.2", SECRET, "186.122.212.179"))).isEqualTo("186.122.212.179");
+    }
+
+    @Test
+    @DisplayName("CF: secreto incorrecto o ausente -> se ignora CF-Connecting-IP y cae a X-Real-IP")
+    void wrongOrMissingSecretIgnoresCfIp() {
+        assertThat(cfResolver.resolve(cfRequest("100.64.0.2", "otro", "6.6.6.6"))).isEqualTo("172.70.1.1");
+        assertThat(cfResolver.resolve(cfRequest("100.64.0.2", null, "6.6.6.6"))).isEqualTo("172.70.1.1");
+    }
+
+    @Test
+    @DisplayName("CF: secreto correcto + CF-Connecting-IP basura -> cae a X-Real-IP")
+    void correctSecretWithGarbageCfIpFallsBack() {
+        assertThat(cfResolver.resolve(cfRequest("100.64.0.2", SECRET, "no-soy-una-ip"))).isEqualTo("172.70.1.1");
+    }
+
+    @Test
+    @DisplayName("CF: variable sin configurar + header y CF-Connecting-IP presentes -> comportamiento actual")
+    void unconfiguredSecretNeverTrustsCfIp() {
+        assertThat(resolver.resolve(cfRequest("100.64.0.2", SECRET, "6.6.6.6"))).isEqualTo("172.70.1.1");
+        assertThat(resolver.resolve(cfRequest("100.64.0.2", "", "6.6.6.6"))).isEqualTo("172.70.1.1");
+    }
+
+    @Test
+    @DisplayName("CF: remoteAddr fuera de 100.64.0.0/10 -> remoteAddr aunque vengan todos los headers")
+    void untrustedRemoteAddrIgnoresCfHeaders() {
+        assertThat(cfResolver.resolve(cfRequest("203.0.113.9", SECRET, "6.6.6.6"))).isEqualTo("203.0.113.9");
+    }
 
     @Test
     @DisplayName("remoteAddr interno (hop de Railway) + X-Real-IP válido: se usa X-Real-IP")

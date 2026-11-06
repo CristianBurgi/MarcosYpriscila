@@ -2,7 +2,11 @@ package com.tuapp.eventfoto.common.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 /**
  * Única fuente de la IP del cliente para rate limiting (login de organizador/superadmin,
@@ -33,10 +37,16 @@ import org.springframework.stereotype.Component;
  * loguea un WARN y se cae a remoteAddr -- ese es el lado seguro del fallo: en el peor caso
  * un límite compartido entre varios clientes reales, nunca uno falsificable por el cliente.
  *
- * <p>Si en el futuro se activa Cloudflare delante de la app (dominio propio), esta
- * topología cambia por completo: Cloudflare es el proxy de borde y el header confiable
- * pasa a ser {@code CF-Connecting-IP} (con Railway como hop intermedio entre Cloudflare y
- * la app) -- hay que revisar esta clase de nuevo en ese momento, no asumir que sigue igual.
+ * <p><b>Cloudflare delante de Railway (opcional).</b> {@code CF-Connecting-IP} lo puede
+ * mandar cualquiera si pega directo al dominio de Railway sin pasar por Cloudflare (Railway
+ * deja pasar los headers que no conoce), así que por sí solo no prueba nada. Para
+ * distinguirlo, una Transform Rule de Cloudflare agrega {@code X-Origin-Auth} con un
+ * secreto compartido ({@code CF_ORIGIN_SECRET}). Flujo: con el secreto configurado y
+ * {@code remoteAddr} en un hop interno, si {@code X-Origin-Auth} coincide (comparación en
+ * tiempo constante) y {@code CF-Connecting-IP} es una IP literal válida, se usa esa IP; en
+ * cualquier otro caso se cae al mecanismo de arriba (X-Real-IP, luego remoteAddr). Sin
+ * secreto configurado el comportamiento es idéntico al anterior. Nunca se loguea el secreto
+ * ni el valor recibido de {@code X-Origin-Auth}.
  *
  * <p>Activar el diagnóstico en Railway con
  * {@code LOGGING_LEVEL_COM_TUAPP_EVENTFOTO_COMMON_CONFIG=DEBUG} (a nivel de PAQUETE, no de
@@ -50,24 +60,41 @@ public class ClientIpResolver {
     private static final long TRUSTED_PROXY_RANGE_START = ipv4ToLong(100, 64, 0, 0);
     private static final long TRUSTED_PROXY_RANGE_END = ipv4ToLong(100, 127, 255, 255);
 
+    private final byte[] originSecret;
+
+    public ClientIpResolver(@Value("${app.cf-origin-secret:}") String originSecret) {
+        this.originSecret = originSecret == null || originSecret.isBlank()
+                ? null : originSecret.getBytes(StandardCharsets.UTF_8);
+    }
+
     public String resolve(HttpServletRequest request) {
         String remoteAddr = request.getRemoteAddr();
         String xRealIp = request.getHeader("X-Real-IP");
-        String resolved = doResolve(remoteAddr, xRealIp);
+        String resolved = doResolve(remoteAddr, xRealIp, request);
 
         log.debug("ClientIpResolver: remoteAddr='{}' X-Real-IP='{}' -> resuelto='{}'", remoteAddr, xRealIp, resolved);
         return resolved;
     }
 
-    private String doResolve(String remoteAddr, String xRealIp) {
+    private String doResolve(String remoteAddr, String xRealIp, HttpServletRequest request) {
         if (!isTrustedInternalProxy(remoteAddr)) {
             return remoteAddr;
+        }
+        if (originSecret != null && originAuthMatches(request.getHeader("X-Origin-Auth"))) {
+            String cfIp = request.getHeader("CF-Connecting-IP");
+            if (isValidIpLiteral(cfIp)) {
+                return cfIp.trim();
+            }
         }
         if (isValidIpLiteral(xRealIp)) {
             return xRealIp;
         }
         log.warn("remoteAddr ('{}') es un hop interno de Railway pero X-Real-IP ('{}') no es una IP válida; usando remoteAddr", remoteAddr, xRealIp);
         return remoteAddr;
+    }
+
+    private boolean originAuthMatches(String header) {
+        return header != null && MessageDigest.isEqual(originSecret, header.getBytes(StandardCharsets.UTF_8));
     }
 
     private static boolean isTrustedInternalProxy(String ip) {
